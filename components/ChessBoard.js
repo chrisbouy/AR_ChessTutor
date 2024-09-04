@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Image, Text } from 'react-native';
 import whiteRook from '../assets/images/2d_chess_pieces/white-rook.png';
 import blackRook from '../assets/images/2d_chess_pieces/black-rook.png';
 import whiteKnight from '../assets/images/2d_chess_pieces/white-knight.png';
@@ -13,12 +13,7 @@ import blackQueen from '../assets/images/2d_chess_pieces/black-queen.png';
 import whitePawn from '../assets/images/2d_chess_pieces/white-pawn.png';
 import blackPawn from '../assets/images/2d_chess_pieces/black-pawn.png';
 
-// Continue importing other pieces
-
-// Continue importing other pieces
-
-
-const ChessBoard = ({ boardState, onPieceSelect, onMove }) => {
+const ChessBoard = ({ boardState, onMove }) => {
   const [selectedPiece, setSelectedPiece] = useState(null);
   const [selectedSquare, setSelectedSquare] = useState(null);
 
@@ -48,7 +43,7 @@ const ChessBoard = ({ boardState, onPieceSelect, onMove }) => {
 
   const getPieceImage = (piece) => {
     if (!piece) return null;
-  
+
     const pieceMap = {
       'wR': whiteRook,
       'bR': blackRook,
@@ -62,38 +57,54 @@ const ChessBoard = ({ boardState, onPieceSelect, onMove }) => {
       'bQ': blackQueen,
       'wP': whitePawn,
       'bP': blackPawn,
-      // Add mappings for all pieces
     };
-  
+
     return pieceMap[`${piece.color}${piece.type.toUpperCase()}`];
   };
-  
-  
 
   return (
-    <View style={styles.board}>
-      {boardState.map((row, rowIndex) => (
-        <View key={rowIndex} style={styles.row}>
-          {row.map((piece, colIndex) => (
-            <TouchableOpacity
-              key={`${rowIndex}-${colIndex}`}
-              style={[
-                styles.square,
-                { backgroundColor: getSquareColor(rowIndex, colIndex) },
-                selectedSquare === getSquareFromCoordinates(rowIndex, colIndex) && styles.selectedSquare, // Highlight selected square
-              ]}
-              onPress={() => handleSquareClick(rowIndex, colIndex)}
-            >
-              {piece && (
-                <Image
-                  source={getPieceImage(piece)}
-                  style={styles.pieceImage} // Style the image for proper sizing
-                />
-              )}
-            </TouchableOpacity>
+    <View style={styles.container}>
+      {/* Letters at the top (files a-h) */}
+      <View style={styles.files}>
+        {['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((letter, index) => (
+          <Text key={index} style={styles.fileText}>{letter}</Text>
+        ))}
+      </View>
+
+      <View style={styles.boardWithRanks}>
+        {/* Numbers on the left side (ranks 1-8) */}
+        <View style={styles.ranks}>
+          {[8, 7, 6, 5, 4, 3, 2, 1].map((number, index) => (
+            <Text key={index} style={styles.rankText}>{number}</Text>
           ))}
         </View>
-      ))}
+
+        {/* Chessboard */}
+        <View style={styles.board}>
+          {boardState.map((row, rowIndex) => (
+            <View key={rowIndex} style={styles.row}>
+              {row.map((piece, colIndex) => (
+                <TouchableOpacity
+                  key={`${rowIndex}-${colIndex}`}
+                  style={[
+                    styles.square,
+                    { backgroundColor: getSquareColor(rowIndex, colIndex) },
+                    selectedSquare === getSquareFromCoordinates(rowIndex, colIndex) && styles.selectedSquare, // Highlight selected square
+                  ]}
+                  onPress={() => handleSquareClick(rowIndex, colIndex)}
+                >
+                  {piece && (
+                    <Image
+                      source={getPieceImage(piece)}
+                      style={styles.pieceImage} // Style the image for proper sizing
+                    />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          ))}
+        </View>
+      </View>
     </View>
   );
 };
@@ -108,6 +119,37 @@ const getSquareFromCoordinates = (row, col) => {
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  files: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 5,
+  },
+  fileText: {
+    width: 40,
+    textAlign: 'center',
+    fontWeight: 'bold',
+    color: 'black',
+  },
+  boardWithRanks: {
+    flexDirection: 'row',
+  },
+  ranks: {
+    flexDirection: 'column',
+    justifyContent: 'center',
+    marginRight: 5,
+  },
+  rankText: {
+    height: 40,
+    textAlign: 'center',
+    fontWeight: 'bold',
+    color: 'black',
+  },
   board: {
     flexDirection: 'column',
     borderWidth: 2,

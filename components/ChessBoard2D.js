@@ -13,7 +13,7 @@ import blackQueen from '../assets/images/2d_chess_pieces/black-queen.png';
 import whitePawn from '../assets/images/2d_chess_pieces/white-pawn.png';
 import blackPawn from '../assets/images/2d_chess_pieces/black-pawn.png';
 
-const ChessBoard = ({ boardState, onMove }) => {
+const ChessBoard2D = ({ boardState, onMove }) => {
   const [selectedPiece, setSelectedPiece] = useState(null);
   const [selectedSquare, setSelectedSquare] = useState(null);
 
@@ -81,28 +81,35 @@ const ChessBoard = ({ boardState, onMove }) => {
 
         {/* Chessboard */}
         <View style={styles.board}>
-          {boardState.map((row, rowIndex) => (
-            <View key={rowIndex} style={styles.row}>
-              {row.map((piece, colIndex) => (
-                <TouchableOpacity
-                  key={`${rowIndex}-${colIndex}`}
-                  style={[
-                    styles.square,
-                    { backgroundColor: getSquareColor(rowIndex, colIndex) },
-                    selectedSquare === getSquareFromCoordinates(rowIndex, colIndex) && styles.selectedSquare, // Highlight selected square
-                  ]}
-                  onPress={() => handleSquareClick(rowIndex, colIndex)}
-                >
-                  {piece && (
-                    <Image
-                      source={getPieceImage(piece)}
-                      style={styles.pieceImage} // Style the image for proper sizing
-                    />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          ))}
+          {/* Check if boardState is defined and is an array */}
+          {boardState && Array.isArray(boardState) && boardState.length === 8 ? (
+            boardState.map((row, rowIndex) => (
+              <View key={rowIndex} style={styles.row}>
+                {row.map((piece, colIndex) => (
+                  <TouchableOpacity
+                    key={`${rowIndex}-${colIndex}`}
+                    style={[
+                      styles.square,
+                      { backgroundColor: getSquareColor(rowIndex, colIndex) },
+                      selectedSquare === getSquareFromCoordinates(rowIndex, colIndex) && styles.selectedSquare, // Highlight selected square
+                    ]}
+                    onPress={() => handleSquareClick(rowIndex, colIndex)}
+                  >
+                    {piece && (
+                      <Image
+                        source={getPieceImage(piece)}
+                        style={styles.pieceImage} // Style the image for proper sizing
+                      />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ))
+          ) : (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading Board...</Text>
+          </View>
+          )}
         </View>
       </View>
     </View>
@@ -170,7 +177,17 @@ const styles = StyleSheet.create({
   pieceImage: {
     width: 30,  // Adjust the size as needed
     height: 30, // Adjust the size as needed
+    
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 320,  // Set the appropriate height for the placeholder
+    width: 320,   // Set the appropriate width for the placeholder
+  },
+  loadingText: {
+    fontSize: 16,
+    color: 'gray',
   },
 });
-
-export default ChessBoard;
+export default ChessBoard2D;

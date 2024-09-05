@@ -1,46 +1,71 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
-import ChessBoard from './components/ChessBoard';
+import { View, StyleSheet, Button, Text } from 'react-native';
+import ChessBoard2D from './components/ChessBoard2D';
+import ChessBoard3D from './components/ChessBoard3D'; // Placeholder for your 3D board
+import ChessBoardAR from './components/ChessBoardAR'; // Placeholder for your AR board
 import GameLogic from './GameLogic';
 
+
+
 const App = () => {
-  const gameLogicRef = useRef(new GameLogic());
+  const gameLogicRef = useRef(new GameLogic()); // Use useRef to maintain the same instance
   const [boardState, setBoardState] = useState(gameLogicRef.current.getBoardState());
   const [aiMove, setAIMove] = useState('');
-  const [playerMove, setPlayerMove] = useState('');
+  const [statusMessage, setStatusMessage] = useState(''); // State to manage status messages
+  const [boardType, setBoardType] = useState('2D'); // State to track the current board type
   const [topText, setTopText] = useState('Waiting on player'); // Initial state for top text
   const [bottomText, setBottomText] = useState('Make your move!'); // Initial state for bottom text
   const [isFirstMove, setIsFirstMove] = useState(true); // To track if it’s the player’s first move
 
+  const toggleBoard = () => {
+    // Toggle between 2D, 3D, and AR boards
+    if (boardType === '2D') {
+      setBoardType('3D');
+    } else if (boardType === '3D') {
+      setBoardType('AR');
+    } else {
+      setBoardType('2D');
+    }
+  }; 
   const onMove = (fromSquare, toSquare) => {
-    const moveResult = gameLogicRef.current.makeMove(fromSquare, toSquare);
-    if (moveResult) {
-      setBoardState(gameLogicRef.current.getBoardState());
-
-      // Bottom text: Player's move, followed by AI advice placeholder
+    try {
+      const moveResult = gameLogicRef.current.makeMove(fromSquare, toSquare);
+      
+      if (moveResult) {
+        setBoardState(gameLogicRef.current.getBoardState());
+              // Bottom text: Player's move, followed by AI advice placeholder
       setBottomText(`Player moved from ${fromSquare} to ${toSquare}\nAI move advice will go here eventually`);
 
       setTopText('Waiting...'); // Set top text to 'Waiting' while AI is thinking
 
-      setTimeout(() => {
-        const aiResult = gameLogicRef.current.makeAIMove();
-        if (aiResult) {
-          setBoardState(aiResult.boardState);
-          setAIMove(aiResult.move.san);
-
-          // After the AI move, show the AI's move and set appropriate top text
-          if (isFirstMove) {
-            setTopText(`Computer moved: ${aiResult.move.san}\nAnalysis of computer's move will go here eventually.\nWaiting on player's move.`);
-            setIsFirstMove(false); // Now it's no longer the first move
-          } else {
-            setTopText(`Computer moved: ${aiResult.move.san}\nAnalysis of computer's move will go here eventually.\nWaiting on player's move.`);
+        setTimeout(() => {
+          const aiResult = gameLogicRef.current.makeAIMove();
+          if (aiResult) {
+            setBoardState(aiResult.boardState);
+            setAIMove(aiResult.move.san);
+                      // After the AI move, show the AI's move and set appropriate top text
+            if (isFirstMove) {
+              setTopText(`Computer moved: ${aiResult.move.san}\nAnalysis of computer's move will go here eventually.\nWaiting on player's move.`);
+              setIsFirstMove(false); // Now it's no longer the first move
+            } else {
+              setTopText(`Computer moved: ${aiResult.move.san}\nAnalysis of computer's move will go here eventually.\nWaiting on player's move.`);
+            }
           }
-        }
-      }, 500);
-      return moveResult;
+        }, 500);
+  
+        return moveResult;
+      } else {
+        // No need to show 'Invalid Move' message in the top text box anymore
+        return null;
+      }
+    } catch (error) {
+      // Log the error to the console for debugging purposes, but no need to display it in the UI
+      console.error("Error in onMove:", error.message);
+      return null;
     }
-    return null;
   };
+  
+  
 
   useEffect(() => {
     console.log("Current board state:", boardState);
@@ -48,17 +73,26 @@ const App = () => {
 
   return (
     <View style={styles.container}>
-      {/* Top Text - Computer's move */}
       <Text style={styles.topText}>{topText}</Text>
 
-      {/* Chess Board */}
-      <ChessBoard
+      {/* <ChessBoard2D
         boardState={boardState}
         onMove={onMove}
-      />
+      /> */}
+      {/* {boardType === '2D' && <ChessBoard2D />}
+      {boardType === '3D' && <ChessBoard3D />}
+      {boardType === 'AR' && <ChessBoardAR />} */}
+      {boardType === '2D' && (<ChessBoard2D
+                                  boardState={boardState}
+                                  onMove={onMove}
+                                />
+      )}
+{boardType === '3D' && <ChessBoard3D />}
+{boardType === 'AR' && <ChessBoardAR />}
 
-      {/* Bottom Text - Player's move */}
       <Text style={styles.bottomText}>{bottomText}</Text>
+      <Button title={`Switch to ${boardType === '2D' ? '3D' : boardType === '3D' ? 'AR' : '2D'} Board`} onPress={toggleBoard} />
+
     </View>
   );
 };
@@ -67,8 +101,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 10, // Added padding for aesthetics
+    alignItems: 'center', 
+    padding: 10,
   },
   topText: {
     fontSize: 18,

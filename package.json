@@ -14,7 +14,7 @@
     "create-react-class": "^15.7.0",
     "react": "18.3.1",
     "react-native": "0.75.2",
-    "react-native-permissions": "^3.3.1",
+    "react-native-permissions": "^4.1.5",
     "react-native-webrtc": "^124.0.4",
     "react-native-webview": "^13.12.1",
     "three": "^0.168.0"

@@ -38,20 +38,23 @@ const App = () => {
 
       setTopText('Waiting...'); // Set top text to 'Waiting' while AI is thinking
 
-        setTimeout(() => {
-          const aiResult = gameLogicRef.current.makeAIMove();
-          if (aiResult) {
-            setBoardState(aiResult.boardState);
-            setAIMove(aiResult.move.san);
-                      // After the AI move, show the AI's move and set appropriate top text
-            if (isFirstMove) {
-              setTopText(`Computer moved: ${aiResult.move.san}\nAnalysis of computer's move will go here eventually.\nWaiting on player's move.`);
-              setIsFirstMove(false); // Now it's no longer the first move
-            } else {
-              setTopText(`Computer moved: ${aiResult.move.san}\nAnalysis of computer's move will go here eventually.\nWaiting on player's move.`);
-            }
+      setTimeout(async () => {
+        const aiMoveResult = await gameLogicRef.current.makeAIMove();
+        if (aiMoveResult) {
+          setBoardState(aiMoveResult.boardState);
+          setAIMove(aiMoveResult.move.san); // Ensure aiMoveResult has a move and boardState
+          // Additional logic for setting topText for the AI move
+          if (isFirstMove) {
+            setTopText(`Computer moved: ${aiMoveResult.move.san}\nAnalysis of computer's move: ${aiMoveResult.explanation}\nWaiting on player's move.`);
+            setIsFirstMove(false);
+          } else {
+            setTopText(`Computer moved: ${aiMoveResult.move.san}\nAnalysis of computer's move: ${aiMoveResult.explanation}\nWaiting on player's move.`);
           }
-        }, 500);
+        } else {
+          console.error("AI move could not be generated.");
+        }
+      }, 500);
+      
   
         return moveResult;
       } else {
@@ -68,7 +71,7 @@ const App = () => {
   
 
   useEffect(() => {
-    console.log("Current board state:", boardState);
+   // console.log("Current board state:", boardState);
   }, [boardState]);
 
   return (

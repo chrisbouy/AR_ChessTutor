@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Image, Text } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Image } from 'react-native';
 import whiteRook from '../assets/images/2d_chess_pieces/white-rook.png';
 import blackRook from '../assets/images/2d_chess_pieces/black-rook.png';
 import whiteKnight from '../assets/images/2d_chess_pieces/white-knight.png';
@@ -135,12 +135,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     marginBottom: 5,
+    backgroundColor: 'black',  // Black background for files labels
   },
   fileText: {
     width: 40,
     textAlign: 'center',
     fontWeight: 'bold',
-    color: 'black',
+    color: 'white',  // White text color for the labels
   },
   boardWithRanks: {
     flexDirection: 'row',
@@ -149,12 +150,13 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     justifyContent: 'center',
     marginRight: 5,
+    backgroundColor: 'black', // Black background for ranks labels
   },
   rankText: {
     height: 40,
     textAlign: 'center',
     fontWeight: 'bold',
-    color: 'black',
+    color: 'white', // White text color for the labels
   },
   board: {
     flexDirection: 'column',

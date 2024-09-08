@@ -81,7 +81,6 @@ const ChessBoard2D = ({ boardState, onMove }) => {
 
         {/* Chessboard */}
         <View style={styles.board}>
-          {/* Check if boardState is defined and is an array */}
           {boardState && Array.isArray(boardState) && boardState.length === 8 ? (
             boardState.map((row, rowIndex) => (
               <View key={rowIndex} style={styles.row}>
@@ -106,9 +105,9 @@ const ChessBoard2D = ({ boardState, onMove }) => {
               </View>
             ))
           ) : (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading Board...</Text>
-          </View>
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading Board...</Text>
+            </View>
           )}
         </View>
       </View>
@@ -177,7 +176,6 @@ const styles = StyleSheet.create({
   pieceImage: {
     width: 30,  // Adjust the size as needed
     height: 30, // Adjust the size as needed
-    
   },
   loadingContainer: {
     justifyContent: 'center',
@@ -190,4 +188,5 @@ const styles = StyleSheet.create({
     color: 'gray',
   },
 });
+
 export default ChessBoard2D;

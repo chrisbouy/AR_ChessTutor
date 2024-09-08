@@ -24,34 +24,63 @@ class GameLogic {
     try {
       const move = this.chess.move({ from: fromSquare, to: toSquare });
       if (move) {
-        console.log("Move was successful:", move);
-        return move; // Return the move object if successful
+        return move;
       } else {
-        console.log("Invalid move attempted:", fromSquare, "to", toSquare);
-        return null; // Return null if the move was invalid
+        return null;
       }
     } catch (error) {
       console.log("Invalid move caught from chess.js:", error.message);
-      return null; // Return null if chess.js throws an error
-    }
-  }
-  
-
-  async makeAIMove() {
-    const possibleMoves = this.chess.moves();
-    if (possibleMoves.length === 0) {
       return null;
     }
-  
-    const bestMove = this.chess.move(possibleMoves[0]);
-    const fromSquare = bestMove.from;
-    const toSquare = bestMove.to;
-  
-    const explanationPrompt = `Give me a concise reasoning behind the move from ${fromSquare} to ${toSquare} in chess.`;
-  
+  }
+
+  async getBestMoveFromLichess(fen) {
     try {
-      console.log("Explanation Prompt: ", explanationPrompt);
-  
+      const response = await fetch(`https://lichess.org/api/cloud-eval?fen=${fen}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer lip_EXDEZ8nlr9s760AwWIlM`,  // Use your Lichess API token
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch best move from Lichess");
+      }
+
+      const data = await response.json();
+      return data.pvs[0].moves.split(" ")[0]; // Return the best move from Lichess
+    } catch (error) {
+      console.error("Error fetching best move from Lichess:", error);
+      return null;
+    }
+  }
+
+  async makeAIMove() {
+    const fen = this.chess.fen();
+    const bestMove = await this.getBestMoveFromLichess(fen);
+    
+    if (!bestMove) {
+      console.log("No move found from Lichess.");
+      return null;
+    }
+
+    this.chess.move(bestMove);
+    const aiMove = this.chess.history().slice(-1)[0];  // Get the last move made
+    
+    const explanation = await this.analyzeAIMoveWithGemini(aiMove);
+
+    return {
+      move: aiMove,
+      boardState: this.getBoardState(),
+      status: this.getGameStatus(),
+      explanation: explanation,
+    };
+  }
+
+  async analyzeAIMoveWithGemini(move) {
+    const explanationPrompt = `Give me a concise reasoning behind the move ${move} in chess.`;
+    
+    try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -64,42 +93,49 @@ class GameLogic {
           ]
         }),
       });
-  
-      const data = await response.json();
-      console.log("Gemini API response:", JSON.stringify(data, null, 2)); // Log full data in readable format
-  
-      // Extract the content from the response
-      if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
-        let explanation = data.candidates[0].content.parts[0].text; // Adjust this depending on the exact content structure
-        explanation = explanation.length > 100 ? explanation.substring(0, 100) + '...' : explanation;
 
-        console.log("Explanation:", explanation);
-  
-        return {
-          move: bestMove,
-          boardState: this.getBoardState(),
-          status: this.getGameStatus(),
-          explanation: explanation,
-        };
+      const data = await response.json();
+      
+      if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
+        let explanation = data.candidates[0].content.parts[0].text;
+        return explanation.length > 100 ? explanation.substring(0, 100) + '...' : explanation;
       } else {
-        return {
-          move: bestMove,
-          boardState: this.getBoardState(),
-          status: this.getGameStatus(),
-          explanation: 'No explanation provided',
-        };
+        return 'No explanation provided';
       }
     } catch (error) {
       console.error("Error fetching explanation from Gemini:", error);
-      return null;
+      return 'No explanation provided';
     }
   }
-  
 
+  async getPlayerMoveAdvice() {
+    const advicePrompt = `What should be the player's next best move in this position?`;
+    
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          "contents": [
+            {
+              "role": "user",
+              "parts": [{"text": advicePrompt}]
+            }
+          ]
+        }),
+      });
 
-  selectBestMove(possibleMoves) {
-    const randomIndex = Math.floor(Math.random() * possibleMoves.length);
-    return possibleMoves[randomIndex];
+      const data = await response.json();
+      
+      if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
+        return data.candidates[0].content.parts[0].text;
+      } else {
+        return 'No advice provided';
+      }
+    } catch (error) {
+      console.error("Error fetching advice from Gemini:", error);
+      return 'No advice provided';
+    }
   }
 }
 

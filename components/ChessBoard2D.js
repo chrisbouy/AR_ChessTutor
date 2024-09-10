@@ -30,7 +30,7 @@ const ChessBoard2D = ({ boardState, onMove }) => {
     } else {
       const moveResult = onMove(selectedSquare, square);
       if (moveResult) {
-        console.log("Move made:", moveResult);
+        //console.log("Move made:", moveResult);
         setSelectedPiece(null); // Deselect the piece after moving
         setSelectedSquare(null);
       } else {

@@ -6,6 +6,44 @@ class GameLogic {
     this.tutorLevel = 5; // Default tutor level
   }
 
+  fenToBoardLayout(fen) {
+    const fenParts = fen.split(' ');
+    const fenBoard = fenParts[0];
+    const rows = fenBoard.split('/');
+    const pieceMap = {
+      'r': 'Black Rook',
+      'n': 'Black Knight',
+      'b': 'Black Bishop',
+      'q': 'Black Queen',
+      'k': 'Black King',
+      'p': 'Black Pawn',
+      'R': 'White Rook',
+      'N': 'White Knight',
+      'B': 'White Bishop',
+      'Q': 'White Queen',
+      'K': 'White King',
+      'P': 'White Pawn'
+    };
+
+    let boardLayout = '';
+    rows.forEach((row, rowIndex) => {
+      let boardRow = `Rank ${8 - rowIndex}: `;
+      for (let i = 0; i < row.length; i++) {
+        const char = row[i];
+        if (!isNaN(char)) {
+          boardRow += `${char} empty squares, `;
+        } else {
+          const pieceDescription = pieceMap[char];
+          const file = String.fromCharCode(97 + boardRow.replace(/[^,]/g, '').length); // a-h files
+          boardRow += `${pieceDescription} at ${file}${8 - rowIndex}, `;
+        }
+      }
+      boardLayout += boardRow.trimEnd().slice(0, -1) + '.\n';
+    });
+
+    return boardLayout.trim();
+  }
+
   getGameStatus() {
     return this.chess.isCheckmate() ? 'checkmate' : this.chess.isDraw() ? 'draw' : 'ongoing';
   }
@@ -35,39 +73,65 @@ class GameLogic {
     }
   }
 
-async getAdvicePrompt(fen) {
-  const phase = this.getGamePhase();  // Game phase (opening, midgame, endgame)
-  const lastMove = this.chess.history({ verbose: true }).pop();  // Last move in the game
-  
-  const advicePrompt = `You are tutoring chess at level ${this.tutorLevel} on a scale of 1 to 10. 
-  Current board state (FEN): ${fen}
-  Game phase: ${phase}
-  Last move: Black moved ${lastMove.piece} from ${lastMove.from} to ${lastMove.to}
-
-  1. Describe the current board state and position evaluation listing exactly where everything on the board is.
-  2. Provide the best possible move for White, considering legal and logical moves only.
-  3. Explain which pieces are involved in your suggested move and how it affects the game.`;
-
-  return advicePrompt;
-}
-
-
-  async getExplanationPrompt(fen, move) {
-    const turn = this.chess.turn() === 'w' ? 'White' : 'Black';
+  async getAdvicePrompt() {
+    const turn = 'Black';
     const phase = this.getGamePhase();
-    const lastMove = this.chess.history({ verbose: true }).pop();
+    const fen_after_black = this.chess.fen();
+    const boardLayout = this.fenToBoardLayout(fen_after_black);
+    const moveHistory = this.chess.history({ verbose: true });
+    const lastMove = moveHistory[moveHistory.length - 1];
 
-    const explanationPrompt = `You are a chess tutor at level ${this.tutorLevel} (1-10 scale). 
-  Current board state (FEN): ${fen}
-  Current turn: ${turn}
-  Game phase: ${phase}
-  Last move: ${lastMove ? `${lastMove.color === 'w' ? 'White' : 'Black'} moved ${lastMove.piece} from ${lastMove.from} to ${lastMove.to}` : 'No moves yet'}
+    // Format moves for prompt
+    const moveList = moveHistory.map((move, index) => {
+    const moveNumber = Math.floor(index / 2) + 1;
+    const moveString = `${move.color === 'w' ? moveNumber + '.' : ''} ${move.san}`;
+    return moveString;
+    }).join(' ');
 
-  1. tell me where everything on the board is. In plain English and FEN notation
-  1. Describe the current board state and position evaluation listing exactly where everything on the board is.
-  2. Provide analysis of ${turn}'s most recent move.
-  3. Explain which pieces are involved in ${turn}'s move from ${move.from} to ${move.to} and how it affects the game.`;
+    // Add move list and last move details to the prompt
+    //`You are tutoring chess at level ${this.tutorLevel} on a scale of 1 to 10.
+    const advicePrompt = `Forget everything you know about the current board state.
+    board_state: a representation of this FEN model: ${this.chess.fen()}
+    move_list: ${moveList}
+    It is now ${this.chess.turn() === 'w' ? 'White' : 'Black'}'s turn. 
+    Game_phase: ${this.getGamePhase()}
+    Last_move: ${lastMove.piece} from ${lastMove.from} to ${lastMove.to}
+    Output the current ${boardLayout} and describe the current board state and position evaluation, 
+    listing exactly where everything on the board is and taking into account move_list'
 
+    Output the best possible move for White, considering legal and logical moves only.
+    Output a 250 characters (or less) summary of the advice for white's next move, enclosed in '####'`; 
+
+    return advicePrompt;
+  }
+
+  async getExplanationPrompt() {
+    const turn = 'Black';
+    const phase = this.getGamePhase();
+    const fen_after_black = this.chess.fen();
+    const boardLayout = this.fenToBoardLayout(fen_after_black);
+    const moveHistory = this.chess.history({ verbose: true });
+  const lastMove = moveHistory[moveHistory.length - 1];
+  
+  // Format moves for prompt
+  const moveList = moveHistory.map((move, index) => {
+  const moveNumber = Math.floor(index / 2) + 1;
+  const moveString = `${move.color === 'w' ? moveNumber + '.' : ''} ${move.san}`;
+  return moveString;
+  }).join(' ');
+  
+  // Add move list and last move details to the prompt
+  //`You are tutoring chess at level ${this.tutorLevel} on a scale of 1 to 10.
+  const explanationPrompt = `Forget everything you know about the current board state.
+  board_state: a representation of this FEN model: ${this.chess.fen()}
+  move_list: ${moveList}
+  It is now ${this.chess.turn() === 'w' ? 'White' : 'Black'}'s turn. 
+  Game_phase: ${this.getGamePhase()}
+  Last_move: ${lastMove.piece} from ${lastMove.from} to ${lastMove.to}
+  Output the current ${boardLayout} and describe the current board state and position evaluation, 
+  listing exactly where everything on the board is and taking into account move_list'
+Output a detailed analysis of black's last move.
+Output a 250 characters (or less) summary of black's last move, enclosed in '####'`;
     return explanationPrompt;
   }
 
@@ -76,7 +140,7 @@ async getAdvicePrompt(fen) {
       const response = await fetch(`https://lichess.org/api/cloud-eval?fen=${fen}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer lip_tsmoaNvQ0k4kbrmhMQLb`, // Replace with your Lichess API token
+          'Authorization': `Bearer lip_iioABYocYPTzLDGEnMrt`, // Replace with your Lichess API token
         },
       });
 
@@ -94,10 +158,10 @@ async getAdvicePrompt(fen) {
 
   async makeAIMove() {
     try {
-      const fen = this.chess.fen();
-      console.log("Current FEN before AI move:", fen);
+      const fen_after_white = this.chess.fen();
+      console.log("Current FEN before AI move:", fen_after_white);
 
-      const bestMove = await this.getBestMoveFromLichess(fen); // Get best move from Lichess
+      const bestMove = await this.getBestMoveFromLichess(fen_after_white); // Get best move from Lichess
       if (!bestMove) {
         console.log("No valid move retrieved from Lichess.");
         return null;
@@ -115,7 +179,7 @@ async getAdvicePrompt(fen) {
       console.log("Move applied on the board:", move);
 
       // Create an explanation prompt for Gemini
-      const explanationPrompt = await this.getExplanationPrompt(fen, { from: move.from, to: move.to });
+      const explanationPrompt = await this.getExplanationPrompt();
 
       console.log("Explanation Prompt:", explanationPrompt);
 
@@ -136,19 +200,21 @@ async getAdvicePrompt(fen) {
       const data = await response.json();
       console.log("Gemini API response for AI analysis:", JSON.stringify(data, null, 2));
 
-      let explanation = 'No explanation provided';
+      let summary = 'No summary provided.';
       if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
-        explanation = data.candidates[0].content.parts[0].text;
+        const responseText = data.candidates[0].content.parts[0].text;
+        const summaryMatch = responseText.match(/####(.*)####/);
+        if (summaryMatch && summaryMatch[1]) {
+          summary = summaryMatch[1];
+        }
       }
-
       // Return the move, updated board state, and explanation to be handled by App.js
       return {
         move: move, // AI move
         boardState: this.getBoardState(), // Updated board state
         status: this.getGameStatus(), // Current game status
-        explanation: explanation, // Explanation from Gemini
+        explanation: summary, // Explanation from Gemini
       };
-
     } catch (error) {
       console.error("Error during AI move:", error);
       return null;
@@ -156,8 +222,7 @@ async getAdvicePrompt(fen) {
   }
 
   async getPlayerMoveAdvice() {
-    const fen = this.chess.fen();
-    const advicePrompt = await this.getAdvicePrompt(fen);
+    const advicePrompt = await this.getAdvicePrompt();
 
     try {
       console.log("Advice Prompt: ", advicePrompt);
@@ -178,14 +243,17 @@ async getAdvicePrompt(fen) {
       const data = await response.json();
       console.log("Gemini API response for player advice:", JSON.stringify(data, null, 2));
 
-      // Extract the advice content from the response
+      let summary = 'No summary provided.';
       if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
-        let advice = data.candidates[0].content.parts[0].text;
-        return advice;
-      } else {
-        return 'No advice provided.';
+        const responseText = data.candidates[0].content.parts[0].text;
+        const summaryMatch = responseText.match(/####(.*)####/);        
+        if (summaryMatch && summaryMatch[1]) {
+          summary = summaryMatch[1];
+        }
       }
-
+  
+      // Return only the summary to display in the app
+      return summary;
     } catch (error) {
       console.error("Error fetching advice from Gemini:", error);
       return 'Error fetching advice.';

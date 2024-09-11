@@ -88,21 +88,38 @@ class GameLogic {
     return moveString;
     }).join(' ');
 
-    // Add move list and last move details to the prompt
-    //`You are tutoring chess at level ${this.tutorLevel} on a scale of 1 to 10.
-    const advicePrompt = `Forget everything you know about the current board state.
-    board_state: a representation of this FEN model: ${this.chess.fen()}
-    move_list: ${moveList}
-    It is now ${this.chess.turn() === 'w' ? 'White' : 'Black'}'s turn. 
-    Game_phase: ${this.getGamePhase()}
-    Last_move: ${lastMove.piece} from ${lastMove.from} to ${lastMove.to}
-    Output the current ${boardLayout} and describe the current board state and position evaluation, 
-    listing exactly where everything on the board is and taking into account move_list'
-
-    Output the best possible move for White, considering legal and logical moves only.
-    Output a 250 characters (or less) summary of the advice for white's next move, enclosed in '####'`; 
-
+   
+    const advicePrompt = 
+// Move List: ${moveList}
+// Game Phase: ${phase}
+// Last Move: ${lastMove.piece} from ${lastMove.from} to ${lastMove.to}
+// Objective: Analyze the position from a strategic perspective, considering the overall goals of each side.
+// Task:
+//     Evaluate the current position: Consider factors such as piece development, control of the center, king safety, and potential threats.
+// Identify White's primary strategic goals: What are White's objectives in this position?
+    // Recommend a move for White: Suggest the best move for White, taking into account their strategic goals and the potential responses from Black.
+`Input:
+   Board State: ${this.chess.fen()}
+   Move List: ${moveList}
+   Game Phase: ${phase}
+   Last Move: ${lastMove.piece} from ${lastMove.from} to ${lastMove.to}
+  Output:
+      A 400 character analysis of the current board state,do not say anything that is not in the FEN model ${this.chess.fen()}, including an assessment of the strategic goals of each side, enclosed in '----'.
+      A 230 character recommendation move for White's best move, only taking into account this boardstate: ${this.chess.fen()}, along with a brief explanation of why it is the best choice, enclosed in '####'`
     return advicePrompt;
+      // Add move list and last move details to the prompt
+    //`You are tutoring chess at level ${this.tutorLevel} on a scale of 1 to 10.
+    //     Output the current ${boardLayout} and describe the current board state and position evaluation, 
+    // listing exactly where everything on the board is and taking into account move_list'
+    // const advicePrompt = `Forget everything you know about the current board state.
+    // board_state: a representation of this FEN model: ${this.chess.fen()}
+    // move_list: ${moveList}
+    // It is now ${this.chess.turn() === 'w' ? 'White' : 'Black'}'s turn. 
+    // Game_phase: ${this.getGamePhase()}
+    // Last_move: ${lastMove.piece} from ${lastMove.from} to ${lastMove.to}
+    // Output the current FEN.
+    // Output the best possible move for White, considering legal and logical moves only.
+    // Output a 230 characters (or less) summary of the advice for white's next move, enclosed in '####'`;
   }
 
   async getExplanationPrompt() {
@@ -122,16 +139,17 @@ class GameLogic {
   
   // Add move list and last move details to the prompt
   //`You are tutoring chess at level ${this.tutorLevel} on a scale of 1 to 10.
+    // Output the current ${boardLayout} and describe the current board state and position evaluation, 
+  // listing exactly where everything on the board is and taking into account move_list'
   const explanationPrompt = `Forget everything you know about the current board state.
   board_state: a representation of this FEN model: ${this.chess.fen()}
   move_list: ${moveList}
   It is now ${this.chess.turn() === 'w' ? 'White' : 'Black'}'s turn. 
   Game_phase: ${this.getGamePhase()}
   Last_move: ${lastMove.piece} from ${lastMove.from} to ${lastMove.to}
-  Output the current ${boardLayout} and describe the current board state and position evaluation, 
-  listing exactly where everything on the board is and taking into account move_list'
+  Output the current FEN.
 Output a detailed analysis of black's last move.
-Output a 250 characters (or less) summary of black's last move, enclosed in '####'`;
+Output a 230 characters (or less) summary of black's last move, enclosed in '####'`;
     return explanationPrompt;
   }
 

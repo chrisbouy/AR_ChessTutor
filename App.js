@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, StyleSheet, Button, Text } from 'react-native';
+import { View, StyleSheet, Button, Text, TouchableOpacity } from 'react-native';
 import ChessBoard2D from './components/ChessBoard2D';
 import GameLogic from './GameLogic';
 
@@ -11,29 +11,28 @@ const App = () => {
   const [topText, setTopText] = useState('Waiting on player');
   const [bottomText, setBottomText] = useState('Make your move!');
   
+  const handleReload = () => {
+    gameLogicRef.current = new GameLogic(); // Reset game logic
+    setBoardState(gameLogicRef.current.getBoardState());
+    setTopText('Waiting on player');
+    setBottomText('Make your move!');
+  };
+
   const onMove = async (fromSquare, toSquare) => {
     const moveResult = gameLogicRef.current.makeMove(fromSquare, toSquare);
-  
+
     if (moveResult) {
       setBoardState(gameLogicRef.current.getBoardState()); // Update the board state after the player moves
       setTopText('Analyzing AI move...'); // Show analysis message
-  
-      // Fetch the AI move result
-      const aiMoveResult = await gameLogicRef.current.makeAIMove();
-  
+
+      // Fetch AI move and advice from Gemini
+      const aiMoveResult = await gameLogicRef.current.makeCombinedCall();
+
       if (aiMoveResult) {
-        // Update the board with the AI's move
+        // Update the board with the AI's move and show advice
         setBoardState(aiMoveResult.boardState);
-  
-        // Set the AI move and explanation at the top of the screen
-        setTopText(`Computer moved: ${aiMoveResult.move.san}\nAnalysis: ${aiMoveResult.explanation}`);
-        const playerAdvice = await gameLogicRef.current.getPlayerMoveAdvice();
-        if (playerAdvice) {
-          setBottomText(`Advice for you: ${playerAdvice}`);
-        }
-      
-      
-      
+        setTopText(`Analysis of move: ${aiMoveResult.move.san} ${aiMoveResult.analysisSummary}`);
+        setBottomText(`Advice for you: ${aiMoveResult.adviceSummary}`);
       } else {
         setTopText('No valid move found from AI.');
       }
@@ -41,10 +40,12 @@ const App = () => {
       setTopText('Invalid move, please try again.');
     }
   };
-  
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity style={styles.reloadButton} onPress={handleReload}>
+        <Text style={styles.reloadButtonText}>Reload</Text>
+      </TouchableOpacity>
       <Text style={styles.topText}>{topText}</Text>
       <ChessBoard2D boardState={boardState} onMove={onMove} />
       <Text style={styles.bottomText}>{bottomText}</Text>
@@ -57,19 +58,29 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'black',  // Set background to black
+    backgroundColor: 'black',
     padding: 10,
   },
+  reloadButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    backgroundColor: 'blue',
+    borderRadius: 10,
+    padding: 10,
+  },
+  reloadButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
   topText: {
-    fontSize: 16,
-    fontStyle: 'italic',
+    fontSize: 15,
     marginTop: 20,
     color: 'blue',
     textAlign: 'center',
   },
   bottomText: {
-    fontSize: 16,
-    fontStyle: 'italic',
+    fontSize: 15,
     marginTop: 20,
     color: 'green',
     textAlign: 'center',

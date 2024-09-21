@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { View, StyleSheet, Button, Text, TouchableOpacity } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import ChessBoard2D from './components/ChessBoard2D';
 import GameLogic from './GameLogic';
 
@@ -10,7 +10,13 @@ const App = () => {
   const [statusMessage, setStatusMessage] = useState('');
   const [topText, setTopText] = useState('Waiting on player');
   const [bottomText, setBottomText] = useState('Make your move!');
-  
+
+  // Initialize GameLogic class instance when the component mounts
+  useEffect(() => {
+    gameLogicRef.current = new GameLogic();
+    setBoardState(gameLogicRef.current.getBoardState()); // Safely set the board state after initialization
+  }, []);
+
   const handleReload = () => {
     gameLogicRef.current = new GameLogic(); // Reset game logic
     setBoardState(gameLogicRef.current.getBoardState());
@@ -19,27 +25,39 @@ const App = () => {
   };
 
   const onMove = async (fromSquare, toSquare) => {
-    const moveResult = gameLogicRef.current.makeMove(fromSquare, toSquare);
-
-    if (moveResult) {
-      setBoardState(gameLogicRef.current.getBoardState()); // Update the board state after the player moves
-      setTopText('Analyzing AI move...'); // Show analysis message
-
-      // Fetch AI move and advice from Gemini
-      const aiMoveResult = await gameLogicRef.current.makeCombinedCall();
-
-      if (aiMoveResult) {
-        // Update the board with the AI's move and show advice
-        setBoardState(aiMoveResult.boardState);
-        setTopText(`Analysis of move: ${aiMoveResult.move.san} ${aiMoveResult.analysisSummary}`);
-        setBottomText(`Advice for you: ${aiMoveResult.adviceSummary}`);
-      } else {
-        setTopText('No valid move found from AI.');
+    try {
+      console.log('Player attempting to move...');
+  
+      // Player makes a move and the AI generates its response
+      const moveResult = await gameLogicRef.current.makePlayerMoveAndGenerateAIResponse(fromSquare, toSquare);
+  
+      if (moveResult) {
+        // console.log('Move result:', moveResult);
+        
+        // Update the board with the new state after AI's move
+        setBoardState(moveResult.boardState);
+  
+        // Show the analysis for AI's last move and advice for the player
+        setTopText(`Analysis of Black's move: ${moveResult.analysisSummary}`);
+        setBottomText(`Advice for White: ${moveResult.adviceSummary}`);
+          } else {
+        setTopText('Invalid move, please try again.');
       }
-    } else {
-      setTopText('Invalid move, please try again.');
+    } catch (error) {
+      console.error('Error during move:', error);
+      setTopText('Error processing move, please try again.');
     }
   };
+  
+
+  // Ensure the board state is initialized before rendering
+  if (!boardState) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading board...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -84,6 +102,17 @@ const styles = StyleSheet.create({
     marginTop: 20,
     color: 'green',
     textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'black',
+  },
+  loadingText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
 

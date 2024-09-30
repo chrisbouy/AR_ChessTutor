@@ -6,51 +6,73 @@ import GameLogic from './GameLogic';
 const App = () => {
   const gameLogicRef = useRef(new GameLogic());
   const [boardState, setBoardState] = useState(gameLogicRef.current.getBoardState());
-  const [aiMove, setAIMove] = useState('');
-  const [statusMessage, setStatusMessage] = useState('');
   const [topText, setTopText] = useState('Waiting on player');
   const [bottomText, setBottomText] = useState('Make your move!');
 
-  // Initialize GameLogic class instance when the component mounts
   useEffect(() => {
     gameLogicRef.current = new GameLogic();
-    setBoardState(gameLogicRef.current.getBoardState()); // Safely set the board state after initialization
+    setBoardState(gameLogicRef.current.getBoardState());
   }, []);
 
   const handleReload = () => {
-    gameLogicRef.current = new GameLogic(); // Reset game logic
+    console.log('Reloading the game...');
+    gameLogicRef.current = new GameLogic();
     setBoardState(gameLogicRef.current.getBoardState());
     setTopText('Waiting on player');
     setBottomText('Make your move!');
+    console.log('Game reloaded successfully.');
   };
 
   const onMove = async (fromSquare, toSquare) => {
     try {
       console.log('Player attempting to move...');
-  
-      // Player makes a move and the AI generates its response
-      const moveResult = await gameLogicRef.current.makePlayerMoveAndGenerateAIResponse(fromSquare, toSquare);
-  
-      if (moveResult) {
-        // console.log('Move result:', moveResult);
-        
-        // Update the board with the new state after AI's move
-        setBoardState(moveResult.boardState);
-  
-        // Show the analysis for AI's last move and advice for the player
-        setTopText(`Analysis of Black's move: ${moveResult.analysisSummary}`);
-        setBottomText(`Advice for White: ${moveResult.adviceSummary}`);
-          } else {
+      const playerMove = gameLogicRef.current.makeMove({ from: fromSquare, to: toSquare });
+      if (!playerMove) {
         setTopText('Invalid move, please try again.');
+        return;
       }
+      setBoardState(gameLogicRef.current.getBoardState());
+      setTopText('Waiting for computer to move...');
+
+      const fenAfterPlayerMove = gameLogicRef.current.chess.fen();
+      const bestMoveForBlack = await gameLogicRef.current.getBestMoveFromLichess(fenAfterPlayerMove);
+
+      if (!bestMoveForBlack) {
+        setTopText("Failed to get computer's move from Lichess.");
+        return;
+      }
+
+      const blackMove = gameLogicRef.current.makeMove(bestMoveForBlack);
+      if (!blackMove) {
+        setTopText("Computer's move failed.");
+        return;
+      }
+      setBoardState(gameLogicRef.current.getBoardState());
+
+      const fenAfterComputerMove = gameLogicRef.current.chess.fen();
+      const bestMoveForWhite = await gameLogicRef.current.getBestMoveFromLichess(fenAfterComputerMove);
+
+      if (!bestMoveForWhite) {
+        setTopText('Failed to get best move for player from Lichess');
+        return;
+      }
+
+      const analysis = await gameLogicRef.current.getAdviceFromAI(bestMoveForWhite);
+      if (!analysis) {
+        setTopText('Failed to get analysis from AI');
+        return;
+      }
+
+      setTopText(`Analysis of Computer's move: ${analysis.analysisSummary}`);
+      setBottomText(`Advice for Player: ${analysis.adviceSummary}`);
+      console.log(`Analysis: ${analysis.analysisSummary}`);
+      console.log(`Advice: ${analysis.adviceSummary}`);
     } catch (error) {
       console.error('Error during move:', error);
       setTopText('Error processing move, please try again.');
     }
   };
-  
 
-  // Ensure the board state is initialized before rendering
   if (!boardState) {
     return (
       <View style={styles.loadingContainer}>
@@ -71,6 +93,7 @@ const App = () => {
   );
 };
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -81,27 +104,32 @@ const styles = StyleSheet.create({
   },
   reloadButton: {
     position: 'absolute',
-    top: 20,
+    bottom: 20,
     right: 20,
-    backgroundColor: 'blue',
+    backgroundColor: 'transparent',
     borderRadius: 10,
     padding: 10,
+    borderWidth: 1, // Optional: Add a border to make the button more visible
+    borderColor: 'white', // Optional: Set the border color
+    zIndex: 1000,
   },
   reloadButtonText: {
-    color: 'white',
+    color: 'white', // Button text color
     fontWeight: 'bold',
   },
   topText: {
-    fontSize: 15,
+    fontSize: 12,
     marginTop: 20,
     color: 'blue',
     textAlign: 'center',
+    pointerEvents: 'none',  // This makes the text non-interactive
   },
   bottomText: {
-    fontSize: 15,
+    fontSize: 12,
     marginTop: 20,
     color: 'green',
     textAlign: 'center',
+    pointerEvents: 'none',  // This makes the text non-interactive
   },
   loadingContainer: {
     flex: 1,

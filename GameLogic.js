@@ -1,26 +1,32 @@
 import { Chess } from 'chess.js';
+
 class GameLogic {
   constructor() {
     this.chess = new Chess();
-    this.tutorLevel = 5; // Default tutor level
   }
+
   getGameStatus() {
-    return this.chess.isCheckmate() ? 'checkmate' : this.chess.isDraw() ? 'draw' : 'ongoing';
+    if (this.chess.isCheckmate()) {
+      return 'checkmate';
+    } else if (this.chess.isDraw()) {
+      return 'draw';
+    } else {
+      return 'ongoing';
+    }
   }
+
   getBoardState() {
     const board = this.chess.board();
     return board.map((row) =>
-      row.map((piece) =>
-        piece ? { type: piece.type, color: piece.color } : null
-      )
+      row.map((piece) => (piece ? { type: piece.type, color: piece.color } : null))
     );
   }
-  // Method for making moves (for both player and AI)
-  makeMove(fromSquare, toSquare) {
+
+  makeMove(move) {
     try {
-      const move = this.chess.move({ from: fromSquare, to: toSquare });
-      if (move) {
-        return move;
+      const result = this.chess.move(move);
+      if (result) {
+        return result;
       } else {
         return null;
       }
@@ -29,153 +35,120 @@ class GameLogic {
       return null;
     }
   }
-  // AI (Black) makes a move using the best move fetched from Lichess
-  async makeComputerMove() {
-    const fen = this.chess.fen(); // FEN after White's move
-    const bestMoveForBlack = await this.getBestMoveFromLichess(fen);
 
-    if (!bestMoveForBlack) {
-      console.error("Failed to get Black's move from Lichess");
-      return null;
-    }
-
-    // AI (Black) makes its move
-    const blackMove = this.makeMove(bestMoveForBlack.slice(0, 2), bestMoveForBlack.slice(2, 4));
-    if (!blackMove) {
-      console.error("Invalid move by AI (Black)");
-      return null;
-    }
-
-    return blackMove; // Return the move made by the AI
-  }
-  // Get the best move for the AI (Black) from Lichess
   async getBestMoveFromLichess(fen) {
     try {
-      const response = await fetch(`https://lichess.org/api/cloud-eval?fen=${fen}`, {
-        method: 'GET',
-        headers: {
-           'Authorization': `Bearer lip_iioABXxxYPTzLDGEnMrt`
-        },
-      });
+      const response = await fetch(
+        `https://lichess.org/api/cloud-eval?fen=${encodeURIComponent(fen)}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer lip_iioABYocYPTzLDGEnMrt`, // Replace with your Lichess API token
+          },
+        }
+      );
       if (!response.ok) {
-        throw new Error("Failed to fetch best move from Lichess");
+        throw new Error('Failed to fetch best move from Lichess');
       }
       const data = await response.json();
-      return data.pvs[0].moves.split(" ")[0]; // Return the best move from Lichess
+      console.log('Lichess API Response:', data);
+
+      if (data.pvs && data.pvs.length > 0 && data.pvs[0].moves) {
+        return data.pvs[0].moves.split(' ')[0]; // Return the best move
+      } else {
+        console.error('No moves found in Lichess API response.');
+        return null;
+      }
     } catch (error) {
-      console.error("Error fetching best move from Lichess:", error);
+      console.error('Error fetching best move from Lichess:', error);
       return null;
     }
   }
-  // The main function that handles the player move and AI response
-  async makePlayerMoveAndGenerateAIResponse(fromSquare, toSquare) {
-    // Player (White) makes a move
-    const playerMove = this.makeMove(fromSquare, toSquare);
 
-    if (!playerMove) {
-      return { error: "Invalid move by the player" };
-    }
-
-    // After player makes a valid move, AI (Black) makes its move
-    const blackMove = await this.makeComputerMove();
-
-    if (!blackMove) {
-      return { error: "Failed to make AI (Black) move" };
-    }
-
-    // Call Gemini for analysis of Black's move and advice for White
-    const combinedAnalysis = await this.makeCombinedCall();
-
-    if (!combinedAnalysis) {
-      return { error: "Failed to get analysis from Gemini" };
-    }
-
-    return {
-      boardState: this.getBoardState(), // Updated board state
-      playerMove,
-      blackMove,
-      adviceSummary: combinedAnalysis.adviceSummary,
-      analysisSummary: combinedAnalysis.analysisSummary
-    };
-  }
-  async makeCombinedCall() {
+  async getAdviceFromAI(bestMoveForWhite) {
     const fen = this.chess.fen();
     const moveHistory = this.chess.history({ verbose: true });
-    const lastMove = moveHistory[moveHistory.length - 1]; // This should now include Black's last move
-    const moveList = moveHistory.map((move, index) => {
-      const moveNumber = Math.floor(index / 2) + 1;
-      return `${move.color === 'w' ? moveNumber + '.' : ''} ${move.san}`;
-    }).join(' ');
-  
+    const lastMove = moveHistory[moveHistory.length - 1];
+    const moveList = moveHistory
+      .map((move, index) => {
+        const moveNumber = Math.floor(index / 2) + 1;
+        return `${move.color === 'w' ? moveNumber + '.' : ''} ${move.san}`;
+      })
+      .join(' ');
+
     const prompt = `
       The last move for Black was ${lastMove.san}.
       The current FEN is ${fen}.
       The move list is: ${moveList}.
-      Provide the best move analysis and strategic advice for both Black and White in the following structured format:
-  
+      The best move for White is ${bestMoveForWhite}.
+      Explain why this is the best move for White in the current position.
+      Also, provide a 200 character long strategic analysis of Black's last move.
+
       {
-        "strategicAnalysisForBlack": "<Provide a 200 character long strategic analysis for Black's last move>",
-        "strategicAdviceForWhite": "<Provide a 200 character long strategic advice for White's next move>"
+        "strategicAnalysisForBlack": "<200 character long strategic analysis for Black's last move>",
+        "explanationForWhiteBestMove": "<Explanation of why ${bestMoveForWhite} is the best move for White in the current position>"
       }
     `;
-  
+
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=AIzaSyAVXJy-l0HMXogxddTCoE7pB7Q1EBPJObE`, {
+      console.log('Prompt to AI:', prompt);
+
+      const response = await fetch(`https://api.openai.com/v1/chat/completions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer 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`, // Replace with your OpenAI API key
+        },
         body: JSON.stringify({
-          "contents": [
+          model: 'gpt-4o-mini', // or the appropriate model name
+          messages: [
             {
-              "role": "user",
-              "parts": [{ "text": prompt }]
-            }
-          ]
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          max_tokens: 200, // Adjust as needed
+          temperature: 0.7, // Adjust as needed
         }),
       });
-  
-      // Use response.json() to get a parsed object
+
       const jsonResponse = await response.json();
-  
-      // Access the relevant text within the candidates array
-      const responseText = jsonResponse.candidates[0].content.parts[0].text;
-  
-      // Extract advice and analysis from the response text
-      const { strategicAnalysisForBlack, strategicAdviceForWhite } = extractSectionsFromAdvice(responseText);
-  
+
+      if (jsonResponse.error) {
+        console.error('API Error:', jsonResponse.error);
+        return null;
+      }
+
+      const responseText = jsonResponse.choices[0].message.content;
+
+      const { strategicAnalysisForBlack, explanationForWhiteBestMove } = extractSectionsFromAdvice(
+        responseText
+      );
+
       return {
-        adviceSummary: strategicAdviceForWhite,
         analysisSummary: strategicAnalysisForBlack,
+        adviceSummary: explanationForWhiteBestMove,
       };
-  
     } catch (error) {
-      console.error("Error fetching analysis from Gemini:", error);
+      console.error('Error fetching analysis from AI:', error);
       return null;
     }
   }
-  
 }
 
 function extractSectionsFromAdvice(adviceText) {
-  // console.log(adviceText);
-    const strategicAnalysisForBlack = adviceText
-    .split('strategicAnalysisForBlack')[1]
-    .split('strategicAdviceForWhite')[0]
-    .trim();
-  // Extract the section for White's strategic advice
-  const strategicAdviceForWhite = adviceText
-    .split('strategicAdviceForWhite')[1]
-    .split('overallConclusion')[0]
-    .trim();
+  try {
+    const cleanedText = adviceText.replace(/```(?:json)?/g, '').trim();
+    const parsedResponse = JSON.parse(cleanedText);
 
-    return {
-      strategicAnalysisForBlack,
-      strategicAdviceForWhite,
-    };
-  
+    const strategicAnalysisForBlack = parsedResponse.strategicAnalysisForBlack;
+    const explanationForWhiteBestMove = parsedResponse.explanationForWhiteBestMove;
+
+    return { strategicAnalysisForBlack, explanationForWhiteBestMove };
+  } catch (e) {
+    console.error("Error parsing the assistant's response:", e);
+    return {};
+  }
 }
-
-  
-  
-
 
 export default GameLogic;

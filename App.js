@@ -57,8 +57,8 @@ const App = () => {
         setTopText('Failed to get best move for player from Lichess');
         return;
       }
-
-      const analysis = await gameLogicRef.current.getAdviceFromAI(bestMoveForWhite.uci);
+      const apiName = 'Perplexity';  
+      const analysis = await gameLogicRef.current.getAdviceFromAPI(apiName, bestMoveForWhite.uci);
       if (!analysis) {
         setTopText('Failed to get analysis from AI');
         return;
@@ -66,7 +66,7 @@ const App = () => {
   
       setTopText(`Analysis of Computer's move: ${analysis.analysisSummary}`);
       setBottomText(`Advice for Player: ${analysis.adviceSummary}`);
-      console.log(`Analysis: ${analysis.analysisSummary}`);
+      console.log(`${analysis.analysisSummary}`);
       console.log(`Advice: ${analysis.adviceSummary}`);
     } catch (error) {
       console.error('Error during move:', error);

@@ -31,38 +31,39 @@ const App = () => {
         setTopText('Invalid move, please try again.');
         return;
       }
-      setBoardState(gameLogicRef.current.getBoardState());
+      setBoardState([...gameLogicRef.current.getBoardState()]);
       setTopText('Waiting for computer to move...');
-
+  
       const fenAfterPlayerMove = gameLogicRef.current.chess.fen();
       const bestMoveForBlack = await gameLogicRef.current.getBestMoveFromLichess(fenAfterPlayerMove);
-
+  
       if (!bestMoveForBlack) {
         setTopText("Failed to get computer's move from Lichess.");
         return;
       }
-
-      const blackMove = gameLogicRef.current.makeMove(bestMoveForBlack);
-      if (!blackMove) {
+  
+      const blackMoveResult = gameLogicRef.current.makeMove(bestMoveForBlack.uci);
+      if (!blackMoveResult) {
         setTopText("Computer's move failed.");
         return;
       }
-      setBoardState(gameLogicRef.current.getBoardState());
-
+      setBoardState([...gameLogicRef.current.getBoardState()]);
+  
       const fenAfterComputerMove = gameLogicRef.current.chess.fen();
       const bestMoveForWhite = await gameLogicRef.current.getBestMoveFromLichess(fenAfterComputerMove);
-
-      if (!bestMoveForWhite) {
+  
+      if (!bestMoveForWhite.uci) {
+        console.error('bestMoveForWhite.uci is undefined');
         setTopText('Failed to get best move for player from Lichess');
         return;
       }
 
-      const analysis = await gameLogicRef.current.getAdviceFromAI(bestMoveForWhite);
+      const analysis = await gameLogicRef.current.getAdviceFromAI(bestMoveForWhite.uci);
       if (!analysis) {
         setTopText('Failed to get analysis from AI');
         return;
       }
-
+  
       setTopText(`Analysis of Computer's move: ${analysis.analysisSummary}`);
       setBottomText(`Advice for Player: ${analysis.adviceSummary}`);
       console.log(`Analysis: ${analysis.analysisSummary}`);
@@ -72,6 +73,8 @@ const App = () => {
       setTopText('Error processing move, please try again.');
     }
   };
+  
+  
 
   if (!boardState) {
     return (
@@ -99,7 +102,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'black',
+    backgroundColor: '#191d24',
     padding: 10,
   },
   reloadButton: {
@@ -118,16 +121,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   topText: {
-    fontSize: 12,
+    fontSize: 16.5,
     marginTop: 20,
-    color: 'blue',
+    color: '#aec4e8',
     textAlign: 'center',
     pointerEvents: 'none',  // This makes the text non-interactive
   },
   bottomText: {
-    fontSize: 12,
+    fontSize: 16.5,
     marginTop: 20,
-    color: 'green',
+    color: '#aec4e8',
     textAlign: 'center',
     pointerEvents: 'none',  // This makes the text non-interactive
   },

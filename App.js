@@ -57,7 +57,7 @@ const App = () => {
         setTopText('Failed to get best move for player from Lichess');
         return;
       }
-      const apiName = 'Perplexity';  
+      const apiName = 'Claude';  
       const analysis = await gameLogicRef.current.getAdviceFromAPI(apiName, bestMoveForWhite.uci);
       if (!analysis) {
         setTopText('Failed to get analysis from AI');

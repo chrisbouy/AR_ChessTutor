@@ -55,7 +55,7 @@ class GameLogic {
         }
 
         const data = await response.json();
-        console.log('Lichess API Response:', data);
+        // console.log('Lichess API Response:', data);
 
         if (data.pvs && data.pvs.length > 0 && data.pvs[0].moves) {
           const bestMoveUCI = data.pvs[0].moves.split(' ')[0];
@@ -346,7 +346,8 @@ class GameLogic {
     const fen = this.chess.fen();
     const moveHistory = this.chess.history({ verbose: true });
     const moveList = this.chess.pgn({ max_width: 5, newline_char: ' ' }); 
-    let bestMoveForWhiteLAN = this.convertUCItoLAN(bestMoveForWhiteUCI, this.chess.fen());
+    let bestMoveForWhiteLAN =  this.convertCastlingUCItoSAN(bestMoveForWhiteUCI) || this.convertUCItoLAN(bestMoveForWhiteUCI, this.chess.fen());
+   
     if (!bestMoveForWhiteLAN) {
       console.error('Invalid best move for White:', bestMoveForWhiteUCI);
       return null;
@@ -355,7 +356,7 @@ class GameLogic {
 
     const prompt = `
         You are a chess tutor.  
-        You are the black and your last move was ${lastMoveLAN}.
+        You are black and your last move was ${lastMoveLAN}.
         The current FEN is ${fen}.
         The move list is: ${moveList}.
         The best move for White is ${bestMoveForWhiteLAN}.
@@ -367,7 +368,7 @@ class GameLogic {
         }`;
 
     try {
-        console.log("Explanation Prompt: ", prompt);
+        // console.log("Explanation Prompt: ", prompt);
         const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
@@ -388,7 +389,7 @@ class GameLogic {
         });
 
         const data = await response.json();
-        console.log("Claude API response:", JSON.stringify(data, null, 2));
+        // console.log("Claude API response:", JSON.stringify(data, null, 2));
 
         if (data && data.content && data.content[0] && data.content[0].text) {
             let explanation = data.content[0].text;

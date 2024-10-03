@@ -42,7 +42,7 @@ const App = () => {
         return;
       }
   
-      const blackMoveResult = gameLogicRef.current.makeMove(bestMoveForBlack.uci);
+      const blackMoveResult = gameLogicRef.current.makeMove(bestMoveForBlack.san);
       if (!blackMoveResult) {
         setTopText("Computer's move failed.");
         return;
@@ -64,10 +64,10 @@ const App = () => {
         return;
       }
   
-      setTopText(`Analysis of Computer's move: ${analysis.analysisSummary}`);
-      setBottomText(`Advice for Player: ${analysis.adviceSummary}`);
+      setTopText(`${analysis.analysisSummary}`);
+      setBottomText(`${analysis.adviceSummary}`);
       console.log(`${analysis.analysisSummary}`);
-      console.log(`Advice: ${analysis.adviceSummary}`);
+      console.log(`${analysis.adviceSummary}`);
     } catch (error) {
       console.error('Error during move:', error);
       setTopText('Error processing move, please try again.');
@@ -121,14 +121,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   topText: {
-    fontSize: 16.5,
+    fontSize: 26.5,
     marginTop: 20,
     color: '#aec4e8',
     textAlign: 'center',
     pointerEvents: 'none',  // This makes the text non-interactive
   },
   bottomText: {
-    fontSize: 16.5,
+    fontSize: 26.5,
     marginTop: 20,
     color: '#aec4e8',
     textAlign: 'center',

@@ -32,12 +32,11 @@ class GameLogic {
       return null;
     }
   }
-  async getBestMoveFromLichess(fen) {
-    const maxAttempts = 10; // Retry up to 10 times (assuming about 6 seconds per attempt)
-    const retryDelay = 6000; // Wait 6 seconds between retries
+  async getBestMoveFromLichess(fen, side) {
+    const maxAttempts = 5;
+    const retryDelay = 15000; // Wait 10 seconds between retries
     let attempt = 0;
 
-    // Helper function to attempt fetching move
     const tryFetchingBestMove = async () => {
       try {
         const response = await fetch(
@@ -50,101 +49,64 @@ class GameLogic {
           }
         );
 
+        if (response.status === 429) {
+          console.warn('Rate limit exceeded, waiting before retrying...');
+          return 'rate_limit';
+        }
+
         if (!response.ok) {
           throw new Error('Failed to fetch best move from Lichess');
         }
 
         const data = await response.json();
-        // console.log('Lichess API Response:', data);
+        // console.log(`Lichess API Response for ${side}:`, data);
 
         if (data.pvs && data.pvs.length > 0 && data.pvs[0].moves) {
           const bestMoveUCI = data.pvs[0].moves.split(' ')[0];
           const bestMoveSAN = this.convertCastlingUCItoSAN(bestMoveUCI) || this.convertUCItoSAN(bestMoveUCI, fen);
 
-          if (bestMoveSAN) {
-            return { uci: bestMoveUCI, san: bestMoveSAN };
-          } else {
-            console.error('Invalid best move from Lichess');
-            return null;
-          }
+          return { uci: bestMoveUCI, san: bestMoveSAN };
         } else {
-          console.error('No moves found in Lichess API response.');
+          console.error('No valid moves found in Lichess API response.');
           return null;
         }
       } catch (error) {
-        console.error('Error fetching best move from Lichess:', error);
+        console.error(`Error fetching ${side} move from Lichess:`, error);
         return null;
       }
     };
 
-    // Retry logic
     return new Promise((resolve, reject) => {
       const retry = async () => {
         attempt++;
-        console.log(`Attempt ${attempt} to fetch best move from Lichess...`);
+        console.log(`Attempt ${attempt} to fetch ${side} move from Lichess...`);
 
         const result = await tryFetchingBestMove();
 
-        if (result) {
-          resolve(result);  // Successfully got the best move, resolve the promise
+        if (result && result !== 'rate_limit') {
+          resolve(result); // Success
+        } else if (result === 'rate_limit') {
+          if (attempt < maxAttempts) {
+            setTimeout(retry, retryDelay); // Wait and retry if rate-limited
+          } else {
+            reject(`Rate limit exceeded for ${side}, too many failed attempts.`);
+          }
         } else if (attempt < maxAttempts) {
-          setTimeout(retry, retryDelay); // Wait and retry
+          setTimeout(retry, retryDelay); // Retry failed attempts
         } else {
-          reject('Failed to get the best move after multiple attempts.');
+          reject(`Failed to get ${side} move after ${maxAttempts} attempts.`);
         }
       };
 
-      retry(); // Start the first attempt
+      retry(); // Start retry loop
     });
-    try {
-      const response = await fetch(
-        `https://lichess.org/api/cloud-eval?fen=${encodeURIComponent(fen)}`,
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer lip_iioABYocYPTzLDGEnMrt`, // Replace with your Lichess API token
-          },
-        }
-      );
-      if (!response.ok) {
-        throw new Error('Failed to fetch best move from Lichess');
-      }
-      const data = await response.json();
-      console.log('Lichess API Response:', data);
-
-      if (data.pvs && data.pvs.length > 0 && data.pvs[0].moves) {
-        let bestMoveUCI = data.pvs[0].moves.split(' ')[0];
-  
-        // Convert castling moves to SAN
-        const bestMoveSAN = this.convertCastlingUCItoSAN(bestMoveUCI);
-        if ( bestMoveSAN) {
-          return { uci: bestMoveUCI, san: bestMoveSAN };
-        } else {
-          // Convert other moves using chess.js
-          const chessCopy = new Chess(fen);
-          const moveResult = chessCopy.move(bestMoveUCI);
-          if (moveResult) {
-            return { uci: bestMoveUCI, san: moveResult.san };
-          } else {
-            console.error('Invalid best move from Lichess');
-            return null;
-          }
-        }
-      } else {
-        console.error('No moves found in Lichess API response.');
-        return null;
-      }
-    } catch (error) {
-      console.error('Error fetching best move from Lichess:', error);
-      return null;
-    }
   }
   async getAdviceFromGPT(bestMoveForWhiteUCI) {
     const fen = this.chess.fen();
     const moveHistory = this.chess.history({ verbose: true });
     const moveList = this.chess.pgn({ max_width: 5, newline_char: ' ' }); 
     // Convert bestMoveForWhiteUCI to LAN
-    let bestMoveForWhiteLAN = this.convertUCItoLAN(bestMoveForWhiteUCI, this.chess.fen());
+    let bestMoveForWhiteLAN =  this.convertCastlingUCItoSAN(bestMoveForWhiteUCI) || this.convertUCItoLAN(bestMoveForWhiteUCI, this.chess.fen());
     if (!bestMoveForWhiteLAN) {
       console.error('Invalid best move for White:', bestMoveForWhiteUCI);
       return null;
@@ -158,15 +120,16 @@ class GameLogic {
       lastMoveLAN = 'None';
     }
     const prompt = `
-        You are a chess tutor.  
-        You are the black and your last move was ${lastMoveLAN}.
-        The current FEN is ${fen}.
+  You are a chess tutor.  
+        You are black and your last move was ${lastMoveLAN}.
         The move list is: ${moveList}.
+        The current FEN is ${fen}.
         The best move for White is ${bestMoveForWhiteLAN}.
+        Do not talk about anything unless you obtained it from the information in this prompt
         Respond in the following format
         {
-          "strategicAnalysisForBlack": "<A 200 character long strategic analysis for Black's last move>",
-          "explanationForWhiteBestMove": "<A 200 character long explanation of why ${bestMoveForWhiteLAN} is the best move for White>"
+          "strategicAnalysisForBlack": "<A 100 character long strategic analysis for Black's last move>",
+          "explanationForWhiteBestMove": "<A 100 character long explanation of why ${bestMoveForWhiteLAN} is the best move for White>"
         }`;
     try {
       console.log('Prompt to AI:', prompt);
@@ -177,7 +140,8 @@ class GameLogic {
           Authorization: `Bearer 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`, // Replace with your OpenAI API key
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini', // or the appropriate model name
+          
+          model: 'gpt-4o', // or the appropriate model name
           messages: [
             {
               role: 'user',
@@ -185,7 +149,7 @@ class GameLogic {
             },
           ],
           max_tokens: 200, // Adjust as needed
-          temperature: 0.7, // Adjust as needed
+          temperature: 0.1, // Adjust as needed
       }),
       });
       const jsonResponse = await response.json();
@@ -194,7 +158,7 @@ class GameLogic {
         return null;
       }
       const responseText = jsonResponse.choices[0].message.content;
-      console.log(`response text: ${responseText}`)
+      // console.log(`response text: ${responseText}`)
       const { strategicAnalysisForBlack, explanationForWhiteBestMove } = this.extractSectionsFromAdvice(
         responseText
       );
@@ -212,7 +176,7 @@ class GameLogic {
     const moveHistory = this.chess.history({ verbose: true });
     const moveList = this.chess.pgn({ max_width: 5, newline_char: ' ' }); 
     // Convert bestMoveForWhiteUCI to LAN
-    let bestMoveForWhiteLAN = this.convertUCItoLAN(bestMoveForWhiteUCI, this.chess.fen());
+    let bestMoveForWhiteLAN =  this.convertCastlingUCItoSAN(bestMoveForWhiteUCI.la) || this.convertUCItoLAN(bestMoveForWhiteUCI, this.chess.fen());
     if (!bestMoveForWhiteLAN) {
       console.error('Invalid best move for White:', bestMoveForWhiteUCI);
       return null;
@@ -228,13 +192,14 @@ class GameLogic {
     const prompt = `
         You are a chess tutor.  
         You are the black and your last move was ${lastMoveLAN}.
-        The current FEN is ${fen}.
+        Only talk about positions and pieces in the current FEN: ${fen}.
         The move list is: ${moveList}.
         The best move for White is ${bestMoveForWhiteLAN}.
+        It's white's move.
         Respond in the following format
         {
-          "strategicAnalysisForBlack": "<A 200 character long strategic analysis for Black's last move>",
-          "explanationForWhiteBestMove": "<A 200 character long explanation of why ${bestMoveForWhiteLAN} is the best move for White>"
+          "strategicAnalysisForBlack": "<A 200 character long or shorter strategic analysis for Black's last move>",
+          "explanationForWhiteBestMove": "<A 200 character long or shorter explanation of why ${bestMoveForWhiteLAN} is the best move for White>"
         }`;
     try {
       console.log("Explanation Prompt: ", prompt);
@@ -251,7 +216,7 @@ class GameLogic {
         }),
       });
       const data = await response.json();
-      console.log("Gemini API response:", JSON.stringify(data, null, 2)); // Log full data in readable format
+      // console.log("Gemini API response:", JSON.stringify(data, null, 2)); // Log full data in readable format
       // Extract the content from the response
       if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
         let explanation = data.candidates[0].content.parts[0].text; // Adjust this depending on the exact content structure
@@ -275,7 +240,7 @@ class GameLogic {
     const moveHistory = this.chess.history({ verbose: true });
     const moveList = this.chess.pgn({ max_width: 5, newline_char: ' ' }); 
     // Convert bestMoveForWhiteUCI to LAN
-    let bestMoveForWhiteLAN = this.convertUCItoLAN(bestMoveForWhiteUCI, this.chess.fen());
+    let bestMoveForWhiteLAN =  this.convertCastlingUCItoSAN(bestMoveForWhiteUCI) || this.convertUCItoLAN(bestMoveForWhiteUCI, this.chess.fen());
     if (!bestMoveForWhiteLAN) {
       console.error('Invalid best move for White:', bestMoveForWhiteUCI);
       return null;
@@ -291,13 +256,17 @@ class GameLogic {
     const prompt = `
         You are a chess tutor.  
         You are the black and your last move was ${lastMoveLAN}.
-        The current FEN is ${fen}.
+        It's white's turn.
+        You are at the top of the board, beginning at row 8.
+
         The move list is: ${moveList}.
         The best move for White is ${bestMoveForWhiteLAN}.
+        Respond **only** with the JSON object in the exact format provided.
+        When commenting on black, speak in the 1st person.  When commenting on white, speak in the 2nd
         Respond in the following format
         {
-          "strategicAnalysisForBlack": "<A 200 character long strategic analysis for Black's last move>",
-          "explanationForWhiteBestMove": "<A 200 character long explanation of why ${bestMoveForWhiteLAN} is the best move for White>"
+          "strategicAnalysisForBlack": "Computer's move: ${lastMoveLAN}  <A 100 character long strategic analysis for Black's last move>",
+          "explanationForWhiteBestMove": "Advice: ${bestMoveForWhiteLAN}  <A 100 character long explanation of why this is the best move for White>"
     }`;
     console.log("Explanation Prompt: ", prompt);
     const response = await fetch(`https://api.perplexity.ai/chat/completions`,{
@@ -305,17 +274,17 @@ class GameLogic {
     headers: {Authorization: 'Bearer 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', 
                               'Content-Type': 'application/json'},
     body: JSON.stringify({
-      model:"llama-3.1-sonar-small-128k-online",
+      model:"llama-3.1-8b-instruct",
       messages:[
             {role:"system",
-              content:"Be precise and concise."},
+              content:"Double check piece types before responding."},
             { role:"user",
               content: prompt}
       ],
       max_tokens:"330",
-      temperature:0.2,
-      top_p:0.9,
-      return_citations:true,
+      temperature:.75,
+      top_p:0.75,
+      return_citations:false,
       search_domain_filter:["perplexity.ai"],
       return_images:false,
       return_related_questions:false,
@@ -323,16 +292,16 @@ class GameLogic {
       top_k:0,
       stream:false,
       presence_penalty:0,
-      frequency_penalty:1
+      frequency_penalty:1.1
     })
     })
     data = await response.json();
-    console.log("Perplexity API response:", JSON.stringify(data, null, 2)); // Log full data in readable format
+    // console.log("Perplexity API response:", JSON.stringify(data, null, 2)); // Log full data in readable format
     // Extract the content from the response
     if (data && data.choices && data.choices[0] && data.choices[0].message) {
       let explanation = data.choices[0].message.content; // Adjust this depending on the exact content structure
       // const responseText = jsonResponse.choices[0].message.content;
-       console.log(`explanation: ${explanation}`)
+      //  console.log(`explanation: ${explanation}`)
       const { strategicAnalysisForBlack, explanationForWhiteBestMove } = this.extractSectionsFromAdvice(
         explanation
       );
@@ -360,15 +329,16 @@ class GameLogic {
         The current FEN is ${fen}.
         The move list is: ${moveList}.
         The best move for White is ${bestMoveForWhiteLAN}.
-        Respond **only** with the JSON object in the exact format provided.
-        Respond in the following format
+        Do not talk about anything unless you obtained it from the information in this prompt
+        Don't include numbers in front of moves.
+        Respond with nothing but this JSON object in the exact format and exact variable names provided.
         {
           "strategicAnalysisForBlack": "<A 200 character long strategic analysis for Black's last move>",
           "explanationForWhiteBestMove": "<A 200 character long explanation of why ${bestMoveForWhiteLAN} is the best move for White>"
         }`;
 
     try {
-        // console.log("Explanation Prompt: ", prompt);
+         console.log("Explanation Prompt: ", prompt);
         const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
@@ -445,9 +415,9 @@ class GameLogic {
     return move ? move.san : null;
   }
   convertCastlingUCItoSAN(uciMove) {
-    if (uciMove === 'e1h1' || uciMove === 'e1a1') {
+    if (uciMove === 'e8h8' || uciMove === 'e1h1') {
       return 'O-O'; // Kingside castling
-    } else if (uciMove === 'e8a8' || uciMove === 'e8h8') {
+    } else if (uciMove === 'e8a8' || uciMove === 'e1a1') {
       return 'O-O-O'; // Queenside castling
     }
     return null;
@@ -455,7 +425,7 @@ class GameLogic {
   
   extractSectionsFromAdvice(adviceText) {
   try {
-     console.log(`advice text : ${adviceText}`);
+    //  console.log(`advice text : ${adviceText}`);
     const cleanedText = adviceText.replace(/```(?:json)?/g, '').trim();
     const parsedResponse = JSON.parse(cleanedText);
 
@@ -467,26 +437,26 @@ class GameLogic {
     console.error("Error parsing the assistant's response:", e);
     return {};
   }
-}
- convertUCItoLAN(uciMove, fen) {
-  const chessInstance = new Chess(fen);
-  const moves = chessInstance.moves({ verbose: true });
-  const move = moves.find(
-    (m) =>
-      m.from === uciMove.slice(0, 2) &&
-      m.to === uciMove.slice(2, 4) &&
-      (uciMove.length > 4 ? m.promotion === uciMove.slice(4) : true)
-  );
-  return move ? move.lan : null;
-}
- getMoveListLAN() {
-  const history = this.chess.history({ verbose: true });
-  return history
-    .map((move) => {
-      return move.lan;
-    })
-    .join(' ');
-}
+  }
+  convertUCItoLAN(uciMove, fen) {
+    const chessInstance = new Chess(fen);
+    const moves = chessInstance.moves({ verbose: true });
+    const move = moves.find(
+      (m) =>
+        m.from === uciMove.slice(0, 2) &&
+        m.to === uciMove.slice(2, 4) &&
+        (uciMove.length > 4 ? m.promotion === uciMove.slice(4) : true)
+    );
+    return move ? move.lan : null;
+  }
+  getMoveListLAN() {
+    const history = this.chess.history({ verbose: true });
+    return history
+      .map((move) => {
+        return move.lan;
+      })
+      .join(' ');
+  }
 }
 // Function to convert UCI castling moves to SAN
 // function convertCastlingUCItoSAN(moveUCI) {

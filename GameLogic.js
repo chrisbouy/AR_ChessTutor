@@ -2,7 +2,11 @@ import { Chess } from 'chess.js';
 
 class GameLogic {
   constructor() {
+    //     chess.clear()
+    // chess.fen()
     this.chess = new Chess();
+    // this.chess.clear()
+    // this.chess.fen()
   }
   getGameStatus() {
     if (this.chess.isCheckmate()) {
@@ -101,38 +105,10 @@ class GameLogic {
       retry(); // Start retry loop
     });
   }
-  async getAdviceFromGPT(bestMoveForWhiteUCI) {
-    const fen = this.chess.fen();
-    const moveHistory = this.chess.history({ verbose: true });
-    const moveList = this.chess.pgn({ max_width: 5, newline_char: ' ' }); 
-    // Convert bestMoveForWhiteUCI to LAN
-    let bestMoveForWhiteLAN =  this.convertCastlingUCItoSAN(bestMoveForWhiteUCI) || this.convertUCItoLAN(bestMoveForWhiteUCI, this.chess.fen());
-    if (!bestMoveForWhiteLAN) {
-      console.error('Invalid best move for White:', bestMoveForWhiteUCI);
-      return null;
-    }
-    // Get last move in LAN
-    let lastMoveLAN = '';
-    if (moveHistory.length > 0) {
-      const lastMove = moveHistory[moveHistory.length - 1];
-      lastMoveLAN = lastMove.lan;
-    } else {
-      lastMoveLAN = 'None';
-    }
-    const prompt = `
-  You are a chess tutor.  
-        You are black and your last move was ${lastMoveLAN}.
-        The move list is: ${moveList}.
-        The current FEN is ${fen}.
-        The best move for White is ${bestMoveForWhiteLAN}.
-        Do not talk about anything unless you obtained it from the information in this prompt
-        Respond in the following format
-        {
-          "strategicAnalysisForBlack": "<A 100 character long strategic analysis for Black's last move>",
-          "explanationForWhiteBestMove": "<A 100 character long explanation of why ${bestMoveForWhiteLAN} is the best move for White>"
-        }`;
+  async getAdviceFromGPT(prompt) {
+    
+ 
     try {
-      console.log('Prompt to AI:', prompt);
       const response = await fetch(`https://api.openai.com/v1/chat/completions`, {
         method: 'POST',
         headers: {
@@ -171,39 +147,11 @@ class GameLogic {
     return null;
   }
   }
-  async getAdviceFromGemini(bestMoveForWhiteUCI) {
-    const fen = this.chess.fen();
-    const moveHistory = this.chess.history({ verbose: true });
-    const moveList = this.chess.pgn({ max_width: 5, newline_char: ' ' }); 
-    // Convert bestMoveForWhiteUCI to LAN
-    let bestMoveForWhiteLAN =  this.convertCastlingUCItoSAN(bestMoveForWhiteUCI.la) || this.convertUCItoLAN(bestMoveForWhiteUCI, this.chess.fen());
-    if (!bestMoveForWhiteLAN) {
-      console.error('Invalid best move for White:', bestMoveForWhiteUCI);
-      return null;
-    }
-    // Get last move in LAN
-    let lastMoveLAN = '';
-    if (moveHistory.length > 0) {
-      const lastMove = moveHistory[moveHistory.length - 1];
-      lastMoveLAN = lastMove.lan;
-    } else {
-      lastMoveLAN = 'None';
-    }
-    const prompt = `
-        You are a chess tutor.  
-        You are the black and your last move was ${lastMoveLAN}.
-        Only talk about positions and pieces in the current FEN: ${fen}.
-        The move list is: ${moveList}.
-        The best move for White is ${bestMoveForWhiteLAN}.
-        It's white's move.
-        Respond in the following format
-        {
-          "strategicAnalysisForBlack": "<A 200 character long or shorter strategic analysis for Black's last move>",
-          "explanationForWhiteBestMove": "<A 200 character long or shorter explanation of why ${bestMoveForWhiteLAN} is the best move for White>"
-        }`;
+  async getAdviceFromGemini(prompt) {
+
     try {
-      console.log("Explanation Prompt: ", prompt);
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
+      // console.log("Explanation Prompt: ", prompt);
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -235,46 +183,14 @@ class GameLogic {
       return null;
     }
   }
-  async getAdviceFromPerplexity(bestMoveForWhiteUCI) {
-    const fen = this.chess.fen();
-    const moveHistory = this.chess.history({ verbose: true });
-    const moveList = this.chess.pgn({ max_width: 5, newline_char: ' ' }); 
-    // Convert bestMoveForWhiteUCI to LAN
-    let bestMoveForWhiteLAN =  this.convertCastlingUCItoSAN(bestMoveForWhiteUCI) || this.convertUCItoLAN(bestMoveForWhiteUCI, this.chess.fen());
-    if (!bestMoveForWhiteLAN) {
-      console.error('Invalid best move for White:', bestMoveForWhiteUCI);
-      return null;
-    }
-    // Get last move in LAN
-    let lastMoveLAN = '';
-    if (moveHistory.length > 0) {
-      const lastMove = moveHistory[moveHistory.length - 1];
-      lastMoveLAN = lastMove.lan;
-    } else {
-      lastMoveLAN = 'None';
-    }
-    const prompt = `
-        You are a chess tutor.  
-        You are the black and your last move was ${lastMoveLAN}.
-        It's white's turn.
-        You are at the top of the board, beginning at row 8.
-
-        The move list is: ${moveList}.
-        The best move for White is ${bestMoveForWhiteLAN}.
-        Respond **only** with the JSON object in the exact format provided.
-        When commenting on black, speak in the 1st person.  When commenting on white, speak in the 2nd
-        Respond in the following format
-        {
-          "strategicAnalysisForBlack": "Computer's move: ${lastMoveLAN}  <A 100 character long strategic analysis for Black's last move>",
-          "explanationForWhiteBestMove": "Advice: ${bestMoveForWhiteLAN}  <A 100 character long explanation of why this is the best move for White>"
-    }`;
-    console.log("Explanation Prompt: ", prompt);
+  async getAdviceFromPerplexity(prompt) {
+  
     const response = await fetch(`https://api.perplexity.ai/chat/completions`,{
     method: 'POST',
     headers: {Authorization: 'Bearer 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', 
                               'Content-Type': 'application/json'},
     body: JSON.stringify({
-      model:"llama-3.1-8b-instruct",
+      model:"llama-3.1-sonar-large-128k-online",
       messages:[
             {role:"system",
               content:"Double check piece types before responding."},
@@ -311,34 +227,10 @@ class GameLogic {
       };
     }
   }
-  async getAdviceFromClaude(bestMoveForWhiteUCI) {
-    const fen = this.chess.fen();
-    const moveHistory = this.chess.history({ verbose: true });
-    const moveList = this.chess.pgn({ max_width: 5, newline_char: ' ' }); 
-    let bestMoveForWhiteLAN =  this.convertCastlingUCItoSAN(bestMoveForWhiteUCI) || this.convertUCItoLAN(bestMoveForWhiteUCI, this.chess.fen());
-   
-    if (!bestMoveForWhiteLAN) {
-      console.error('Invalid best move for White:', bestMoveForWhiteUCI);
-      return null;
-    }
-    let lastMoveLAN = moveHistory.length > 0 ? moveHistory[moveHistory.length - 1].lan : 'None';
-
-    const prompt = `
-        You are a chess tutor.  
-        You are black and your last move was ${lastMoveLAN}.
-        The current FEN is ${fen}.
-        The move list is: ${moveList}.
-        The best move for White is ${bestMoveForWhiteLAN}.
-        Do not talk about anything unless you obtained it from the information in this prompt
-        Don't include numbers in front of moves.
-        Respond with nothing but this JSON object in the exact format and exact variable names provided.
-        {
-          "strategicAnalysisForBlack": "<A 200 character long strategic analysis for Black's last move>",
-          "explanationForWhiteBestMove": "<A 200 character long explanation of why ${bestMoveForWhiteLAN} is the best move for White>"
-        }`;
+  async getAdviceFromClaude(prompt) {
+  
 
     try {
-         console.log("Explanation Prompt: ", prompt);
         const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
@@ -347,7 +239,7 @@ class GameLogic {
                 'x-api-key': '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'
             },
             body: JSON.stringify({
-                model: "claude-3-opus-20240229",
+                model: "claude-3-sonnet-20240229",
                 max_tokens: 1000,
                 messages: [
                     {
@@ -375,15 +267,52 @@ class GameLogic {
     }
 }
   async getAdviceFromAPI(apiName, bestMoveForWhiteUCI) {
+    const fen = this.chess.fen();
+    const moveHistory = this.chess.history({ verbose: true });
+    const moveList = this.chess.pgn({ max_width: 5, newline_char: ' ' }); 
+    const chessASCII = this.chess.ascii();
+    // Convert bestMoveForWhiteUCI to LAN
+    let bestMoveForWhiteLAN =  this.convertCastlingUCItoSAN(bestMoveForWhiteUCI) || this.convertUCItoLAN(bestMoveForWhiteUCI, this.chess.fen());
+    if (!bestMoveForWhiteLAN) {
+      console.error('Invalid best move for White:', bestMoveForWhiteUCI);
+      return null;
+    }
+    // Get last move in LAN
+    let lastMoveLAN = '';
+    if (moveHistory.length > 0) {
+      const lastMove = moveHistory[moveHistory.length - 1];
+      lastMoveLAN = lastMove.san;
+    } else {
+      lastMoveLAN = 'None';
+    }
+    // You are the lowercase letters of this chess game (represented in ASCII):
+    // ${chessASCII}
+
+    const prompt = `
+        You are a chess tutor.  
+        You are black and your last move was ${lastMoveLAN}.
+        It's white's (my) turn.
+        you are the lowercase letters of the current FEN: ${this.chess.fen()}
+        The move history is: ${moveList}.
+        The best move for White is ${bestMoveForWhiteLAN}.
+        Respond only with the JSON object in the exact format provided.
+        When commenting on black, speak in the 1st person.  When commenting on white, speak in the 2nd
+        When responding, double check that the piece you mention can legally do the move
+        Respond in the following format
+        {
+          "strategicAnalysisForBlack": "Computer's move: ${lastMoveLAN}  <A 100 character long strategic analysis for Black's last move>",
+          "explanationForWhiteBestMove": "Advice: ${bestMoveForWhiteLAN}  <A 100 character long explanation of why this is the best move for White>"
+    }`;
+    console.log("Explanation Prompt: ", prompt);
     switch (apiName) {
       case 'GPT':
-        return await this.getAdviceFromGPT(bestMoveForWhiteUCI);
+        return await this.getAdviceFromGPT(prompt);
       case 'Gemini':
-        return await this.getAdviceFromGemini(bestMoveForWhiteUCI);
+        return await this.getAdviceFromGemini(prompt);
       case 'Claude':
-        return await this.getAdviceFromClaude(bestMoveForWhiteUCI);
+        return await this.getAdviceFromClaude(prompt);
         case 'Perplexity':
-          return await this.getAdviceFromPerplexity(bestMoveForWhiteUCI);
+          return await this.getAdviceFromPerplexity(prompt);
   
       default:
         throw new Error(`Unknown API name: ${apiName}`);
@@ -413,7 +342,7 @@ class GameLogic {
         (uciMove.length > 4 ? m.promotion === uciMove.slice(4) : true)
     );
     return move ? move.san : null;
-  }
+  } 
   convertCastlingUCItoSAN(uciMove) {
     if (uciMove === 'e8h8' || uciMove === 'e1h1') {
       return 'O-O'; // Kingside castling

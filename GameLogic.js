@@ -18,24 +18,38 @@ class GameLogic {
     }
   }
   getBoardState() {
-    const board = this.chess.board();
-    return board.map((row) =>
-      row.map((piece) => (piece ? { type: piece.type, color: piece.color } : null))
-    );
+    const board = this.chess.board(); // Get the board state from chess.js
+    const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
+    return board.map((row, rowIndex) => {
+      return row.map((piece, colIndex) => {
+        const position = files[colIndex] + (8 - rowIndex); // 'a8', 'b8', etc.
+        const squareColor = (rowIndex + colIndex) % 2 === 0 ? '#f0d9b5' : '#b58863'; // Light and dark squares
+        return {
+          position,
+          color: squareColor,
+          piece: piece ? { type: piece.type, color: piece.color } : null,
+        };
+      });
+    });
   }
+
   makeMove(move) {
     try {
       const result = this.chess.move(move);
-      if (result) {
-        return result;
-      } else {
-        return null;
-      }
+      return result || null;
     } catch (error) {
       console.error('Error making move:', error);
       return null;
     }
   }
+
+  getPieceAt(position) {
+    const rowIndex = 8 - parseInt(position[1]);
+    const colIndex = position.charCodeAt(0) - 'a'.charCodeAt(0);
+    const piece = this.chess.board()[rowIndex][colIndex];
+    return piece ? { type: piece.type, color: piece.color } : null;
+  }  
   async getBestMoveFromLichess(fen, side) {
     const maxAttempts = 5;
     const retryDelay = 15000; // Wait 10 seconds between retries

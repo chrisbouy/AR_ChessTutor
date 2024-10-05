@@ -1,48 +1,69 @@
+// App.js
+
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, Animated } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Animated } from 'react-native';
 import ChessBoard2D from './components/ChessBoard2D';
-import GameLogic from './GameLogic';                
+import GameLogic from './GameLogic';
 
 const App = () => {
   const gameLogicRef = useRef(new GameLogic());
   const [boardState, setBoardState] = useState(gameLogicRef.current.getBoardState());
+  const [selectedSquare, setSelectedSquare] = useState(null); // Track the selected square
   const [topText, setTopText] = useState('Waiting on player');
   const [bottomText, setBottomText] = useState('Make your move!');
+  const [illegalMoveSquares, setIllegalMoveSquares] = useState(null); // Track the from and to squares for illegal moves
+  const [advisedMove, setAdvisedMove] = useState({ from: null, to: null }); // Advised moves (green glow)
 
-  // Add animated values for opacity
-  const topTextOpacity = useRef(new Animated.Value(1)).current;
-  const bottomTextOpacity = useRef(new Animated.Value(1)).current;
-
+    // Initialize opacity values for animated text
+    const topTextOpacity = useRef(new Animated.Value(1)).current;
+    const bottomTextOpacity = useRef(new Animated.Value(1)).current;
+  
   useEffect(() => {
-    gameLogicRef.current = new GameLogic();
     setBoardState(gameLogicRef.current.getBoardState());
   }, []);
 
   const handleReload = () => {
     console.log('Reloading the game...');
-    
+
     gameLogicRef.current = new GameLogic();
     setBoardState(gameLogicRef.current.getBoardState());
+    setSelectedSquare(null); // Reset selected square
     setTopText('Waiting on player');
     setBottomText('Make your move!');
-
-    // Reset opacities
-    topTextOpacity.setValue(1);
-    bottomTextOpacity.setValue(1);
-
+    setIllegalMoveSquares(null); // Reset illegal move state
+    setAdvisedMove({ from: null, to: null }); // Reset advised move
     console.log('Game reloaded successfully.');
+        // Reset opacity for the animated text
+        topTextOpacity.setValue(1);
+        bottomTextOpacity.setValue(1);
+  };
+
+  const onSquarePress = (position) => {
+    if (!selectedSquare) {
+      // Select a square
+      if (gameLogicRef.current.getPieceAt(position)) {
+        setSelectedSquare(position);
+        console.log(`Selected square: ${position}`);
+      }
+    } else {
+      console.log(`Attempting move from ${selectedSquare} to ${position}`);
+      onMove(selectedSquare, position);
+      setSelectedSquare(null); // Reset selected square after move attempt
+    }
   };
 
   const onMove = async (fromSquare, toSquare) => {
     try {
-      console.log('Player attempting to move...');
+      console.log(`Attempting to move from ${fromSquare} to ${toSquare}...`);
       const playerMove = gameLogicRef.current.makeMove({ from: fromSquare, to: toSquare });
       if (!playerMove) {
-        setTopText('Invalid move, please try again.');
+        setIllegalMoveSquares({ from: fromSquare, to: toSquare }); // Highlight both squares red
         return;
       }
       setBoardState([...gameLogicRef.current.getBoardState()]);
+      setIllegalMoveSquares(null); // Reset after a valid move
       setTopText('Waiting for computer to move...');
+   // Fade out text during computer's move
 
       // --- Start of modifications ---
       // Change the top text to 'Thinking...' and wait for 1 second
@@ -76,52 +97,52 @@ const App = () => {
         setTopText('Failed to get best move for player from Lichess');
         return;
       }
-      const apiName = 'Gemini';  
+      const apiName = 'Claude';  
       const analysis = await gameLogicRef.current.getAdviceFromAPI(apiName, bestMoveForWhite.uci);
       if (!analysis) {
         setTopText('Failed to get analysis from AI');
         return;
       }
+     // Fade out the text components
+     Animated.timing(topTextOpacity, {
+      toValue: 0,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
 
-      // Fade out the text components
+    Animated.timing(bottomTextOpacity, {
+      toValue: 0,
+      duration: 500,
+      useNativeDriver: true,
+    }).start(() => {
+      // After fade out is complete, update the text and fade in
+      setTopText(analysis.analysisSummary);
+      setBottomText(analysis.adviceSummary);
+
+      // Fade in the text components
       Animated.timing(topTextOpacity, {
-        toValue: 0,
+        toValue: 1,
         duration: 500,
         useNativeDriver: true,
       }).start();
 
       Animated.timing(bottomTextOpacity, {
-        toValue: 0,
+        toValue: 1,
         duration: 500,
         useNativeDriver: true,
-      }).start(() => {
-        // After fade out is complete, update the text and fade in
-        setTopText(analysis.analysisSummary);
-        setBottomText(analysis.adviceSummary);
+      }).start();
+    });
 
-        // Fade in the text components
-        Animated.timing(topTextOpacity, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }).start();
-
-        Animated.timing(bottomTextOpacity, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }).start();
-      });
-
-      console.log(`${analysis.analysisSummary}`);
-      console.log(`${analysis.adviceSummary}`);
-    } catch (error) {
+    console.log(`${analysis.analysisSummary}`);
+    console.log(`${analysis.adviceSummary}`);
+  } catch (error) {
       console.error('Error during move:', error);
       setTopText('Error processing move, please try again.');
+      setIllegalMoveSquares({ from: fromSquare, to: toSquare }); // Highlight illegal move
     }
   };
 
-  if (!boardState) {
+  if (!boardState || boardState.length === 0) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading board...</Text>
@@ -135,28 +156,34 @@ const App = () => {
         <Text style={styles.reloadButtonText}>Reload</Text>
       </TouchableOpacity>
 
-      {/* Use Animated.Text and apply the opacity */}
+      {/* Animated text for top advice */}
       <Animated.Text style={[styles.topText, { opacity: topTextOpacity }]}>
         {topText}
       </Animated.Text>
 
-      <ChessBoard2D boardState={boardState} onMove={onMove} />
+      <ChessBoard2D
+        boardState={boardState}
+        onSquarePress={onSquarePress}
+        selectedSquare={selectedSquare} // Pass the selected square
+        illegalMoveSquares={illegalMoveSquares} // Pass illegal move squares
+        advisedMove={advisedMove} // Pass the advised move
+      />
 
-      {/* Use Animated.Text and apply the opacity */}
-      <Animated.Text style={[styles.bottomText, { opacity: bottomTextOpacity }]}>
+<Animated.Text style={[styles.bottomText, { opacity: bottomTextOpacity }]}>
         {bottomText}
-      </Animated.Text>
-    </View>
+      </Animated.Text>    
+      
+      </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: '#191d24',
     padding: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   reloadButton: {
     position: 'absolute',
@@ -165,44 +192,36 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderRadius: 10,
     padding: 10,
-    borderWidth: 1, // Optional: Add a border to make the button more visible
-    borderColor: 'white', // Optional: Set the border color
+    borderWidth: 1,
+    borderColor: 'white',
     zIndex: 1000,
   },
   reloadButtonText: {
-    color: 'white', // Button text color
+    color: 'white',
     fontWeight: 'bold',
   },
   topText: {
     fontSize: 26.5,
     marginTop: 20,
+    marginBottom:20,
     color: '#aec4e8',
     textAlign: 'center',
-    pointerEvents: 'none',  // This makes the text non-interactive
   },
   bottomText: {
     fontSize: 26.5,
     marginTop: 20,
     color: '#aec4e8',
     textAlign: 'center',
-    pointerEvents: 'none',  // This makes the text non-interactive
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'black',
   },
   loadingText: {
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
-  },
-  topTextContainer: {
-    opacity: 1, // Initial opacity
-  },
-  bottomTextContainer: {
-    opacity: 1, // Initial opacity
   },
 });
 

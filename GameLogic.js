@@ -24,7 +24,7 @@ class GameLogic {
     return board.map((row, rowIndex) => {
       return row.map((piece, colIndex) => {
         const position = files[colIndex] + (8 - rowIndex); // 'a8', 'b8', etc.
-        const squareColor = (rowIndex + colIndex) % 2 === 0 ? '#f0d9b5' : '#b58863'; // Light and dark squares
+        const squareColor = (rowIndex + colIndex) % 2 === 0 ? '#1594da' : '#c0dae6'; // Light and dark squares
         return {
           position,
           color: squareColor,
@@ -77,11 +77,11 @@ class GameLogic {
         }
 
         const data = await response.json();
-        // console.log(`Lichess API Response for ${side}:`, data);
 
         if (data.pvs && data.pvs.length > 0 && data.pvs[0].moves) {
           const bestMoveUCI = data.pvs[0].moves.split(' ')[0];
           const bestMoveSAN = this.convertCastlingUCItoSAN(bestMoveUCI) || this.convertUCItoSAN(bestMoveUCI, fen);
+          console.log(`Lichess API Response for ${side}:`, data);
 
           return { uci: bestMoveUCI, san: bestMoveSAN };
         } else {

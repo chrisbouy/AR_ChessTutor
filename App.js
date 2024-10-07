@@ -71,7 +71,7 @@ const App = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       const fenAfterPlayerMove = gameLogicRef.current.chess.fen();
-      const bestMoveForBlack = await gameLogicRef.current.getBestMoveFromLichess(fenAfterPlayerMove);
+      const bestMoveForBlack = await gameLogicRef.current.getBestMoveFromLichess(fenAfterPlayerMove, 'black');
 
       if (!bestMoveForBlack) {
         setTopText("Failed to get computer's move from Lichess.");
@@ -97,7 +97,7 @@ const App = () => {
         setTopText('Failed to get best move for player from Lichess');
         return;
       }
-      const apiName = 'Claude';  
+      const apiName = 'Gemini';  
       const analysis = await gameLogicRef.current.getAdviceFromAPI(apiName, bestMoveForWhite.uci);
       if (!analysis) {
         setTopText('Failed to get analysis from AI');

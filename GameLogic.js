@@ -50,75 +50,62 @@ class GameLogic {
     const piece = this.chess.board()[rowIndex][colIndex];
     return piece ? { type: piece.type, color: piece.color } : null;
   }  
-  async getBestMoveFromLichess(fen, side) {
-    const maxAttempts = 5;
-    const retryDelay = 15000; // Wait 10 seconds between retries
-    let attempt = 0;
-
-    const tryFetchingBestMove = async () => {
-      try {
+  async getBestMoveFromLichess(fen) {
+    try {
         const response = await fetch(
-          `https://lichess.org/api/cloud-eval?fen=${encodeURIComponent(fen)}`,
-          {
-            method: 'GET',
-            headers: {
-              Authorization: `Bearer lip_iioABYocYPTzLDGEnMrt`,
-            },
-          }
+            `https://lichess.org/api/cloud-eval?fen=${encodeURIComponent(fen)}`,
+            {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer lip_iioABYocYPTzLDGEnMrt`, // Replace with your token
+                },
+            }
         );
 
-        if (response.status === 429) {
-          console.warn('Rate limit exceeded, waiting before retrying...');
-          return 'rate_limit';
-        }
-
         if (!response.ok) {
-          throw new Error('Failed to fetch best move from Lichess');
+            throw new Error('Failed to fetch best move from Lichess');
         }
 
         const data = await response.json();
+        console.log('Lichess API Response:', data);
 
-        if (data.pvs && data.pvs.length > 0 && data.pvs[0].moves) {
-          const bestMoveUCI = data.pvs[0].moves.split(' ')[0];
-          const bestMoveSAN = this.convertCastlingUCItoSAN(bestMoveUCI) || this.convertUCItoSAN(bestMoveUCI, fen);
-          console.log(`Lichess API Response for ${side}:`, data);
+        // Get the best variant with the highest CP
+        const bestVariant = this.getBestVariantWithHighestCP(data);
 
-          return { uci: bestMoveUCI, san: bestMoveSAN };
-        } else {
-          console.error('No valid moves found in Lichess API response.');
-          return null;
+        if (!bestVariant) {
+            return null;
         }
-      } catch (error) {
-        console.error(`Error fetching ${side} move from Lichess:`, error);
+
+        const bestMoveUCI = bestVariant.moves.split(' ')[0]; // First move in the variant
+        const fullVariant = bestVariant.moves.split(' '); // Entire variant as an array
+
+        const bestMoveSAN = this.convertCastlingUCItoSAN(bestMoveUCI) || this.convertUCItoSAN(bestMoveUCI, fen);
+
+        if (bestMoveSAN) {
+            return { uci: bestMoveUCI, san: bestMoveSAN, variant: fullVariant };
+        } else {
+            console.error('Invalid best move from Lichess');
+            return null;
+        }
+    } catch (error) {
+        console.error('Error fetching best move from Lichess:', error);
         return null;
-      }
-    };
-
-    return new Promise((resolve, reject) => {
-      const retry = async () => {
-        attempt++;
-        console.log(`Attempt ${attempt} to fetch ${side} move from Lichess...`);
-
-        const result = await tryFetchingBestMove();
-
-        if (result && result !== 'rate_limit') {
-          resolve(result); // Success
-        } else if (result === 'rate_limit') {
-          if (attempt < maxAttempts) {
-            setTimeout(retry, retryDelay); // Wait and retry if rate-limited
-          } else {
-            reject(`Rate limit exceeded for ${side}, too many failed attempts.`);
-          }
-        } else if (attempt < maxAttempts) {
-          setTimeout(retry, retryDelay); // Retry failed attempts
-        } else {
-          reject(`Failed to get ${side} move after ${maxAttempts} attempts.`);
-        }
-      };
-
-      retry(); // Start retry loop
-    });
+    }
+}
+getBestVariantWithHighestCP(data) {
+  if (!data.pvs || data.pvs.length === 0) {
+      console.error('No variants found in Lichess API response.');
+      return null;
   }
+
+  // Find the variant with the highest CP
+  let highestCPVariant = data.pvs.reduce((bestVariant, currentVariant) => {
+      return (currentVariant.cp > bestVariant.cp) ? currentVariant : bestVariant;
+  }, data.pvs[0]); // Start with the first variant
+
+  return highestCPVariant;
+}
+
   async getAdviceFromGPT(prompt) {
     
  
@@ -280,7 +267,7 @@ class GameLogic {
         return null;
     }
 }
-  async getAdviceFromAPI(apiName, bestMoveForWhiteUCI) {
+  async getAdviceFromAPI(apiName, bestMoveForWhiteUCI, bestVariant) {
     const fen = this.chess.fen();
     const moveHistory = this.chess.history({ verbose: true });
     const moveList = this.chess.pgn({ max_width: 5, newline_char: ' ' }); 

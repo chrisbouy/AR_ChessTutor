@@ -97,6 +97,13 @@ const App = () => {
         setTopText('Failed to get best move for player from Lichess');
         return;
       }
+      else
+      {
+        setAdvisedMove({
+          from: bestMoveForWhite.uci.slice(0, 2),
+          to: bestMoveForWhite.uci.slice(2, 4),
+        });
+      }
       const apiName = 'Gemini';  
       const analysis = await gameLogicRef.current.getAdviceFromAPI(apiName, bestMoveForWhite.uci);
       if (!analysis) {

@@ -48,6 +48,7 @@ const Square = ({ square, onSquarePress, selectedSquare, advisedMove, illegalMov
   const isIllegalToSquare = illegalMoveSquares?.to === square.position;
 
   let backgroundColor = square.color;
+  let boxShadowStyle = {};  // Define an empty box shadow style
 
   if (isSelected && !isAdvisedFromSquare && !isAdvisedToSquare) {
     backgroundColor = '#ffff00'; // Yellow highlight for selected square (if not green)
@@ -61,17 +62,17 @@ const Square = ({ square, onSquarePress, selectedSquare, advisedMove, illegalMov
   }
     // Apply green glow for advised best move squares
     if (isAdvisedFromSquare || isAdvisedToSquare) {
-        backgroundColor = 'rgba(0, 255, 0, 0.5)'; // Green background for advised move
-      }
+      backgroundColor = 'rgba(0, 255, 0, 0.5)'; // Green background for advised move
+    }
 
   const pieceImage = getPieceImage(square.piece);
 
   return (
     <TouchableOpacity onPress={() => onSquarePress(square.position)}>
-      <Animated.View style={[styles.square, { backgroundColor }]}>
-        {pieceImage && <Image source={pieceImage} style={styles.pieceImage} />}
-      </Animated.View>
-    </TouchableOpacity>
+    <Animated.View style={[styles.square, { backgroundColor }]}>
+      {pieceImage && <Image source={pieceImage} style={styles.pieceImage} />}
+    </Animated.View>
+  </TouchableOpacity>
   );
 };
 
@@ -89,5 +90,5 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
 });
-
+ 
 export default Square;

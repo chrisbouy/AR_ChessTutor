@@ -33,6 +33,43 @@ class GameLogic {
       });
     });
   }
+  fenToBoardLayout(fen) {
+    const fenParts = fen.split(' ');
+    const fenBoard = fenParts[0];
+    const rows = fenBoard.split('/');
+    const pieceMap = {
+      'r': 'Black Rook',
+      'n': 'Black Knight',
+      'b': 'Black Bishop',
+      'q': 'Black Queen',
+      'k': 'Black King',
+      'p': 'Black Pawn',
+      'R': 'White Rook',
+      'N': 'White Knight',
+      'B': 'White Bishop',
+      'Q': 'White Queen',
+      'K': 'White King',
+      'P': 'White Pawn'
+    };
+
+    let boardLayout = '';
+    rows.forEach((row, rowIndex) => {
+      let boardRow = `Rank ${8 - rowIndex}: `;
+      for (let i = 0; i < row.length; i++) {
+        const char = row[i];
+        if (!isNaN(char)) {
+          boardRow += `${char} empty squares, `;
+        } else {
+          const pieceDescription = pieceMap[char];
+          const file = String.fromCharCode(97 + boardRow.replace(/[^,]/g, '').length); // a-h files
+          boardRow += `${pieceDescription} at ${file}${8 - rowIndex}, `;
+        }
+      }
+      boardLayout += boardRow.trimEnd().slice(0, -1) + '.\n';
+    });
+
+    return boardLayout.trim();
+  }
 
   makeMove(move) {
     try {
@@ -50,48 +87,68 @@ class GameLogic {
     const piece = this.chess.board()[rowIndex][colIndex];
     return piece ? { type: piece.type, color: piece.color } : null;
   }  
-  async getBestMoveFromLichess(fen) {
-    try {
-        const response = await fetch(
-            `https://lichess.org/api/cloud-eval?fen=${encodeURIComponent(fen)}`,
-            {
-                method: 'GET',
-                headers: {
-                    Authorization: `Bearer lip_iioABYocYPTzLDGEnMrt`, // Replace with your token
-                },
-            }
-        );
-
+  async getBestMoveFromLichess(fen, color) {
+    const maxAttempts = 5; // Number of retry attempts
+    const retryDelay = 3000; // 3 seconds between retries
+    let attempt = 0;
+  
+    const tryFetchingBestMove = async () => {
+      try {
+        const response = await fetch(`https://lichess.org/api/cloud-eval?fen=${encodeURIComponent(fen)}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer YOUR_LICHESS_API_TOKEN`, // Replace with your Lichess API token
+          },
+        });
+  
         if (!response.ok) {
-            throw new Error('Failed to fetch best move from Lichess');
+          throw new Error('Failed to fetch best move from Lichess');
         }
-
+  
         const data = await response.json();
         console.log('Lichess API Response:', data);
-
-        // Get the best variant with the highest CP
-        const bestVariant = this.getBestVariantWithHighestCP(data);
-
-        if (!bestVariant) {
-            return null;
-        }
-
-        const bestMoveUCI = bestVariant.moves.split(' ')[0]; // First move in the variant
-        const fullVariant = bestVariant.moves.split(' '); // Entire variant as an array
-
-        const bestMoveSAN = this.convertCastlingUCItoSAN(bestMoveUCI) || this.convertUCItoSAN(bestMoveUCI, fen);
-
-        if (bestMoveSAN) {
-            return { uci: bestMoveUCI, san: bestMoveSAN, variant: fullVariant };
-        } else {
+  
+        // Handle Lichess API response
+        if (data.pvs && data.pvs.length > 0 && data.pvs[0].moves) {
+          const bestMoveUCI = data.pvs[0].moves.split(' ')[0];
+          const bestMoveSAN = this.convertCastlingUCItoSAN(bestMoveUCI) || this.convertUCItoSAN(bestMoveUCI, fen);
+  
+          if (bestMoveSAN) {
+            return { uci: bestMoveUCI, san: bestMoveSAN, fullVariant: data.pvs[0].moves };
+          } else {
             console.error('Invalid best move from Lichess');
             return null;
+          }
+        } else {
+          console.error('No moves found in Lichess API response.');
+          return null;
         }
-    } catch (error) {
+      } catch (error) {
         console.error('Error fetching best move from Lichess:', error);
         return null;
-    }
-}
+      }
+    };
+  
+    return new Promise((resolve, reject) => {
+      const retry = async () => {
+        attempt++;
+        console.log(`Attempt ${attempt} to fetch best move from Lichess...`);
+  
+        const result = await tryFetchingBestMove();
+  
+        if (result) {
+          resolve(result); // Successfully got the best move, resolve the promise
+        } else if (attempt < maxAttempts) {
+          setTimeout(retry, retryDelay); // Wait and retry
+        } else {
+          reject('Failed to get the best move after multiple attempts.');
+        }
+      };
+  
+      retry(); // Start the first attempt
+    });
+  }
+  
 getBestVariantWithHighestCP(data) {
   if (!data.pvs || data.pvs.length === 0) {
       console.error('No variants found in Lichess API response.');
@@ -105,7 +162,12 @@ getBestVariantWithHighestCP(data) {
 
   return highestCPVariant;
 }
-
+getGamePhase() {
+  const moveCount = this.chess.history().length;
+  if (moveCount <= 10) return 'Opening';
+  if (moveCount <= 30) return 'Midgame';
+  return 'Endgame';
+}
   async getAdviceFromGPT(prompt) {
     
  
@@ -269,6 +331,9 @@ getBestVariantWithHighestCP(data) {
 }
   async getAdviceFromAPI(apiName, bestMoveForWhiteUCI, bestVariant) {
     const fen = this.chess.fen();
+    const phase = this.getGamePhase();
+    const boardLayout = this.chess.ascii();
+    // const boardLayout = this.fenToBoardLayout(fen);
     const moveHistory = this.chess.history({ verbose: true });
     const moveList = this.chess.pgn({ max_width: 5, newline_char: ' ' }); 
     const chessASCII = this.chess.ascii();
@@ -288,22 +353,38 @@ getBestVariantWithHighestCP(data) {
     }
     // You are the lowercase letters of this chess game (represented in ASCII):
     // ${chessASCII}
-
+    // "strategicAnalysisForBlack": "Computer's move: ${lastMoveLAN}  <A 80 character long strategic analysis for Black's last move>",
+   // "strategicAnalysisForBlack": "is the sufficient information to derive an accurate analysis?  wwhat other information would help?",
+  //  "input": {
+  //   "fen": "r1bqkb1r/pppp1ppp/2n5/1B2p3/4n3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 5",
+  //   "moveHistory": ["e4", "e5", "Nf3", "Nc6", "Bb5", "Nf6", "O-O", "Nxe4"],
+  //   "turn": "white",
+  //   "gamePhase": "opening",
+  //   "requestedOutput": {
+  //     "strategicAnalysis": "A detailed analysis of the current position, focusing on tactical threats, strategic goals, and potential counterplay.",
+  //     "bestMove": "The recommended best move for White."
+  //   }
+  // }
     const prompt = `
         You are a chess tutor.  
         You are black and your last move was ${lastMoveLAN}.
         It's white's (my) turn.
-        you are the lowercase letters of the current FEN: ${this.chess.fen()}
+        Game phase: ${phase}
+        You are the lowercase letters of the current FEN representation: ${this.chess.fen()}
         The move history is: ${moveList}.
         The best move for White is ${bestMoveForWhiteLAN}.
+        This is a visual representation of the board: ${boardLayout}
+        This is the best strategic game plan for white:${bestVariant}
         Respond only with the JSON object in the exact format provided.
         When commenting on black, speak in the 1st person.  When commenting on white, speak in the 2nd
         When responding, double check that the piece you mention can legally do the move
         Respond in the following format
         {
-          "strategicAnalysisForBlack": "Computer's move: ${lastMoveLAN}  <A 100 character long strategic analysis for Black's last move>",
-          "explanationForWhiteBestMove": "Advice: ${bestMoveForWhiteLAN}  <A 100 character long explanation of why this is the best move for White>"
-    }`;
+             "strategicAnalysisForBlack": "Computer's move: ${lastMoveLAN}  <A 80 character long strategic analysis for Black's last move>",
+
+          "explanationForWhiteBestMove": "Advice: ${bestMoveForWhiteLAN}  <A 80 character long explanation of why this is the best move for White>"
+    
+          }`;
     console.log("Explanation Prompt: ", prompt);
     switch (apiName) {
       case 'GPT':

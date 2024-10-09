@@ -1,7 +1,5 @@
-// ChessBoard2D.js
-
-import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, Text, Image } from 'react-native';
+import React, { useRef, useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import Square from './Square';
 
 const ChessBoard2D = ({ boardState, onSquarePress, selectedSquare, illegalMoveSquares, advisedMove }) => {
@@ -25,108 +23,65 @@ const ChessBoard2D = ({ boardState, onSquarePress, selectedSquare, illegalMoveSq
     }
   }, [illegalMoveSquares]);
 
+  const rankLabels = ['8', '7', '6', '5', '4', '3', '2', '1'];
+  const fileLabels = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
   return (
-    <View style={styles.container}>
-    {/* Letters at the top (files a-h) */}
-    <View style={styles.files}>
-      {['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((letter, index) => (
-        <Text key={index} style={styles.fileText}>{letter}</Text>
+    <View style={styles.boardWrapper}>
+      <View style={styles.row}>
+        <View style={styles.emptyCorner} />
+        {fileLabels.map((file, index) => (
+          <Text key={index} style={styles.fileLabel}>{file}</Text>
+        ))}
+      </View>
+
+      {boardState.map((row, rowIndex) => (
+        <View key={rowIndex} style={styles.row}>
+          <Text style={styles.rankLabel}>{rankLabels[rowIndex]}</Text>
+          {row.map((square, colIndex) => (
+            <Square
+              key={`${rowIndex}-${colIndex}`}
+              square={square}
+              onSquarePress={onSquarePress}
+              selectedSquare={selectedSquare}
+              advisedMove={advisedMove}
+              illegalMoveSquares={illegalMoveSquares}
+              blinkAnimation={blinkAnimation}
+            />
+          ))}
+        </View>
       ))}
     </View>
-
-    <View style={styles.boardWithRanks}>
-      {/* Numbers on the left side (ranks 1-8) */}
-      <View style={styles.ranks}>
-        {[8, 7, 6, 5, 4, 3, 2, 1].map((number, index) => (
-          <Text key={index} style={styles.rankText}>{number}</Text>
-        ))}
-      </View>
-      <View style={styles.board}>
-        {boardState.map((row, rowIndex) => (
-          <View key={rowIndex} style={styles.row}>
-            {row.map((square, colIndex) => (
-              <Square
-                key={`${rowIndex}-${colIndex}`}
-                square={square}
-                onSquarePress={onSquarePress}
-                selectedSquare={selectedSquare} // Pass selected square for yellow highlight
-                advisedMove={advisedMove} // Pass advised move for green highlight
-                illegalMoveSquares={illegalMoveSquares} // Pass illegal move squares for red blink
-                blinkAnimation={blinkAnimation} // Pass blink animation
-              />
-            ))}
-          </View>
-        ))}
-      </View>
-      </View>
-      </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'column',
-    justifyContent: 'center',
+  boardWrapper: {
     alignItems: 'center',
-    marginTop: 20,
-  },
-  files: {
-    flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 5,
-    backgroundColor: 'black',  // Black background for files labels
-  },
-  fileText: {
-    width: 40,
-    textAlign: 'center',
-    fontWeight: 'bold',
-    color: 'white',  // White text color for the labels
-  },
-  boardWithRanks: {
-    flexDirection: 'row',
-  },
-  ranks: {
-    flexDirection: 'column',
-    justifyContent: 'center',
-    marginRight: 5,
-    backgroundColor: 'black', // Black background for ranks labels
-  },
-  rankText: {
-    height: 40,
-    textAlign: 'center',
-    fontWeight: 'bold',
-    color: 'white', // White text color for the labels
-  },
-  board: {
-    flexDirection: 'column',
-    borderWidth: 2,
-    borderColor: '#000',
   },
   row: {
     flexDirection: 'row',
   },
-  square: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+  emptyCorner: {
+    width: 45,
+    height: 45,
   },
-  selectedSquare: {
-    backgroundColor: '#f3d3a1', // Highlight color
-  },
-  pieceImage: {
-    width: 30,  // Adjust the size as needed
-    height: 30, // Adjust the size as needed
-  },
-  loadingContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: 320,  // Set the appropriate height for the placeholder
-    width: 320,   // Set the appropriate width for the placeholder
-  },
-  loadingText: {
+  fileLabel: {
+    width: 45,
+    height: 45,
+    textAlign: 'center',
+    lineHeight: 45,
     fontSize: 16,
-    color: 'gray',
+    color: '#fff',
+  },
+  rankLabel: {
+    width: 45,
+    height: 45,
+    textAlign: 'center',
+    lineHeight: 45,
+    fontSize: 16,
+    color: '#fff',
   },
 });
 

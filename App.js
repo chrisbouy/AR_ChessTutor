@@ -1,5 +1,3 @@
-// App.js
-
 import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Animated } from 'react-native';
 import ChessBoard2D from './components/ChessBoard2D';
@@ -11,36 +9,34 @@ const App = () => {
   const [selectedSquare, setSelectedSquare] = useState(null); // Track the selected square
   const [topText, setTopText] = useState('Waiting on player');
   const [bottomText, setBottomText] = useState('Make your move!');
-  const [illegalMoveSquares, setIllegalMoveSquares] = useState(null); // Track the from and to squares for illegal moves
-  const [advisedMove, setAdvisedMove] = useState({ from: null, to: null }); // Advised moves (green glow)
+  const [illegalMoveSquares, setIllegalMoveSquares] = useState(null); // Track illegal move squares
+  const [advisedMove, setAdvisedMove] = useState({ from: null, to: null }); // Track advised move
 
-    // Initialize opacity values for animated text
-    const topTextOpacity = useRef(new Animated.Value(1)).current;
-    const bottomTextOpacity = useRef(new Animated.Value(1)).current;
-  
+  const topTextOpacity = useRef(new Animated.Value(1)).current;
+  const bottomTextOpacity = useRef(new Animated.Value(1)).current;
+  const thinkingOpacity = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     setBoardState(gameLogicRef.current.getBoardState());
   }, []);
 
   const handleReload = () => {
     console.log('Reloading the game...');
-
     gameLogicRef.current = new GameLogic();
     setBoardState(gameLogicRef.current.getBoardState());
-    setSelectedSquare(null); // Reset selected square
+    setSelectedSquare(null);
     setTopText('Waiting on player');
     setBottomText('Make your move!');
-    setIllegalMoveSquares(null); // Reset illegal move state
-    setAdvisedMove({ from: null, to: null }); // Reset advised move
+    setIllegalMoveSquares(null);
+    setAdvisedMove({ from: null, to: null });
+    topTextOpacity.setValue(1);
+    bottomTextOpacity.setValue(1);
+    thinkingOpacity.setValue(0);
     console.log('Game reloaded successfully.');
-        // Reset opacity for the animated text
-        topTextOpacity.setValue(1);
-        bottomTextOpacity.setValue(1);
   };
 
   const onSquarePress = (position) => {
     if (!selectedSquare) {
-      // Select a square
       if (gameLogicRef.current.getPieceAt(position)) {
         setSelectedSquare(position);
         console.log(`Selected square: ${position}`);
@@ -48,7 +44,7 @@ const App = () => {
     } else {
       console.log(`Attempting move from ${selectedSquare} to ${position}`);
       onMove(selectedSquare, position);
-      setSelectedSquare(null); // Reset selected square after move attempt
+      setSelectedSquare(null);
     }
   };
 
@@ -57,19 +53,34 @@ const App = () => {
       console.log(`Attempting to move from ${fromSquare} to ${toSquare}...`);
       const playerMove = gameLogicRef.current.makeMove({ from: fromSquare, to: toSquare });
       if (!playerMove) {
-        setIllegalMoveSquares({ from: fromSquare, to: toSquare }); // Highlight both squares red
+        setIllegalMoveSquares({ from: fromSquare, to: toSquare });
         return;
       }
       setBoardState([...gameLogicRef.current.getBoardState()]);
-      setIllegalMoveSquares(null); // Reset after a valid move
-      setTopText('Waiting for computer to move...');
-   // Fade out text during computer's move
+      setIllegalMoveSquares(null);
 
-      // --- Start of modifications ---
-      // Change the top text to 'Thinking...' and wait for 1 second
-      setTopText('Thinking...');
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Fade out the current advice and analysis
+      Animated.timing(topTextOpacity, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }).start();
 
+      Animated.timing(bottomTextOpacity, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }).start(() => {
+        // Once advice fades out, show "Thinking..."
+        setTopText('Thinking...');
+        Animated.timing(thinkingOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+      });
+
+      // Get Lichess response
       const fenAfterPlayerMove = gameLogicRef.current.chess.fen();
       const bestMoveForBlack = await gameLogicRef.current.getBestMoveFromLichess(fenAfterPlayerMove, 'black');
 
@@ -78,16 +89,12 @@ const App = () => {
         return;
       }
 
-      // Make the computer's move
       const blackMoveResult = gameLogicRef.current.makeMove(bestMoveForBlack.san);
       if (!blackMoveResult) {
         setTopText("Computer's move failed.");
         return;
       }
       setBoardState([...gameLogicRef.current.getBoardState()]);
-
-      // Change the top text to 'Analyzing...'
-      setTopText('Analyzing...');
 
       const fenAfterComputerMove = gameLogicRef.current.chess.fen();
       const bestMoveForWhite = await gameLogicRef.current.getBestMoveFromLichess(fenAfterComputerMove);
@@ -96,56 +103,48 @@ const App = () => {
         console.error('bestMoveForWhite.uci is undefined');
         setTopText('Failed to get best move for player from Lichess');
         return;
-      }
-      else
-      {
+      } else {
         setAdvisedMove({
           from: bestMoveForWhite.uci.slice(0, 2),
           to: bestMoveForWhite.uci.slice(2, 4),
         });
       }
-      const apiName = 'Gemini';  
+
+      const apiName = 'Perplexity';  
       const analysis = await gameLogicRef.current.getAdviceFromAPI(apiName, bestMoveForWhite.uci);
+
       if (!analysis) {
         setTopText('Failed to get analysis from AI');
         return;
       }
-     // Fade out the text components
-     Animated.timing(topTextOpacity, {
-      toValue: 0,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
 
-    Animated.timing(bottomTextOpacity, {
-      toValue: 0,
-      duration: 500,
-      useNativeDriver: true,
-    }).start(() => {
-      // After fade out is complete, update the text and fade in
-      setTopText(analysis.analysisSummary);
-      setBottomText(analysis.adviceSummary);
-
-      // Fade in the text components
-      Animated.timing(topTextOpacity, {
-        toValue: 1,
+      // Once Gemini response is received, fade out "Thinking..."
+      Animated.timing(thinkingOpacity, {
+        toValue: 0,
         duration: 500,
         useNativeDriver: true,
-      }).start();
+      }).start(() => {
+        // Update text and fade it in
+        setTopText(analysis.analysisSummary);
+        setBottomText(analysis.adviceSummary);
 
-      Animated.timing(bottomTextOpacity, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }).start();
-    });
+        Animated.timing(topTextOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
 
-    console.log(`${analysis.analysisSummary}`);
-    console.log(`${analysis.adviceSummary}`);
-  } catch (error) {
+        Animated.timing(bottomTextOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+      });
+
+    } catch (error) {
       console.error('Error during move:', error);
       setTopText('Error processing move, please try again.');
-      setIllegalMoveSquares({ from: fromSquare, to: toSquare }); // Highlight illegal move
+      setIllegalMoveSquares({ from: fromSquare, to: toSquare });
     }
   };
 
@@ -168,19 +167,23 @@ const App = () => {
         {topText}
       </Animated.Text>
 
+      {/* Thinking text */}
+      <Animated.Text style={[styles.thinkingText, { opacity: thinkingOpacity }]}>
+        Thinking...
+      </Animated.Text>
+
       <ChessBoard2D
         boardState={boardState}
         onSquarePress={onSquarePress}
-        selectedSquare={selectedSquare} // Pass the selected square
-        illegalMoveSquares={illegalMoveSquares} // Pass illegal move squares
-        advisedMove={advisedMove} // Pass the advised move
+        selectedSquare={selectedSquare}
+        illegalMoveSquares={illegalMoveSquares}
+        advisedMove={advisedMove}
       />
 
-<Animated.Text style={[styles.bottomText, { opacity: bottomTextOpacity }]}>
+      <Animated.Text style={[styles.bottomText, { opacity: bottomTextOpacity }]}>
         {bottomText}
-      </Animated.Text>    
-      
-      </View>
+      </Animated.Text>
+    </View>
   );
 };
 
@@ -210,7 +213,7 @@ const styles = StyleSheet.create({
   topText: {
     fontSize: 26.5,
     marginTop: 20,
-    marginBottom:20,
+    marginBottom: 20,
     color: '#aec4e8',
     textAlign: 'center',
   },
@@ -219,6 +222,15 @@ const styles = StyleSheet.create({
     marginTop: 20,
     color: '#aec4e8',
     textAlign: 'center',
+  },
+  thinkingText: {
+    fontSize: 26.5,
+    color: '#ffcc00',
+    textAlign: 'center',
+    marginTop: 20,
+    position: 'absolute',
+    top: 50,
+    opacity: 0, // Initially invisible
   },
   loadingContainer: {
     flex: 1,

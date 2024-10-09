@@ -87,6 +87,7 @@ class GameLogic {
     const piece = this.chess.board()[rowIndex][colIndex];
     return piece ? { type: piece.type, color: piece.color } : null;
   }  
+ 
   async getBestMoveFromLichess(fen, color) {
     const maxAttempts = 5; // Number of retry attempts
     const retryDelay = 3000; // 3 seconds between retries
@@ -97,7 +98,7 @@ class GameLogic {
         const response = await fetch(`https://lichess.org/api/cloud-eval?fen=${encodeURIComponent(fen)}`, {
           method: 'GET',
           headers: {
-            Authorization: `Bearer YOUR_LICHESS_API_TOKEN`, // Replace with your Lichess API token
+            Authorization: `Bearer lip_iioABYocYPTzLDGEnMrt`, // Replace with your Lichess API token
           },
         });
   
@@ -109,12 +110,20 @@ class GameLogic {
         console.log('Lichess API Response:', data);
   
         // Handle Lichess API response
-        if (data.pvs && data.pvs.length > 0 && data.pvs[0].moves) {
-          const bestMoveUCI = data.pvs[0].moves.split(' ')[0];
+        if (data.pvs && data.pvs.length > 0) {
+          // Find the variant with the highest centipawn value
+          let bestVariant = data.pvs[0];
+          data.pvs.forEach((variant) => {
+            if (variant.cp > bestVariant.cp) {
+              bestVariant = variant;
+            }
+          });
+          // Get the first move of the best variant
+          const bestMoveUCI = bestVariant.moves.split(' ')[0];
           const bestMoveSAN = this.convertCastlingUCItoSAN(bestMoveUCI) || this.convertUCItoSAN(bestMoveUCI, fen);
   
           if (bestMoveSAN) {
-            return { uci: bestMoveUCI, san: bestMoveSAN, fullVariant: data.pvs[0].moves };
+            return { uci: bestMoveUCI, san: bestMoveSAN, fullVariant: bestVariant.moves };
           } else {
             console.error('Invalid best move from Lichess');
             return null;
@@ -329,18 +338,21 @@ getGamePhase() {
         return null;
     }
 }
-  async getAdviceFromAPI(apiName, bestMoveForWhiteUCI, bestVariant) {
+  async getAdviceFromAPI(apiName,variantMoves) {
     const fen = this.chess.fen();
     const phase = this.getGamePhase();
     const boardLayout = this.chess.ascii();
     // const boardLayout = this.fenToBoardLayout(fen);
     const moveHistory = this.chess.history({ verbose: true });
     const moveList = this.chess.pgn({ max_width: 5, newline_char: ' ' }); 
-    const chessASCII = this.chess.ascii();
-    // Convert bestMoveForWhiteUCI to LAN
+    const chessASCII = this.chess.ascii(); 
+    // console.log(`v ${variantMoves}`);
+
+    const bestMoveForWhiteUCI =variantMoves.split(' ')[0];
+    
     let bestMoveForWhiteLAN =  this.convertCastlingUCItoSAN(bestMoveForWhiteUCI) || this.convertUCItoLAN(bestMoveForWhiteUCI, this.chess.fen());
     if (!bestMoveForWhiteLAN) {
-      console.error('Invalid best move for White:', bestMoveForWhiteUCI);
+      console.error('Invalid best move for White:', );
       return null;
     }
     // Get last move in LAN
@@ -373,8 +385,9 @@ getGamePhase() {
         You are the lowercase letters of the current FEN representation: ${this.chess.fen()}
         The move history is: ${moveList}.
         The best move for White is ${bestMoveForWhiteLAN}.
-        This is a visual representation of the board: ${boardLayout}
-        This is the best strategic game plan for white:${bestVariant}
+        This is a visual representation of the board: 
+        ${boardLayout}
+        This is the best strategic game plan for white:${variantMoves}
         Respond only with the JSON object in the exact format provided.
         When commenting on black, speak in the 1st person.  When commenting on white, speak in the 2nd
         When responding, double check that the piece you mention can legally do the move

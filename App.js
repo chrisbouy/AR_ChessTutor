@@ -10,7 +10,7 @@ const App = () => {
   const [topText, setTopText] = useState('Waiting on player');
   const [bottomText, setBottomText] = useState('Make your move!');
   const [illegalMoveSquares, setIllegalMoveSquares] = useState(null); // Track illegal move squares
-  const [advisedMove, setAdvisedMove] = useState({ from: null, to: null }); // Track advised move
+  const [advisedMove, setAdvisedMove] = useState([]); // Track advised move
 
   const topTextOpacity = useRef(new Animated.Value(1)).current;
   const bottomTextOpacity = useRef(new Animated.Value(1)).current;
@@ -97,8 +97,7 @@ const App = () => {
       setBoardState([...gameLogicRef.current.getBoardState()]);
 
       const fenAfterComputerMove = gameLogicRef.current.chess.fen();
-      const bestMoveForWhite = await gameLogicRef.current.getBestMoveFromLichess(fenAfterComputerMove);
-
+      const bestMoveForWhite = await gameLogicRef.current.getBestMoveFromLichess(fenAfterComputerMove, 'white');
       if (!bestMoveForWhite.uci) {
         console.error('bestMoveForWhite.uci is undefined');
         setTopText('Failed to get best move for player from Lichess');
@@ -107,11 +106,30 @@ const App = () => {
         setAdvisedMove({
           from: bestMoveForWhite.uci.slice(0, 2),
           to: bestMoveForWhite.uci.slice(2, 4),
+          fullVariant: bestMoveForWhite.fullVariant, // Store the full variant
+
         });
       }
 
-      const apiName = 'Perplexity';  
-      const analysis = await gameLogicRef.current.getAdviceFromAPI(apiName, bestMoveForWhite.uci);
+      if (bestMoveForWhite && bestMoveForWhite.fullVariant) {
+        // Convert the full variant string into an array of moves
+        const variantMoves = bestMoveForWhite.fullVariant.split(' ');
+      
+        // Map the moves to an array of from-to positions
+        const advisedMovesArray = variantMoves.map(move => ({
+          from: move.slice(0, 2),
+          to: move.slice(2, 4),
+        }));
+      
+        // Update the state with the array of advised moves
+        setAdvisedMove(advisedMovesArray);
+      }
+      
+
+      const apiName = 'GPT';  
+      //  console.log(`a ${bestMoveForWhite.fullVariant}`);
+
+      const analysis = await gameLogicRef.current.getAdviceFromAPI(apiName, bestMoveForWhite.fullVariant);
 
       if (!analysis) {
         setTopText('Failed to get analysis from AI');

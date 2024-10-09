@@ -1,5 +1,3 @@
-// Square.js
-
 import React from 'react';
 import { TouchableOpacity, View, StyleSheet, Image, Animated } from 'react-native';
 
@@ -48,10 +46,11 @@ const Square = ({ square, onSquarePress, selectedSquare, advisedMove, illegalMov
   const isIllegalToSquare = illegalMoveSquares?.to === square.position;
 
   let backgroundColor = square.color;
-  let boxShadowStyle = {};  // Define an empty box shadow style
+   let shadowStyle = {};  // Define an empty box shadow style
 
   if (isSelected && !isAdvisedFromSquare && !isAdvisedToSquare) {
     backgroundColor = '#ffff00'; // Yellow highlight for selected square (if not green)
+    shadowStyle = styles.shadow; // Apply shadow for selected square
   }
 
   if (isIllegalFromSquare || isIllegalToSquare) {
@@ -60,19 +59,20 @@ const Square = ({ square, onSquarePress, selectedSquare, advisedMove, illegalMov
       outputRange: [square.color, 'rgba(255, 0, 0, 0.8)'], // Red blink for illegal move
     });
   }
-    // Apply green glow for advised best move squares
-    if (isAdvisedFromSquare || isAdvisedToSquare) {
-      backgroundColor = 'rgba(0, 255, 0, 0.5)'; // Green background for advised move
-    }
+
+  if (isAdvisedFromSquare || isAdvisedToSquare) {
+//backgroundColor = 'rgba(0, 255, 0, 1)'; // Green background for advised move
+    shadowStyle = styles.shadow; 
+  }
 
   const pieceImage = getPieceImage(square.piece);
 
   return (
     <TouchableOpacity onPress={() => onSquarePress(square.position)}>
-    <Animated.View style={[styles.square, { backgroundColor }]}>
-      {pieceImage && <Image source={pieceImage} style={styles.pieceImage} />}
-    </Animated.View>
-  </TouchableOpacity>
+      <Animated.View style={[styles.square, { backgroundColor }, shadowStyle]}>
+        {pieceImage && <Image source={pieceImage} style={styles.pieceImage} />}
+      </Animated.View>
+    </TouchableOpacity>
   );
 };
 
@@ -89,6 +89,24 @@ const styles = StyleSheet.create({
     height: 40,
     resizeMode: 'contain',
   },
+  shadow: {
+    position: 'relative',
+    width: 45,
+    height: 45,
+    justifyContent: 'center',
+    alignItems: 'center',
+    // backgroundColor: '#FFF', // Ensure solid background
+    shadowColor: 'white', // Green shadow
+    shadowOffset: { width: 0, height: 0 }, // Apply shadow evenly around the square
+    shadowOpacity: 1, // Control shadow opacity
+    shadowRadius: 15, // Control shadow spread
+    elevation: 10, // Elevation for Android
+    // shadowColor: '#000',
+    // shadowOffset: { width: 0, height: 0 },
+    // shadowOpacity: 0.8,
+    // shadowRadius: 10,
+    // elevation: 10, // Android shadow
+  },
 });
- 
+
 export default Square;

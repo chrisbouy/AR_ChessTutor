@@ -126,7 +126,7 @@ const App = () => {
       }
       
 
-      const apiName = 'GPT';  
+      const apiName = 'Perplexity';  
       //  console.log(`a ${bestMoveForWhite.fullVariant}`);
 
       const analysis = await gameLogicRef.current.getAdviceFromAPI(apiName, bestMoveForWhite.fullVariant);

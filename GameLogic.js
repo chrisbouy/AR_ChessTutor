@@ -378,7 +378,7 @@ getGamePhase() {
   //   }
   // }
     const prompt = `
-        You are a chess tutor.  
+        You are a grand master chess tutor.  
         You are black and your last move was ${lastMoveLAN}.
         It's white's (my) turn.
         Game phase: ${phase}

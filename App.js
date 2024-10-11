@@ -79,7 +79,7 @@ const App = () => {
         }).start();
       });
       const fenAfterPlayerMove = gameLogicRef.current.chess.fen();
-      const bestMoveForBlack = await gameLogicRef.current.getBestMoveFromLichess(fenAfterPlayerMove, 'black');
+      const bestMoveForBlack = await gameLogicRef.current.getBestMoveFromLichess('black');
       if (!bestMoveForBlack) {
         setTopText("Failed to get computer's move from Lichess.");
         return;
@@ -91,7 +91,7 @@ const App = () => {
       }
       setBoardState([...gameLogicRef.current.getBoardState()]);
       const fenAfterComputerMove = gameLogicRef.current.chess.fen();
-      const bestMoveForWhite = await gameLogicRef.current.getBestMoveFromLichess(fenAfterComputerMove, 'white');
+      const bestMoveForWhite = await gameLogicRef.current.getBestMoveFromLichess('white');
       if (!bestMoveForWhite.uci) {
         console.error('bestMoveForWhite.uci is undefined');
         setTopText('Failed to get best move for player from Lichess');
@@ -109,7 +109,7 @@ const App = () => {
           from: move.slice(0, 2),
           to: move.slice(2, 4),
         }));
-        setAdvisedMove(advisedMovesArray);        // Update the state with the array of advised moves
+        // setAdvisedMove(advisedMovesArray);        // Update the state with the array of advised moves
       }       
       // console.log(`bestMoveForWhite.fullVariant ${bestMoveForWhite.fullVariant}`);
       // console.log(`bestMoveForBlack.fullVariant ${bestMoveForBlack.fullVariant}`);

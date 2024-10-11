@@ -58,7 +58,6 @@ const App = () => {
       }
       setBoardState([...gameLogicRef.current.getBoardState()]);
       setIllegalMoveSquares(null);
-
       // Fade out the current advice and analysis
       Animated.timing(topTextOpacity, {
         toValue: 0,
@@ -79,23 +78,18 @@ const App = () => {
           useNativeDriver: true,
         }).start();
       });
-
-      // Get Lichess response
       const fenAfterPlayerMove = gameLogicRef.current.chess.fen();
       const bestMoveForBlack = await gameLogicRef.current.getBestMoveFromLichess(fenAfterPlayerMove, 'black');
-
       if (!bestMoveForBlack) {
         setTopText("Failed to get computer's move from Lichess.");
         return;
       }
-
       const blackMoveResult = gameLogicRef.current.makeMove(bestMoveForBlack.san);
       if (!blackMoveResult) {
         setTopText("Computer's move failed.");
         return;
       }
       setBoardState([...gameLogicRef.current.getBoardState()]);
-
       const fenAfterComputerMove = gameLogicRef.current.chess.fen();
       const bestMoveForWhite = await gameLogicRef.current.getBestMoveFromLichess(fenAfterComputerMove, 'white');
       if (!bestMoveForWhite.uci) {
@@ -107,35 +101,25 @@ const App = () => {
           from: bestMoveForWhite.uci.slice(0, 2),
           to: bestMoveForWhite.uci.slice(2, 4),
           fullVariant: bestMoveForWhite.fullVariant, // Store the full variant
-
         });
       }
-
       if (bestMoveForWhite && bestMoveForWhite.fullVariant) {
-        // Convert the full variant string into an array of moves
-        const variantMoves = bestMoveForWhite.fullVariant.split(' ');
-      
-        // Map the moves to an array of from-to positions
-        const advisedMovesArray = variantMoves.map(move => ({
+        const variantMoves = bestMoveForWhite.fullVariant.split(' ');        // Convert the full variant string into an array of moves
+        const advisedMovesArray = variantMoves.map(move => ({        // Map the moves to an array of from-to positions
           from: move.slice(0, 2),
           to: move.slice(2, 4),
         }));
-      
-        // Update the state with the array of advised moves
-        setAdvisedMove(advisedMovesArray);
-      }
-      
+        setAdvisedMove(advisedMovesArray);        // Update the state with the array of advised moves
+      }       
+      // console.log(`bestMoveForWhite.fullVariant ${bestMoveForWhite.fullVariant}`);
+      // console.log(`bestMoveForBlack.fullVariant ${bestMoveForBlack.fullVariant}`);
 
-      const apiName = 'Perplexity';  
-      //  console.log(`a ${bestMoveForWhite.fullVariant}`);
-
-      const analysis = await gameLogicRef.current.getAdviceFromAPI(apiName, bestMoveForWhite.fullVariant);
-
+      const apiName = 'Gemini';  
+      const analysis = await gameLogicRef.current.getAdviceFromAPI(apiName, bestMoveForWhite.fullVariant, bestMoveForBlack.fullVariant);
       if (!analysis) {
         setTopText('Failed to get analysis from AI');
         return;
       }
-
       // Once Gemini response is received, fade out "Thinking..."
       Animated.timing(thinkingOpacity, {
         toValue: 0,

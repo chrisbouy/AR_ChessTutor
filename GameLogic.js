@@ -338,17 +338,21 @@ getGamePhase() {
         return null;
     }
 }
-  async getAdviceFromAPI(apiName,variantMoves) {
+  async getAdviceFromAPI(apiName,gameplanWhite, gameplanBlack) {
     const fen = this.chess.fen();
     const phase = this.getGamePhase();
     const boardLayout = this.chess.ascii();
     // const boardLayout = this.fenToBoardLayout(fen);
-    const moveHistory = this.chess.history({ verbose: true });
-    const moveList = this.chess.pgn({ max_width: 5, newline_char: ' ' }); 
+    const moveHistory = this.chess.history({ verbose: true }).map(move => {
+      return move.from + move.to + (move.promotion ? move.promotion : '');
+    });
+    const moveList = this.chess.history({ verbose: true });
+    const currentPGN = this.chess.pgn({ max_width: 5}); 
     const chessASCII = this.chess.ascii(); 
-    // console.log(`v ${variantMoves}`);
+    //  console.log(`game plan white ${gameplanWhite}`);
+    //  console.log(`game plan black ${gameplanBlack}`);
 
-    const bestMoveForWhiteUCI =variantMoves.split(' ')[0];
+    const bestMoveForWhiteUCI =gameplanWhite.split(' ')[0];
     
     let bestMoveForWhiteLAN =  this.convertCastlingUCItoSAN(bestMoveForWhiteUCI) || this.convertUCItoLAN(bestMoveForWhiteUCI, this.chess.fen());
     if (!bestMoveForWhiteLAN) {
@@ -356,12 +360,12 @@ getGamePhase() {
       return null;
     }
     // Get last move in LAN
-    let lastMoveLAN = '';
-    if (moveHistory.length > 0) {
-      const lastMove = moveHistory[moveHistory.length - 1];
-      lastMoveLAN = lastMove.san;
+    let lastMoveUCI = '';
+    if (moveList.length > 0) {
+      const lastMove = moveList[moveList.length - 1];
+      lastMoveUCI = lastMove.from + lastMove.to + (lastMove.promotion ? lastMove.promotion : '');
     } else {
-      lastMoveLAN = 'None';
+      lastMoveUCI = 'None';
     }
     // You are the lowercase letters of this chess game (represented in ASCII):
     // ${chessASCII}
@@ -379,21 +383,22 @@ getGamePhase() {
   // }
     const prompt = `
         You are a grand master chess tutor.  
-        You are black and your last move was ${lastMoveLAN}.
         It's white's (my) turn.
         Game phase: ${phase}
         You are the lowercase letters of the current FEN representation: ${this.chess.fen()}
-        The move history is: ${moveList}.
+        The move history is: ${moveHistory}.
         The best move for White is ${bestMoveForWhiteLAN}.
         This is a visual representation of the board: 
         ${boardLayout}
-        This is the best strategic game plan for white:${variantMoves}
+        This is the best strategic game plan for white: ${gameplanWhite}
+        This is the best strategic game plan for black: ${gameplanBlack}
+        Use all of this input to find existing grandmaster games online that have comments for these moves. If you find any, include these.
         Respond only with the JSON object in the exact format provided.
         When commenting on black, speak in the 1st person.  When commenting on white, speak in the 2nd
-        When responding, double check that the piece you mention can legally do the move
+        When responding, double check the visual representation 
         Respond in the following format
         {
-             "strategicAnalysisForBlack": "Computer's move: ${lastMoveLAN}  <A 80 character long strategic analysis for Black's last move>",
+             "strategicAnalysisForBlack": "Computer's move: ${lastMoveUCI}  <A 80 character long strategic analysis for Black's last move>",
 
           "explanationForWhiteBestMove": "Advice: ${bestMoveForWhiteLAN}  <A 80 character long explanation of why this is the best move for White>"
     

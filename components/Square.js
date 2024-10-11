@@ -95,11 +95,11 @@ const styles = StyleSheet.create({
     height: 45,
     justifyContent: 'center',
     alignItems: 'center',
-    // backgroundColor: '#FFF', // Ensure solid background
-    shadowColor: 'white', // Green shadow
+    backgroundColor: 'white', // Ensure solid background
+    shadowColor: 'white', // White shadow
     shadowOffset: { width: 0, height: 0 }, // Apply shadow evenly around the square
-    shadowOpacity: 1, // Control shadow opacity
-    shadowRadius: 15, // Control shadow spread
+    shadowOpacity: 115, // Control shadow opacity
+    shadowRadius: 25, // Control shadow spread
     elevation: 10, // Elevation for Android
     // shadowColor: '#000',
     // shadowOffset: { width: 0, height: 0 },

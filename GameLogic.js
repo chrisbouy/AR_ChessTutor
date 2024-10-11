@@ -88,13 +88,16 @@ class GameLogic {
     return piece ? { type: piece.type, color: piece.color } : null;
   }  
  
-  async getBestMoveFromLichess(fen, color) {
+  async getBestMoveFromLichess(color) {
     const maxAttempts = 5; // Number of retry attempts
-    const retryDelay = 3000; // 3 seconds between retries
+    const retryDelay = 6000; // 6 seconds between retries
     let attempt = 0;
   
     const tryFetchingBestMove = async () => {
       try {
+        const fen = this.chess.fen();
+        console.log(`Sending request to Lichess with FEN: ${fen}`);
+  
         const response = await fetch(`https://lichess.org/api/cloud-eval?fen=${encodeURIComponent(fen)}`, {
           method: 'GET',
           headers: {
@@ -103,22 +106,30 @@ class GameLogic {
         });
   
         if (!response.ok) {
-          throw new Error('Failed to fetch best move from Lichess');
+          console.log(response);
+          if (response.status === 404) {
+            console.error(`Lichess API request failed with status: 404 - FEN likely represents an illegal position.`);
+            console.error(`Move history leading to this FEN:  ${this.chess.history({ verbose: true }).map(move => {
+      return move.from + move.to + (move.promotion ? move.promotion : '');
+    })}`);
+            console.error(`The FEN is: ${fen}`);
+            return null; // No point retrying if the FEN is invalid for Lichess
+          } else {
+            console.error(`Lichess API request failed with status: ${response.status}`);
+            throw new Error(`Failed to fetch best move from Lichess - status: ${response.status}`);
+          }
         }
   
         const data = await response.json();
         console.log('Lichess API Response:', data);
   
-        // Handle Lichess API response
         if (data.pvs && data.pvs.length > 0) {
-          // Find the variant with the highest centipawn value
           let bestVariant = data.pvs[0];
           data.pvs.forEach((variant) => {
             if (variant.cp > bestVariant.cp) {
               bestVariant = variant;
             }
           });
-          // Get the first move of the best variant
           const bestMoveUCI = bestVariant.moves.split(' ')[0];
           const bestMoveSAN = this.convertCastlingUCItoSAN(bestMoveUCI) || this.convertUCItoSAN(bestMoveUCI, fen);
   
@@ -157,6 +168,8 @@ class GameLogic {
       retry(); // Start the first attempt
     });
   }
+  
+  
   
 getBestVariantWithHighestCP(data) {
   if (!data.pvs || data.pvs.length === 0) {

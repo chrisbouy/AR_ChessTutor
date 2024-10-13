@@ -49,7 +49,7 @@ const Square = ({ square, onSquarePress, selectedSquare, advisedMove, illegalMov
    let shadowStyle = {};  // Define an empty box shadow style
 
   if (isSelected && !isAdvisedFromSquare && !isAdvisedToSquare) {
-    backgroundColor = '#ffff00'; // Yellow highlight for selected square (if not green)
+    backgroundColor = '#ffeb3b'; // Yellow highlight for selected square (if not green)
     shadowStyle = styles.shadow; // Apply shadow for selected square
   }
 

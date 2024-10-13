@@ -73,13 +73,27 @@ class GameLogic {
 
   makeMove(move) {
     try {
+      // Get all legal moves for the current position
+      // const legalMoves = this.chess.moves({ verbose: true });
+  
+      // // Check if the move is in the list of legal moves
+      // const isMoveLegal = legalMoves.some((legalMove) => legalMove.san === move);
+  
+      // if (!isMoveLegal) {
+      //   console.error(`Invalid move: ${move}`);
+      //   return null;
+      // }
+  
+      // Apply the move if it is valid
       const result = this.chess.move(move);
       return result || null;
     } catch (error) {
-      console.error('Error making move:', error);
+      // console.error('Error making move:', error);
       return null;
     }
   }
+  
+  
 
   getPieceAt(position) {
     const rowIndex = 8 - parseInt(position[1]);
@@ -89,91 +103,96 @@ class GameLogic {
   }  
  
   async getBestMoveFromLichess(color) {
-    const maxAttempts = 5; // Number of retry attempts
-    const retryDelay = 6000; // 6 seconds between retries
-    let attempt = 0;
+    try {
+      const fen = this.chess.fen();
+      console.log(`Sending request to Lichess with FEN: ${fen}`);
+      const response = await fetch(`https://lichess.org/api/cloud-eval?fen=${encodeURIComponent(fen)}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer lip_iioABYocYPTzLDGEnMrt`, // Replace with your Lichess API token
+        },
+      });
   
-    const tryFetchingBestMove = async () => {
-      try {
-        const fen = this.chess.fen();
-        console.log(`Sending request to Lichess with FEN: ${fen}`);
+      const data = await response.json();
+      if (data.error) {
+        // console.error('Lichess API error:', data.error);
+        return null; // Return null to trigger AI fallback
+      }
   
-        const response = await fetch(`https://lichess.org/api/cloud-eval?fen=${encodeURIComponent(fen)}`, {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer lip_iioABYocYPTzLDGEnMrt`, // Replace with your Lichess API token
-          },
+      // console.log('Lichess API Response:', data);
+      if (data.pvs && data.pvs.length > 0) {
+        let bestVariant = data.pvs[0];
+        data.pvs.forEach((variant) => {
+          if (variant.cp > bestVariant.cp) {
+            bestVariant = variant;
+          }
         });
-  
-        if (!response.ok) {
-          console.log(response);
-          if (response.status === 404) {
-            console.error(`Lichess API request failed with status: 404 - FEN likely represents an illegal position.`);
-            console.error(`Move history leading to this FEN:  ${this.chess.history({ verbose: true }).map(move => {
-      return move.from + move.to + (move.promotion ? move.promotion : '');
-    })}`);
-            console.error(`The FEN is: ${fen}`);
-            return null; // No point retrying if the FEN is invalid for Lichess
-          } else {
-            console.error(`Lichess API request failed with status: ${response.status}`);
-            throw new Error(`Failed to fetch best move from Lichess - status: ${response.status}`);
-          }
-        }
-  
-        const data = await response.json();
-        console.log('Lichess API Response:', data);
-  
-        if (data.pvs && data.pvs.length > 0) {
-          let bestVariant = data.pvs[0];
-          data.pvs.forEach((variant) => {
-            if (variant.cp > bestVariant.cp) {
-              bestVariant = variant;
-            }
-          });
-          const bestMoveUCI = bestVariant.moves.split(' ')[0];
-          const bestMoveSAN = this.convertCastlingUCItoSAN(bestMoveUCI) || this.convertUCItoSAN(bestMoveUCI, fen);
-  
-          if (bestMoveSAN) {
-            return { uci: bestMoveUCI, san: bestMoveSAN, fullVariant: bestVariant.moves };
-          } else {
-            console.error('Invalid best move from Lichess');
-            return null;
-          }
+        const bestMoveUCI = bestVariant.moves.split(' ')[0];
+        const bestMoveSAN = this.convertCastlingUCItoSAN(bestMoveUCI) || this.convertUCItoSAN(bestMoveUCI, fen);
+        if (bestMoveSAN) {
+          return { uci: bestMoveUCI, san: bestMoveSAN, fullVariant: bestVariant.moves };
         } else {
-          console.error('No moves found in Lichess API response.');
+          // console.error('Invalid best move from Lichess');
           return null;
         }
-      } catch (error) {
-        console.error('Error fetching best move from Lichess:', error);
-        return null;
+      } else {
+        // console.error('No moves found in Lichess API response.');
+        return null; // No moves, trigger fallback to AI
       }
+    } catch (error) {
+      // console.error('Error fetching best move from Lichess:', error);
+      throw error; // Rethrow error to trigger fallback in App.js
+    }
+  }
+  
+  
+  makeAIMove() {
+    const possibleMoves = this.chess.moves(); // Get all possible moves
+  
+    if (possibleMoves.length === 0) {
+      // console.error('No legal moves available for AI.');
+      return null;  // No legal moves
+    }
+  
+    // Log available moves to debug
+    // console.log('Available moves for AI:', possibleMoves);
+  
+    // Select a random or the best move from possible moves
+    const selectedMove = this.selectBestMove(possibleMoves);
+  
+    // Apply the selected move
+    const moveResult = this.chess.move(selectedMove);
+  
+    if (!moveResult) {
+      // console.error('AI failed to make a valid move.');
+      return null;  // Move failed, return null
+    }
+  
+    const bestMoveUCI = moveResult.from + moveResult.to;
+    const dummyFullVariant = [bestMoveUCI]; // Create a dummy variant with the best move as the first item
+  
+    return {
+      move: moveResult, // Last move in verbose format
+      boardState: this.getBoardState(),  // Updated board state
+      status: this.getGameStatus(),  // Game status (e.g., ongoing, checkmate)
+      fullVariant: dummyFullVariant.join(' '), // Return the dummy fullVariant array as a string
+      uci: bestMoveUCI,  // Best move in UCI format
+      san: moveResult.san,  // Best move in SAN format
     };
-  
-    return new Promise((resolve, reject) => {
-      const retry = async () => {
-        attempt++;
-        console.log(`Attempt ${attempt} to fetch best move from Lichess...`);
-  
-        const result = await tryFetchingBestMove();
-  
-        if (result) {
-          resolve(result); // Successfully got the best move, resolve the promise
-        } else if (attempt < maxAttempts) {
-          setTimeout(retry, retryDelay); // Wait and retry
-        } else {
-          reject('Failed to get the best move after multiple attempts.');
-        }
-      };
-  
-      retry(); // Start the first attempt
-    });
   }
   
   
   
+  
+
+  selectBestMove(possibleMoves) {
+    const randomIndex = Math.floor(Math.random() * possibleMoves.length);
+    return possibleMoves[randomIndex];
+  }
+  
 getBestVariantWithHighestCP(data) {
   if (!data.pvs || data.pvs.length === 0) {
-      console.error('No variants found in Lichess API response.');
+      // console.error('No variants found in Lichess API response.');
       return null;
   }
 
@@ -202,7 +221,7 @@ getGamePhase() {
         },
         body: JSON.stringify({
           
-          model: 'gpt-4o', // or the appropriate model name
+          model: 'gpt-4o-mini', // or the appropriate model name
           messages: [
             {
               role: 'user',
@@ -210,7 +229,7 @@ getGamePhase() {
             },
           ],
           max_tokens: 200, // Adjust as needed
-          temperature: 0.1, // Adjust as needed
+          temperature: 1, // Adjust as needed
       }),
       });
       const jsonResponse = await response.json();
@@ -228,45 +247,50 @@ getGamePhase() {
         adviceSummary: explanationForWhiteBestMove,
       };
   } catch (error) {
-    console.error('Error fetching analysis from AI:', error);
+    // console.error('Error fetching analysis from AI:', error);
     return null;
   }
   }
   async getAdviceFromGemini(prompt) {
+//       const { GoogleGenerativeAI } = require("@google/generative-ai");
+// const genAI = new GoogleGenerativeAI("AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE");
+// const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+// const result = await model.generateContent(prompt);
+// console.log(result.response.text());
 
-    try {
-      // console.log("Explanation Prompt: ", prompt);
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          "contents": [
-            {
-              "role": "user",
-              "parts": [{"text": prompt}]
-            }
-          ]
-        }),
-      });
-      const data = await response.json();
-      // console.log("Gemini API response:", JSON.stringify(data, null, 2)); // Log full data in readable format
-      // Extract the content from the response
-      if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
-        let explanation = data.candidates[0].content.parts[0].text; // Adjust this depending on the exact content structure
-        // const responseText = jsonResponse.choices[0].message.content;
-        // console.log(`response text: ${responseText}`)
-        const { strategicAnalysisForBlack, explanationForWhiteBestMove } = this.extractSectionsFromAdvice(
-          explanation
-        );
-        return {
-          analysisSummary: strategicAnalysisForBlack,
-          adviceSummary: explanationForWhiteBestMove,
-        };
-      }
-    } catch (error) {
-      console.error('Error fetching analysis from AI:', error);
-      return null;
-    }
+try {
+  // console.log("Explanation Prompt: ", prompt);
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      "contents": [
+        {
+          "role": "user",
+          "parts": [{"text": prompt}]
+        }
+      ]
+    }),
+  });
+  const data = await response.json();
+  // console.log("Gemini API response:", JSON.stringify(data, null, 2)); // Log full data in readable format
+  // Extract the content from the response
+  if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
+    let explanation = data.candidates[0].content.parts[0].text; // Adjust this depending on the exact content structure
+    // const responseText = jsonResponse.choices[0].message.content;
+    // console.log(`response text: ${responseText}`)
+    const { strategicAnalysisForBlack, explanationForWhiteBestMove } = this.extractSectionsFromAdvice(
+      explanation
+    );
+    return {
+      analysisSummary: strategicAnalysisForBlack,
+      adviceSummary: explanationForWhiteBestMove,
+    };
+  }
+} catch (error) {
+  // console.error('Error fetching analysis from AI:', error);
+  return null;
+}
   }
   async getAdviceFromPerplexity(prompt) {
   
@@ -347,7 +371,7 @@ getGamePhase() {
             };
         }
     } catch (error) {
-        console.error('Error fetching analysis from Claude:', error);
+        // console.error('Error fetching analysis from Claude:', error);
         return null;
     }
 }
@@ -366,10 +390,12 @@ getGamePhase() {
     //  console.log(`game plan black ${gameplanBlack}`);
 
     const bestMoveForWhiteUCI =gameplanWhite.split(' ')[0];
-    
+    console.log(`bestMoveForWhiteUCI ${bestMoveForWhiteUCI}`);
     let bestMoveForWhiteLAN =  this.convertCastlingUCItoSAN(bestMoveForWhiteUCI) || this.convertUCItoLAN(bestMoveForWhiteUCI, this.chess.fen());
+    console.log(`bestMoveForWhiteLAN ${bestMoveForWhiteLAN}`);
+
     if (!bestMoveForWhiteLAN) {
-      console.error('Invalid best move for White:', );
+      // console.error('Invalid best move for White:', );
       return null;
     }
     // Get last move in LAN
@@ -394,28 +420,49 @@ getGamePhase() {
   //     "bestMove": "The recommended best move for White."
   //   }
   // }
-    const prompt = `
-        You are a grand master chess tutor.  
-        It's white's (my) turn.
-        Game phase: ${phase}
-        You are the lowercase letters of the current FEN representation: ${this.chess.fen()}
-        The move history is: ${moveHistory}.
-        The best move for White is ${bestMoveForWhiteLAN}.
-        This is a visual representation of the board: 
-        ${boardLayout}
-        This is the best strategic game plan for white: ${gameplanWhite}
-        This is the best strategic game plan for black: ${gameplanBlack}
-        Use all of this input to find existing grandmaster games online that have comments for these moves. If you find any, include these.
-        Respond only with the JSON object in the exact format provided.
-        When commenting on black, speak in the 1st person.  When commenting on white, speak in the 2nd
-        When responding, double check the visual representation 
-        Respond in the following format
-        {
-             "strategicAnalysisForBlack": "Computer's move: ${lastMoveUCI}  <A 80 character long strategic analysis for Black's last move>",
-
-          "explanationForWhiteBestMove": "Advice: ${bestMoveForWhiteLAN}  <A 80 character long explanation of why this is the best move for White>"
+  
+    // const prompt = `
+    //     You are Magnus Carlsen.  
+    //     It's white's (my) turn.
+    //     Game phase: ${phase}
+    //     You are the lowercase letters of the current FEN representation: ${this.chess.fen()}
+    //     The move history is: ${moveHistory}.
+    //     The best move for White is ${bestMoveForWhiteLAN}.
+    //     `+
+    //    //This is a visual representation of the board: 
+    //     //${boardLayout}
+    //     `This is the best strategic game plan for white: ${gameplanWhite}
+    //     This is the best strategic game plan for black: ${gameplanBlack}
+    //     Use all of this input to find existing grandmaster games online that have comments for these moves. If you find any, include these.
+    //     Respond only with the JSON object in the exact format provided.
+    //     When commenting on black, speak in the 1st person.  When commenting on white, speak in the 2nd
+    //    ` +
+    //    // When responding, double check the visual representation.
+    //     `In your response, do not say anything unless you absolutely know it to be true.
+    //     In your response, do not mention piece names.  Refer to pieces by position instead.
+    //     Respond in the following format
+    //     {
+    //          "strategicAnalysisForBlack": "Computer's move: ${lastMoveUCI}  <A 80 character long strategic analysis for Black's last move>",
+    //       "explanationForWhiteBestMove": "Advice: ${bestMoveForWhiteLAN}  <A 80 character long explanation of why this is the best move for White>"
     
-          }`;
+    //       }`;
+    const prompt = `
+You are playing black and it is my turn.
+
+This is the current state of the game use this to work out where the pieces are on the board:
+
+FEN:  ${this.chess.fen()}
+Move History: ${moveHistory}
+
+In your response, do not mention piece names.  Refer to pieces by position instead.
+
+Use the following single blob of JSON. Do not include any other information.
+
+    {
+         "strategicAnalysisForBlack": "Computer's move: ${lastMoveUCI}  A 20 word explanation of why this was a good move for Black",
+      "explanationForWhiteBestMove": "Advice: ${bestMoveForWhiteLAN}  A 20 word explanation of why this is a good move for White"
+
+      }`;
     console.log("Explanation Prompt: ", prompt);
     switch (apiName) {
       case 'GPT':
@@ -473,22 +520,26 @@ getGamePhase() {
 
     const strategicAnalysisForBlack = parsedResponse.strategicAnalysisForBlack;
     const explanationForWhiteBestMove = parsedResponse.explanationForWhiteBestMove;
-
+console.log(strategicAnalysisForBlack);
+console.log(explanationForWhiteBestMove);
     return { strategicAnalysisForBlack, explanationForWhiteBestMove };
   } catch (e) {
-    console.error("Error parsing the assistant's response:", e);
+    // console.error("Error parsing the assistant's response:", e);
     return {};
   }
   }
   convertUCItoLAN(uciMove, fen) {
     const chessInstance = new Chess(fen);
     const moves = chessInstance.moves({ verbose: true });
+    console.log(`moves ${moves}`);
     const move = moves.find(
       (m) =>
         m.from === uciMove.slice(0, 2) &&
         m.to === uciMove.slice(2, 4) &&
         (uciMove.length > 4 ? m.promotion === uciMove.slice(4) : true)
     );
+    console.log(`move ${move}`);
+
     return move ? move.lan : null;
   }
   getMoveListLAN() {

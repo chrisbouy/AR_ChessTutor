@@ -10,11 +10,12 @@ const App = () => {
   const [topText, setTopText] = useState('Waiting on player');
   const [bottomText, setBottomText] = useState('Make your move!');
   const [illegalMoveSquares, setIllegalMoveSquares] = useState(null); // Track illegal move squares
-  const [advisedMove, setAdvisedMove] = useState([]); // Track advised move
+  const [advisedMove, setAdvisedMove] = useState(null); // Track advised move, but don't show until analysis fades in
 
   const topTextOpacity = useRef(new Animated.Value(1)).current;
   const bottomTextOpacity = useRef(new Animated.Value(1)).current;
   const thinkingOpacity = useRef(new Animated.Value(0)).current;
+  const analysisComplete = useRef(false); // To track when analysis has faded in
 
   useEffect(() => {
     setBoardState(gameLogicRef.current.getBoardState());
@@ -28,10 +29,11 @@ const App = () => {
     setTopText('Waiting on player');
     setBottomText('Make your move!');
     setIllegalMoveSquares(null);
-    setAdvisedMove({ from: null, to: null });
+    setAdvisedMove(null); // Reset advised move
     topTextOpacity.setValue(1);
     bottomTextOpacity.setValue(1);
     thinkingOpacity.setValue(0);
+    analysisComplete.current = false;
     console.log('Game reloaded successfully.');
   };
 
@@ -58,6 +60,7 @@ const App = () => {
       }
       setBoardState([...gameLogicRef.current.getBoardState()]);
       setIllegalMoveSquares(null);
+
       // Fade out the current advice and analysis
       Animated.timing(topTextOpacity, {
         toValue: 0,
@@ -78,19 +81,28 @@ const App = () => {
           useNativeDriver: true,
         }).start();
       });
+
       const fenAfterPlayerMove = gameLogicRef.current.chess.fen();
-      const bestMoveForBlack = await gameLogicRef.current.getBestMoveFromLichess('black');
+      let bestMoveForBlack = null;
+      try {
+        bestMoveForBlack = await gameLogicRef.current.getBestMoveFromLichess('black');
+      } catch (error) {
+        console.error('Lichess API failed, falling back to AI:', error);
+        bestMoveForBlack = await gameLogicRef.current.makeAIMove();
+      }
+
       if (!bestMoveForBlack) {
         setTopText("Failed to get computer's move from Lichess.");
         return;
       }
+
       const blackMoveResult = gameLogicRef.current.makeMove(bestMoveForBlack.san);
       if (!blackMoveResult) {
         setTopText("Computer's move failed.");
         return;
       }
       setBoardState([...gameLogicRef.current.getBoardState()]);
-      const fenAfterComputerMove = gameLogicRef.current.chess.fen();
+
       const bestMoveForWhite = await gameLogicRef.current.getBestMoveFromLichess('white');
       if (!bestMoveForWhite.uci) {
         console.error('bestMoveForWhite.uci is undefined');
@@ -100,33 +112,23 @@ const App = () => {
         setAdvisedMove({
           from: bestMoveForWhite.uci.slice(0, 2),
           to: bestMoveForWhite.uci.slice(2, 4),
-          fullVariant: bestMoveForWhite.fullVariant, // Store the full variant
         });
       }
-      if (bestMoveForWhite && bestMoveForWhite.fullVariant) {
-        const variantMoves = bestMoveForWhite.fullVariant.split(' ');        // Convert the full variant string into an array of moves
-        const advisedMovesArray = variantMoves.map(move => ({        // Map the moves to an array of from-to positions
-          from: move.slice(0, 2),
-          to: move.slice(2, 4),
-        }));
-        // setAdvisedMove(advisedMovesArray);        // Update the state with the array of advised moves
-      }       
-      // console.log(`bestMoveForWhite.fullVariant ${bestMoveForWhite.fullVariant}`);
-      // console.log(`bestMoveForBlack.fullVariant ${bestMoveForBlack.fullVariant}`);
 
-      const apiName = 'Gemini';  
+      // Fetch analysis from the API
+      const apiName = 'GPT';
       const analysis = await gameLogicRef.current.getAdviceFromAPI(apiName, bestMoveForWhite.fullVariant, bestMoveForBlack.fullVariant);
       if (!analysis) {
         setTopText('Failed to get analysis from AI');
         return;
       }
-      // Once Gemini response is received, fade out "Thinking..."
+
+      // Fade out "Thinking..." and show the analysis
       Animated.timing(thinkingOpacity, {
         toValue: 0,
         duration: 500,
         useNativeDriver: true,
       }).start(() => {
-        // Update text and fade it in
         setTopText(analysis.analysisSummary);
         setBottomText(analysis.adviceSummary);
 
@@ -140,7 +142,9 @@ const App = () => {
           toValue: 1,
           duration: 500,
           useNativeDriver: true,
-        }).start();
+        }).start(() => {
+          analysisComplete.current = true; // Mark analysis as complete
+        });
       });
 
     } catch (error) {
@@ -164,7 +168,7 @@ const App = () => {
         <Text style={styles.reloadButtonText}>Reload</Text>
       </TouchableOpacity>
 
-      {/* Animated text for top advice */}
+      {/* Animated top advice text, placed 20px from the chessboard */}
       <Animated.Text style={[styles.topText, { opacity: topTextOpacity }]}>
         {topText}
       </Animated.Text>
@@ -179,9 +183,10 @@ const App = () => {
         onSquarePress={onSquarePress}
         selectedSquare={selectedSquare}
         illegalMoveSquares={illegalMoveSquares}
-        advisedMove={advisedMove}
+        advisedMove={analysisComplete.current ? advisedMove : null} // Show advised move after analysis
       />
 
+      {/* Bottom text for analysis/advice */}
       <Animated.Text style={[styles.bottomText, { opacity: bottomTextOpacity }]}>
         {bottomText}
       </Animated.Text>

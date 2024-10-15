@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Animated } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Animated, Dimensions } from 'react-native';
 import ChessBoard2D from './components/ChessBoard2D';
 import GameLogic from './GameLogic';
 
@@ -16,6 +16,9 @@ const App = () => {
   const bottomTextOpacity = useRef(new Animated.Value(1)).current;
   const thinkingOpacity = useRef(new Animated.Value(0)).current;
   const analysisComplete = useRef(false); // To track when analysis has faded in
+
+  // Get screen width for dynamic sizing
+  const screenWidth = Dimensions.get('window').width;
 
   useEffect(() => {
     setBoardState(gameLogicRef.current.getBoardState());
@@ -168,7 +171,7 @@ const App = () => {
         <Text style={styles.reloadButtonText}>Reload</Text>
       </TouchableOpacity>
 
-      {/* Animated top advice text, placed 20px from the chessboard */}
+      {/* Animated top advice text */}
       <Animated.Text style={[styles.topText, { opacity: topTextOpacity }]}>
         {topText}
       </Animated.Text>
@@ -178,13 +181,16 @@ const App = () => {
         Thinking...
       </Animated.Text>
 
-      <ChessBoard2D
-        boardState={boardState}
-        onSquarePress={onSquarePress}
-        selectedSquare={selectedSquare}
-        illegalMoveSquares={illegalMoveSquares}
-        advisedMove={analysisComplete.current ? advisedMove : null} // Show advised move after analysis
-      />
+      {/* Dynamically sized chessboard */}
+      <View style={{ width: screenWidth * 0.9 }}> {/* Board scales with screen width */}
+        <ChessBoard2D
+          boardState={boardState}
+          onSquarePress={onSquarePress}
+          selectedSquare={selectedSquare}
+          illegalMoveSquares={illegalMoveSquares}
+          advisedMove={analysisComplete.current ? advisedMove : null} // Show advised move after analysis
+        />
+      </View>
 
       {/* Bottom text for analysis/advice */}
       <Animated.Text style={[styles.bottomText, { opacity: bottomTextOpacity }]}>
@@ -198,7 +204,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#191d24',
-    padding: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -218,23 +223,23 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   topText: {
-    fontSize: 26.5,
-    marginTop: 20,
+    fontSize: 20, // Dynamically size text for smaller screens
+    marginTop: 10,
     marginBottom: 20,
     color: '#aec4e8',
     textAlign: 'center',
   },
   bottomText: {
-    fontSize: 26.5,
+    fontSize: 20, // Dynamically size text for smaller screens
     marginTop: 20,
     color: '#aec4e8',
     textAlign: 'center',
   },
   thinkingText: {
-    fontSize: 26.5,
+    fontSize: 22,
     color: '#ffcc00',
     textAlign: 'center',
-    marginTop: 20,
+    marginTop: 10,
     position: 'absolute',
     top: 50,
     opacity: 0, // Initially invisible

@@ -7,13 +7,14 @@ const App = () => {
   const gameLogicRef = useRef(new GameLogic());
   const [boardState, setBoardState] = useState(gameLogicRef.current.getBoardState());
   const [selectedSquare, setSelectedSquare] = useState(null); // Track the selected square
-  const [topText, setTopText] = useState('Waiting on player');
-  const [bottomText, setBottomText] = useState('Make your move!');
+  const [openingName, setOpeningName] = useState('');
+  const [openingAnalysis, setOpeningAnalysis] = useState('');
+  const [recommendedNextMoves, setRecommendedNextMoves] = useState('');
+  
   const [illegalMoveSquares, setIllegalMoveSquares] = useState(null); // Track illegal move squares
   const [advisedMove, setAdvisedMove] = useState(null); // Track advised move, but don't show until analysis fades in
 
-  const topTextOpacity = useRef(new Animated.Value(1)).current;
-  const bottomTextOpacity = useRef(new Animated.Value(1)).current;
+  const textOpacity = useRef(new Animated.Value(1)).current;
   const thinkingOpacity = useRef(new Animated.Value(0)).current;
   const analysisComplete = useRef(false); // To track when analysis has faded in
 
@@ -22,37 +23,32 @@ const App = () => {
   }, []);
 
   const handleReload = () => {
-    console.log('Reloading the game...');
     gameLogicRef.current = new GameLogic();
     setBoardState(gameLogicRef.current.getBoardState());
     setSelectedSquare(null);
-    setTopText('Waiting on player');
-    setBottomText('Make your move!');
     setIllegalMoveSquares(null);
-    setAdvisedMove(null); // Reset advised move
-    topTextOpacity.setValue(1);
-    bottomTextOpacity.setValue(1);
+    setAdvisedMove(null);
+    setOpeningName('');
+    setOpeningAnalysis('');
+    setRecommendedNextMoves('');
+    textOpacity.setValue(1);
     thinkingOpacity.setValue(0);
     analysisComplete.current = false;
-    console.log('Game reloaded successfully.');
   };
+  
 
   const onSquarePress = (position) => {
     if (!selectedSquare) {
       if (gameLogicRef.current.getPieceAt(position)) {
         setSelectedSquare(position);
-        console.log(`Selected square: ${position}`);
       }
     } else {
-      console.log(`Attempting move from ${selectedSquare} to ${position}`);
       onMove(selectedSquare, position);
       setSelectedSquare(null);
     }
   };
-
   const onMove = async (fromSquare, toSquare) => {
     try {
-      console.log(`Attempting to move from ${fromSquare} to ${toSquare}...`);
       const playerMove = gameLogicRef.current.makeMove({ from: fromSquare, to: toSquare });
       if (!playerMove) {
         setIllegalMoveSquares({ from: fromSquare, to: toSquare });
@@ -60,53 +56,43 @@ const App = () => {
       }
       setBoardState([...gameLogicRef.current.getBoardState()]);
       setIllegalMoveSquares(null);
-
       // Fade out the current advice and analysis
-      Animated.timing(topTextOpacity, {
-        toValue: 0,
-        duration: 500,
-        useNativeDriver: true,
-      }).start();
-
-      Animated.timing(bottomTextOpacity, {
+      Animated.timing(textOpacity, {
         toValue: 0,
         duration: 500,
         useNativeDriver: true,
       }).start(() => {
         // Once advice fades out, show "Thinking..."
-        setTopText('Thinking...');
         Animated.timing(thinkingOpacity, {
           toValue: 1,
           duration: 500,
           useNativeDriver: true,
         }).start();
       });
-
-      const fenAfterPlayerMove = gameLogicRef.current.chess.fen();
-      let bestMoveForBlack = null;
-      try {
-        bestMoveForBlack = await gameLogicRef.current.getBestMoveFromLichess('black');
-      } catch (error) {
-        console.error('Lichess API failed, falling back to AI:', error);
-        bestMoveForBlack = await gameLogicRef.current.makeAIMove();
-      }
-
+      // Get the best move for Black
+      let bestMoveForBlack = await gameLogicRef.current.getBestMoveFromLichess('black');
       if (!bestMoveForBlack) {
-        setTopText("Failed to get computer's move from Lichess.");
-        return;
+        console.log('Lichess API failed for Black, falling back to AI.');
+        bestMoveForBlack = await gameLogicRef.current.makeAIMoveForBlack();
       }
 
       const blackMoveResult = gameLogicRef.current.makeMove(bestMoveForBlack.san);
       if (!blackMoveResult) {
-        setTopText("Computer's move failed.");
+        setOpeningName("Computer's move failed.");
         return;
       }
       setBoardState([...gameLogicRef.current.getBoardState()]);
 
-      const bestMoveForWhite = await gameLogicRef.current.getBestMoveFromLichess('white');
-      if (!bestMoveForWhite.uci) {
+      // Get the best move for White
+      let bestMoveForWhite = await gameLogicRef.current.getBestMoveFromLichess('white');
+      if (!bestMoveForWhite) {
+        console.log('Lichess API failed for White, falling back to AI.');
+        bestMoveForWhite = await gameLogicRef.current.getAdvisedMoveFromAI_ForWhite();
+      }
+
+      if (!bestMoveForWhite || !bestMoveForWhite.uci) {
         console.error('bestMoveForWhite.uci is undefined');
-        setTopText('Failed to get best move for player from Lichess');
+        setOpeningName('Failed to get best move for player from Lichess.');
         return;
       } else {
         setAdvisedMove({
@@ -116,10 +102,13 @@ const App = () => {
       }
 
       // Fetch analysis from the API
-      const apiName = 'GPT';
-      const analysis = await gameLogicRef.current.getAdviceFromAPI(apiName, bestMoveForWhite.fullVariant, bestMoveForBlack.fullVariant);
+      const apiName = 'Gemini'; // Change to 'Gemini' if needed
+      const analysis = await gameLogicRef.current.getAdviceFromAPI(apiName);
+
       if (!analysis) {
-        setTopText('Failed to get analysis from AI');
+        setOpeningName('Failed to get analysis from AI');
+        setOpeningAnalysis('');
+        setRecommendedNextMoves('');
         return;
       }
 
@@ -129,16 +118,12 @@ const App = () => {
         duration: 500,
         useNativeDriver: true,
       }).start(() => {
-        setTopText(analysis.analysisSummary);
-        setBottomText(analysis.adviceSummary);
+        // Set the new state variables
+        setOpeningName(analysis.openingName);
+        setOpeningAnalysis(analysis.openingAnalysis);
+        setRecommendedNextMoves(analysis.recommendedNextMoves);
 
-        Animated.timing(topTextOpacity, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }).start();
-
-        Animated.timing(bottomTextOpacity, {
+        Animated.timing(textOpacity, {
           toValue: 1,
           duration: 500,
           useNativeDriver: true,
@@ -146,13 +131,14 @@ const App = () => {
           analysisComplete.current = true; // Mark analysis as complete
         });
       });
-
-    } catch (error) {
+    }
+    catch (error) {
       console.error('Error during move:', error);
-      setTopText('Error processing move, please try again.');
+      setOpeningName('Error processing move, please try again.');
       setIllegalMoveSquares({ from: fromSquare, to: toSquare });
     }
   };
+  
 
   if (!boardState || boardState.length === 0) {
     return (
@@ -167,31 +153,35 @@ const App = () => {
       <TouchableOpacity style={styles.reloadButton} onPress={handleReload}>
         <Text style={styles.reloadButtonText}>Reload</Text>
       </TouchableOpacity>
-
-      {/* Animated top advice text, placed 20px from the chessboard */}
-      <Animated.Text style={[styles.topText, { opacity: topTextOpacity }]}>
-        {topText}
-      </Animated.Text>
+  
+      <View style={styles.chessboardContainer}>
+        <ChessBoard2D
+          boardState={boardState}
+          onSquarePress={onSquarePress}
+          selectedSquare={selectedSquare}
+          illegalMoveSquares={illegalMoveSquares}
+          advisedMove={analysisComplete.current ? advisedMove : null}
+        />
+      </View>
 
       {/* Thinking text */}
       <Animated.Text style={[styles.thinkingText, { opacity: thinkingOpacity }]}>
         Thinking...
       </Animated.Text>
 
-      <ChessBoard2D
-        boardState={boardState}
-        onSquarePress={onSquarePress}
-        selectedSquare={selectedSquare}
-        illegalMoveSquares={illegalMoveSquares}
-        advisedMove={analysisComplete.current ? advisedMove : null} // Show advised move after analysis
-      />
-
-      {/* Bottom text for analysis/advice */}
-      <Animated.Text style={[styles.bottomText, { opacity: bottomTextOpacity }]}>
-        {bottomText}
+      {/* Analysis texts */}
+      <Animated.Text style={[styles.openingName, { opacity: textOpacity }]}>
+        {openingName}
+      </Animated.Text>
+      <Animated.Text style={[styles.openingAnalysis, { opacity: textOpacity }]}>
+        {openingAnalysis}
+      </Animated.Text>
+      <Animated.Text style={[styles.recommendedNextMoves, { opacity: textOpacity }]}>
+        {recommendedNextMoves}
       </Animated.Text>
     </View>
   );
+  
 };
 
 const styles = StyleSheet.create({
@@ -200,11 +190,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#191d24',
     padding: 10,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   reloadButton: {
     position: 'absolute',
-    bottom: 20,
+    top: 50,
     right: 20,
     backgroundColor: 'transparent',
     borderRadius: 10,
@@ -217,37 +206,37 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
   },
-  topText: {
-    fontSize: 26.5,
-    marginTop: 20,
-    marginBottom: 20,
-    color: '#aec4e8',
-    textAlign: 'center',
-  },
-  bottomText: {
-    fontSize: 26.5,
-    marginTop: 20,
-    color: '#aec4e8',
-    textAlign: 'center',
+  chessboardContainer: {
+    marginTop: 80,
+    marginLeft: 0,
+    marginRight: 25,
   },
   thinkingText: {
-    fontSize: 26.5,
+    fontSize: 34,
     color: '#ffcc00',
     textAlign: 'center',
-    marginTop: 20,
     position: 'absolute',
-    top: 50,
-    opacity: 0, // Initially invisible
+    top: '60%', // Adjust as needed
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  openingName: {
+    fontSize: 26,
+    marginTop: 20,
+    color: '#aec4e8',
+    textAlign: 'center',
   },
-  loadingText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
+  openingAnalysis: {
+    fontSize: 24,
+    marginTop: 10,
+    color: '#aec4e8',
+    textAlign: 'center',
+    paddingHorizontal: 10,
+  },
+  recommendedNextMoves: {
+    fontSize: 24,
+    marginTop: 10,
+    color: '#aec4e8',
+    textAlign: 'center',
+    paddingHorizontal: 10,
   },
 });
 

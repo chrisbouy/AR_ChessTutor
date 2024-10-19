@@ -70,7 +70,6 @@ class GameLogic {
 
     return boardLayout.trim();
   }
-
   makeMove(move) {
     try {
       // Get all legal moves for the current position
@@ -92,16 +91,12 @@ class GameLogic {
       return null;
     }
   }
-  
-  
-
   getPieceAt(position) {
     const rowIndex = 8 - parseInt(position[1]);
     const colIndex = position.charCodeAt(0) - 'a'.charCodeAt(0);
     const piece = this.chess.board()[rowIndex][colIndex];
     return piece ? { type: piece.type, color: piece.color } : null;
   }  
- 
   async getBestMoveFromLichess(color) {
     try {
       const fen = this.chess.fen();
@@ -115,7 +110,7 @@ class GameLogic {
   
       const data = await response.json();
       if (data.error) {
-        // console.error('Lichess API error:', data.error);
+        console.log('Lichess API error:', data.error);
         return null; // Return null to trigger AI fallback
       }
   
@@ -144,27 +139,41 @@ class GameLogic {
       throw error; // Rethrow error to trigger fallback in App.js
     }
   }
-  
-  
-  makeAIMove() {
+  getAdvisedMoveFromAI_ForWhite() {
     const possibleMoves = this.chess.moves(); // Get all possible moves
-  
     if (possibleMoves.length === 0) {
-      // console.error('No legal moves available for AI.');
+       console.error('No legal moves available for AI.');
       return null;  // No legal moves
     }
-  
     // Log available moves to debug
-    // console.log('Available moves for AI:', possibleMoves);
+     console.log('Available moves for AI:', possibleMoves);
+    // Select a random or the best move from possible moves
+    const selectedMove = this.selectBestMove(possibleMoves);
+    const bestMoveUCI = this.convertSANtoUCI(selectedMove, this.chess.fen());
+
+    return {
+      uci: bestMoveUCI,  // Best move in UCI format
+      san: moveResult.san,  // Best move in SAN format
+    };
+  }
+  makeAIMoveForBlack() {
+    const possibleMoves = this.chess.moves(); // Get all possible moves
+    if (possibleMoves.length === 0) {
+       console.error('No legal moves available for AI.');
+      return null;  // No legal moves
+    }
+    // Log available moves to debug
+     console.log('Available moves for AI:', possibleMoves);
   
     // Select a random or the best move from possible moves
     const selectedMove = this.selectBestMove(possibleMoves);
   
     // Apply the selected move
     const moveResult = this.chess.move(selectedMove);
-  
+  console.log(`from: ${moveResult.from} to: ${moveResult.to}`);
+
     if (!moveResult) {
-      // console.error('AI failed to make a valid move.');
+       console.error('AI failed to make a valid move.');
       return null;  // Move failed, return null
     }
   
@@ -180,38 +189,30 @@ class GameLogic {
       san: moveResult.san,  // Best move in SAN format
     };
   }
-  
-  
-  
-  
-
   selectBestMove(possibleMoves) {
     const randomIndex = Math.floor(Math.random() * possibleMoves.length);
     return possibleMoves[randomIndex];
   }
-  
-getBestVariantWithHighestCP(data) {
-  if (!data.pvs || data.pvs.length === 0) {
-      // console.error('No variants found in Lichess API response.');
-      return null;
+
+  getBestVariantWithHighestCP(data) {
+    if (!data.pvs || data.pvs.length === 0) {
+        // console.error('No variants found in Lichess API response.');
+        return null;
+    }
+    // Find the variant with the highest CP
+    let highestCPVariant = data.pvs.reduce((bestVariant, currentVariant) => {
+        return (currentVariant.cp > bestVariant.cp) ? currentVariant : bestVariant;
+    }, data.pvs[0]); // Start with the first variant
+
+    return highestCPVariant;
   }
-
-  // Find the variant with the highest CP
-  let highestCPVariant = data.pvs.reduce((bestVariant, currentVariant) => {
-      return (currentVariant.cp > bestVariant.cp) ? currentVariant : bestVariant;
-  }, data.pvs[0]); // Start with the first variant
-
-  return highestCPVariant;
-}
-getGamePhase() {
-  const moveCount = this.chess.history().length;
-  if (moveCount <= 10) return 'Opening';
-  if (moveCount <= 30) return 'Midgame';
-  return 'Endgame';
-}
+  getGamePhase() {
+    const moveCount = this.chess.history().length;
+    if (moveCount <= 10) return 'Opening';
+    if (moveCount <= 30) return 'Midgame';
+    return 'Endgame';
+  }
   async getAdviceFromGPT(prompt) {
-    
- 
     try {
       const response = await fetch(`https://api.openai.com/v1/chat/completions`, {
         method: 'POST',
@@ -220,17 +221,20 @@ getGamePhase() {
           Authorization: `Bearer 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`, // Replace with your OpenAI API key
         },
         body: JSON.stringify({
-          
-          model: 'gpt-4o-mini', // or the appropriate model name
+          model: 'gpt-4o-mini',
           messages: [
+            {
+              role: 'system',
+              content: 'You are a helpful assistant that provides responses strictly in the JSON format specified, without any additional text.',
+            },
             {
               role: 'user',
               content: prompt,
             },
           ],
-          max_tokens: 200, // Adjust as needed
-          temperature: 1, // Adjust as needed
-      }),
+          max_tokens: 500,
+          temperature: 0.7,
+        }),
       });
       const jsonResponse = await response.json();
       if (jsonResponse.error) {
@@ -238,62 +242,50 @@ getGamePhase() {
         return null;
       }
       const responseText = jsonResponse.choices[0].message.content;
-      // console.log(`response text: ${responseText}`)
-      const { strategicAnalysisForBlack, explanationForWhiteBestMove } = this.extractSectionsFromAdvice(
-        responseText
-      );
-      return {
-        analysisSummary: strategicAnalysisForBlack,
-        adviceSummary: explanationForWhiteBestMove,
-      };
-  } catch (error) {
-    // console.error('Error fetching analysis from AI:', error);
-    return null;
+      const { openingName, openingAnalysis, recommendedNextMoves } = this.extractSectionsFromAdvice(responseText);
+      return { openingName, openingAnalysis, recommendedNextMoves };
+    } catch (error) {
+      console.error('Error fetching analysis from AI:', error);
+      return null;
+    }
   }
-  }
-  async getAdviceFromGemini(prompt) {
-//       const { GoogleGenerativeAI } = require("@google/generative-ai");
-// const genAI = new GoogleGenerativeAI("AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE");
-// const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-// const result = await model.generateContent(prompt);
-// console.log(result.response.text());
-
-try {
-  // console.log("Explanation Prompt: ", prompt);
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      "contents": [
-        {
-          "role": "user",
-          "parts": [{"text": prompt}]
-        }
-      ]
-    }),
-  });
-  const data = await response.json();
-  // console.log("Gemini API response:", JSON.stringify(data, null, 2)); // Log full data in readable format
-  // Extract the content from the response
-  if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
-    let explanation = data.candidates[0].content.parts[0].text; // Adjust this depending on the exact content structure
-    // const responseText = jsonResponse.choices[0].message.content;
-    // console.log(`response text: ${responseText}`)
-    const { strategicAnalysisForBlack, explanationForWhiteBestMove } = this.extractSectionsFromAdvice(
-      explanation
-    );
-    return {
-      analysisSummary: strategicAnalysisForBlack,
-      adviceSummary: explanationForWhiteBestMove,
-    };
-  }
-} catch (error) {
-  // console.error('Error fetching analysis from AI:', error);
-  return null;
-}
-  }
-  async getAdviceFromPerplexity(prompt) {
   
+  async getAdviceFromGemini(prompt) {
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          "contents": [
+            {
+              "role": "user",
+              "parts": [{"text": prompt}]
+            }
+          ]
+        }),
+      });
+      const data = await response.json();
+      console.log("Raw Gemini API response:", JSON.stringify(data, null, 2));      // Log the raw response from Gemini
+      if (data && data.candidates && data.candidates[0] && data.candidates[0].content){      // Extract the content from the response
+        let responseText = data.candidates[0].content.parts[0].text; ;
+        console.log('Raw AI Response:', responseText);
+        // Extract the sections from the response
+        const { openingName, openingAnalysis, recommendedNextMoves } = this.extractSectionsFromAdvice(responseText);
+        console.log('Parsed Opening Name:', openingName);        // Log the parsed sections
+        console.log('Parsed Opening Analysis:', openingAnalysis);
+        console.log('Parsed Recommended Next Moves:', recommendedNextMoves);
+        return { openingName, openingAnalysis, recommendedNextMoves };
+      } else {
+        console.error('No candidates found in Gemini API response.');
+        return null;
+      }
+    } catch (error) {
+      console.error('Error fetching analysis from Gemini:', error);
+      return null;
+    }
+  }
+  
+  async getAdviceFromPerplexity(prompt) {
     const response = await fetch(`https://api.perplexity.ai/chat/completions`,{
     method: 'POST',
     headers: {Authorization: 'Bearer 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', 
@@ -337,8 +329,6 @@ try {
     }
   }
   async getAdviceFromClaude(prompt) {
-  
-
     try {
         const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
@@ -375,109 +365,48 @@ try {
         return null;
     }
 }
-  async getAdviceFromAPI(apiName,gameplanWhite, gameplanBlack) {
-    const fen = this.chess.fen();
-    const phase = this.getGamePhase();
-    const boardLayout = this.chess.ascii();
-    // const boardLayout = this.fenToBoardLayout(fen);
-    const moveHistory = this.chess.history({ verbose: true }).map(move => {
-      return move.from + move.to + (move.promotion ? move.promotion : '');
-    });
-    const moveList = this.chess.history({ verbose: true });
-    const currentPGN = this.chess.pgn({ max_width: 5}); 
-    const chessASCII = this.chess.ascii(); 
-    //  console.log(`game plan white ${gameplanWhite}`);
-    //  console.log(`game plan black ${gameplanBlack}`);
+async getAdviceFromAPI(apiName) {
+  const fen = this.chess.fen();
+  const moveHistory = this.chess.history().map(move => move);
 
-    const bestMoveForWhiteUCI =gameplanWhite.split(' ')[0];
-    console.log(`bestMoveForWhiteUCI ${bestMoveForWhiteUCI}`);
-    let bestMoveForWhiteLAN =  this.convertCastlingUCItoSAN(bestMoveForWhiteUCI) || this.convertUCItoLAN(bestMoveForWhiteUCI, this.chess.fen());
-    console.log(`bestMoveForWhiteLAN ${bestMoveForWhiteLAN}`);
-
-    if (!bestMoveForWhiteLAN) {
-      // console.error('Invalid best move for White:', );
-      return null;
-    }
-    // Get last move in LAN
-    let lastMoveUCI = '';
-    if (moveList.length > 0) {
-      const lastMove = moveList[moveList.length - 1];
-      lastMoveUCI = lastMove.from + lastMove.to + (lastMove.promotion ? lastMove.promotion : '');
-    } else {
-      lastMoveUCI = 'None';
-    }
-    // You are the lowercase letters of this chess game (represented in ASCII):
-    // ${chessASCII}
-    // "strategicAnalysisForBlack": "Computer's move: ${lastMoveLAN}  <A 80 character long strategic analysis for Black's last move>",
-   // "strategicAnalysisForBlack": "is the sufficient information to derive an accurate analysis?  wwhat other information would help?",
-  //  "input": {
-  //   "fen": "r1bqkb1r/pppp1ppp/2n5/1B2p3/4n3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 5",
-  //   "moveHistory": ["e4", "e5", "Nf3", "Nc6", "Bb5", "Nf6", "O-O", "Nxe4"],
-  //   "turn": "white",
-  //   "gamePhase": "opening",
-  //   "requestedOutput": {
-  //     "strategicAnalysis": "A detailed analysis of the current position, focusing on tactical threats, strategic goals, and potential counterplay.",
-  //     "bestMove": "The recommended best move for White."
-  //   }
-  // }
+  const prompt = `
+  You are a chess tutor specializing in chess openings. Based on the current game state, provide detailed information about the opening being played.
   
-    // const prompt = `
-    //     You are Magnus Carlsen.  
-    //     It's white's (my) turn.
-    //     Game phase: ${phase}
-    //     You are the lowercase letters of the current FEN representation: ${this.chess.fen()}
-    //     The move history is: ${moveHistory}.
-    //     The best move for White is ${bestMoveForWhiteLAN}.
-    //     `+
-    //    //This is a visual representation of the board: 
-    //     //${boardLayout}
-    //     `This is the best strategic game plan for white: ${gameplanWhite}
-    //     This is the best strategic game plan for black: ${gameplanBlack}
-    //     Use all of this input to find existing grandmaster games online that have comments for these moves. If you find any, include these.
-    //     Respond only with the JSON object in the exact format provided.
-    //     When commenting on black, speak in the 1st person.  When commenting on white, speak in the 2nd
-    //    ` +
-    //    // When responding, double check the visual representation.
-    //     `In your response, do not say anything unless you absolutely know it to be true.
-    //     In your response, do not mention piece names.  Refer to pieces by position instead.
-    //     Respond in the following format
-    //     {
-    //          "strategicAnalysisForBlack": "Computer's move: ${lastMoveUCI}  <A 80 character long strategic analysis for Black's last move>",
-    //       "explanationForWhiteBestMove": "Advice: ${bestMoveForWhiteLAN}  <A 80 character long explanation of why this is the best move for White>"
-    
-    //       }`;
-    const prompt = `
-You are playing black and it is my turn.
+  Current FEN: ${fen}
+  Move History: ${moveHistory.join(', ')}
+  
+  Instructions:
+  - Identify the opening name based on the move history.
+  - Explain the main ideas and objectives of this opening for both White and Black.
+  - Provide recommended next moves and common variations.
+  
+  Important:
+  - **Do not include move numbers when mentioning moves.**
+  - **Return all values as plain strings. Do not include nested objects or arrays.**
+  - **Do not include any additional text or explanations outside the JSON format.**
+  - keep response under 80 words
 
-This is the current state of the game use this to work out where the pieces are on the board:
+  Please respond in the following JSON format:
+  
+  {
+    "openingName": "<Name of the opening>",
+    "openingAnalysis": "<Analysis of the opening's main ideas and objectives for both White and Black in plain text.>",
+    "recommendedNextMoves": "<Suggested next moves for white and common variations without move numbers>"
+  }
+  `;
+  
 
-FEN:  ${this.chess.fen()}
-Move History: ${moveHistory}
-
-In your response, do not mention piece names.  Refer to pieces by position instead.
-
-Use the following single blob of JSON. Do not include any other information.
-
-    {
-         "strategicAnalysisForBlack": "Computer's move: ${lastMoveUCI}  A 20 word explanation of why this was a good move for Black",
-      "explanationForWhiteBestMove": "Advice: ${bestMoveForWhiteLAN}  A 20 word explanation of why this is a good move for White"
-
-      }`;
-    console.log("Explanation Prompt: ", prompt);
-    switch (apiName) {
-      case 'GPT':
-        return await this.getAdviceFromGPT(prompt);
+  switch (apiName) {
+    case 'GPT':
+      return await this.getAdviceFromGPT(prompt);
       case 'Gemini':
         return await this.getAdviceFromGemini(prompt);
-      case 'Claude':
-        return await this.getAdviceFromClaude(prompt);
-        case 'Perplexity':
-          return await this.getAdviceFromPerplexity(prompt);
-  
-      default:
-        throw new Error(`Unknown API name: ${apiName}`);
-    }
+    // ... other cases if any ...
+    default:
+      throw new Error(`Unknown API name: ${apiName}`);
   }
+}
+
   generateChessPrompt(bestMoveForWhiteLAN) {
     const fen = this.chess.fen();
     const moveHistory = this.chess.history({ verbose: true });
@@ -491,6 +420,18 @@ Use the following single blob of JSON. Do not include any other information.
       The best move for White is ${bestMoveForWhiteLAN}.
       Provide advice and analysis.
     `;
+  }
+  convertSANtoUCI(sanMove, fen) {
+    const chess = new Chess(fen);
+    const moves = chess.moves({ verbose: true });
+  
+    const move = moves.find((m) => m.san === sanMove);
+  
+    if (move) {
+      return move.from + move.to + (move.promotion ? move.promotion : '');
+    } else {
+      return null; // Move not found
+    }
   }
   convertUCItoSAN(uciMove, fen) {
     const chessInstance = new Chess(fen);
@@ -513,32 +454,50 @@ Use the following single blob of JSON. Do not include any other information.
   }
   
   extractSectionsFromAdvice(adviceText) {
-  try {
-    //  console.log(`advice text : ${adviceText}`);
-    const cleanedText = adviceText.replace(/```(?:json)?/g, '').trim();
-    const parsedResponse = JSON.parse(cleanedText);
-
-    const strategicAnalysisForBlack = parsedResponse.strategicAnalysisForBlack;
-    const explanationForWhiteBestMove = parsedResponse.explanationForWhiteBestMove;
-console.log(strategicAnalysisForBlack);
-console.log(explanationForWhiteBestMove);
-    return { strategicAnalysisForBlack, explanationForWhiteBestMove };
-  } catch (e) {
-    // console.error("Error parsing the assistant's response:", e);
-    return {};
+    try {
+      const cleanedText = adviceText.replace(/```(?:json)?/g, '').trim();
+  
+      // Log the cleaned text before parsing
+      console.log('Cleaned AI Response:', cleanedText);
+  
+      const parsedResponse = JSON.parse(cleanedText);
+  
+      let { openingName, openingAnalysis, recommendedNextMoves } = parsedResponse;
+  
+      // Check if openingAnalysis is an object
+      if (typeof openingAnalysis === 'object') {
+        // Convert it to a string
+        openingAnalysis = Object.entries(openingAnalysis)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join('\n');
+      }
+  
+      // Similarly for recommendedNextMoves if needed
+  
+      return { openingName, openingAnalysis, recommendedNextMoves };
+    } catch (e) {
+      console.error("Error parsing the assistant's response:", e);
+      console.log('Original AI Response:', adviceText);
+      return {
+        openingName: 'Unknown Opening',
+        openingAnalysis: 'Unable to parse opening analysis.',
+        recommendedNextMoves: 'No recommendations available.',
+      };
+    }
   }
-  }
+  
+  
   convertUCItoLAN(uciMove, fen) {
     const chessInstance = new Chess(fen);
     const moves = chessInstance.moves({ verbose: true });
-    console.log(`moves ${moves}`);
+   // console.log(`moves ${moves}`);
     const move = moves.find(
       (m) =>
         m.from === uciMove.slice(0, 2) &&
         m.to === uciMove.slice(2, 4) &&
         (uciMove.length > 4 ? m.promotion === uciMove.slice(4) : true)
     );
-    console.log(`move ${move}`);
+    //console.log(`move ${move}`);
 
     return move ? move.lan : null;
   }

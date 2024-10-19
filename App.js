@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Animated } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Animated, ScrollView } from 'react-native';
 import ChessBoard2D from './components/ChessBoard2D';
 import GameLogic from './GameLogic';
 
@@ -75,12 +75,15 @@ const App = () => {
         console.log('Lichess API failed for Black, falling back to AI.');
         bestMoveForBlack = await gameLogicRef.current.makeAIMoveForBlack();
       }
-
-      const blackMoveResult = gameLogicRef.current.makeMove(bestMoveForBlack.san);
-      if (!blackMoveResult) {
-        setOpeningName("Computer's move failed.");
-        return;
+      else {
+              const blackMoveResult = gameLogicRef.current.makeMove(bestMoveForBlack.san);
+              if (!blackMoveResult) {
+                setOpeningName("Computer's move failed.");
+                return;
+              }
       }
+
+
       setBoardState([...gameLogicRef.current.getBoardState()]);
 
       // Get the best move for White
@@ -102,7 +105,7 @@ const App = () => {
       }
 
       // Fetch analysis from the API
-      const apiName = 'Gemini'; // Change to 'Gemini' if needed
+      const apiName = 'Claude'; // Change to 'Gemini' if needed
       const analysis = await gameLogicRef.current.getAdviceFromAPI(apiName);
 
       if (!analysis) {
@@ -150,38 +153,50 @@ const App = () => {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.reloadButton} onPress={handleReload}>
-        <Text style={styles.reloadButtonText}>Reload</Text>
-      </TouchableOpacity>
-  
-      <View style={styles.chessboardContainer}>
-        <ChessBoard2D
-          boardState={boardState}
-          onSquarePress={onSquarePress}
-          selectedSquare={selectedSquare}
-          illegalMoveSquares={illegalMoveSquares}
-          advisedMove={analysisComplete.current ? advisedMove : null}
-        />
-      </View>
+    <TouchableOpacity style={styles.reloadButton} onPress={handleReload}>
+      <Text style={styles.reloadButtonText}>Reload</Text>
+    </TouchableOpacity>
 
-      {/* Thinking text */}
-      <Animated.Text style={[styles.thinkingText, { opacity: thinkingOpacity }]}>
-        Thinking...
-      </Animated.Text>
-
-      {/* Analysis texts */}
-      <Animated.Text style={[styles.openingName, { opacity: textOpacity }]}>
-        {openingName}
-      </Animated.Text>
-      <Animated.Text style={[styles.openingAnalysis, { opacity: textOpacity }]}>
-        {openingAnalysis}
-      </Animated.Text>
-      <Animated.Text style={[styles.recommendedNextMoves, { opacity: textOpacity }]}>
-        {recommendedNextMoves}
-      </Animated.Text>
+    <View style={styles.chessboardContainer}>
+      <ChessBoard2D
+        boardState={boardState}
+        onSquarePress={onSquarePress}
+        selectedSquare={selectedSquare}
+        illegalMoveSquares={illegalMoveSquares}
+        advisedMove={analysisComplete.current ? advisedMove : null}
+      />
     </View>
-  );
-  
+
+    {/* Wrap texts in a ScrollView in case content overflows */}
+    <ScrollView contentContainerStyle={styles.textContainer}>
+      {/* Analysis texts */}
+      <Animated.View style={[styles.analysisContainer, { opacity: textOpacity }]}>
+        {openingName ? (
+          <Text style={styles.openingName}>{openingName}</Text>
+        ) : null}
+
+        {openingAnalysis ? (
+          <Text style={styles.openingAnalysis}>
+            <Text style={styles.prefixText}>Opening Analysis:{'\n'}</Text>
+            {openingAnalysis}
+          </Text>
+        ) : null}
+
+        {recommendedNextMoves ? (
+          <Text style={styles.recommendedNextMoves}>
+            <Text style={styles.prefixText}>Recommended Moves and Likely Counters:{'\n'}</Text>
+            {recommendedNextMoves}
+          </Text>
+        ) : null}
+      </Animated.View>
+    </ScrollView>
+
+    {/* Thinking text */}
+    <Animated.Text style={[styles.thinkingText, { opacity: thinkingOpacity }]}>
+      Thinking...
+    </Animated.Text>
+  </View>
+);
 };
 
 const styles = StyleSheet.create({

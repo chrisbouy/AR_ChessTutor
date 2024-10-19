@@ -1,4 +1,5 @@
 import { Chess } from 'chess.js';
+import { exp } from 'three/webgpu';
 
 class GameLogic {
   constructor() {
@@ -153,7 +154,6 @@ class GameLogic {
 
     return {
       uci: bestMoveUCI,  // Best move in UCI format
-      san: moveResult.san,  // Best move in SAN format
     };
   }
   makeAIMoveForBlack() {
@@ -224,10 +224,6 @@ class GameLogic {
           model: 'gpt-4o-mini',
           messages: [
             {
-              role: 'system',
-              content: 'You are a helpful assistant that provides responses strictly in the JSON format specified, without any additional text.',
-            },
-            {
               role: 'user',
               content: prompt,
             },
@@ -252,7 +248,7 @@ class GameLogic {
   
   async getAdviceFromGemini(prompt) {
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -291,7 +287,7 @@ class GameLogic {
     headers: {Authorization: 'Bearer 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', 
                               'Content-Type': 'application/json'},
     body: JSON.stringify({
-      model:"llama-3.1-sonar-large-128k-online",
+      model:"llama-3.1-sonar-small-128k-online",
       messages:[
             {role:"system",
               content:"Double check piece types before responding."},
@@ -319,13 +315,8 @@ class GameLogic {
       let explanation = data.choices[0].message.content; // Adjust this depending on the exact content structure
       // const responseText = jsonResponse.choices[0].message.content;
       //  console.log(`explanation: ${explanation}`)
-      const { strategicAnalysisForBlack, explanationForWhiteBestMove } = this.extractSectionsFromAdvice(
-        explanation
-      );
-      return {
-        analysisSummary: strategicAnalysisForBlack,
-        adviceSummary: explanationForWhiteBestMove,
-      };
+      const { openingName, openingAnalysis, recommendedNextMoves } = this.extractSectionsFromAdvice(explanation);
+      return { openingName, openingAnalysis, recommendedNextMoves };
     }
   }
   async getAdviceFromClaude(prompt) {
@@ -354,11 +345,8 @@ class GameLogic {
 
         if (data && data.content && data.content[0] && data.content[0].text) {
             let explanation = data.content[0].text;
-            const { strategicAnalysisForBlack, explanationForWhiteBestMove } = this.extractSectionsFromAdvice(explanation);
-            return {
-                analysisSummary: strategicAnalysisForBlack,
-                adviceSummary: explanationForWhiteBestMove,
-            };
+            const { openingName, openingAnalysis, recommendedNextMoves } = this.extractSectionsFromAdvice(explanation);
+            return { openingName, openingAnalysis, recommendedNextMoves };
         }
     } catch (error) {
         // console.error('Error fetching analysis from Claude:', error);
@@ -368,32 +356,25 @@ class GameLogic {
 async getAdviceFromAPI(apiName) {
   const fen = this.chess.fen();
   const moveHistory = this.chess.history().map(move => move);
-
+  // Instructions:
+  // - Identify the opening name based on the move history.
+  // - Explain the main ideas and objectives of this opening for both White and Black.
+  // - Provide recommended next moves for white and common variations.
   const prompt = `
   You are a chess tutor specializing in chess openings. Based on the current game state, provide detailed information about the opening being played.
-  
   Current FEN: ${fen}
   Move History: ${moveHistory.join(', ')}
-  
-  Instructions:
-  - Identify the opening name based on the move history.
-  - Explain the main ideas and objectives of this opening for both White and Black.
-  - Provide recommended next moves and common variations.
-  
   Important:
-  - **Do not include move numbers when mentioning moves.**
-  - **Return all values as plain strings. Do not include nested objects or arrays.**
-  - **Do not include any additional text or explanations outside the JSON format.**
-  - keep response under 80 words
-
+  - Do not include move numbers when mentioning moves.
+  - Return all values as plain strings. Do not include nested objects or arrays.
+  - Do not include any additional text or explanations outside the JSON format.
+  - Keep response under 80 words
   Please respond in the following JSON format:
-  
   {
     "openingName": "<Name of the opening>",
     "openingAnalysis": "<Analysis of the opening's main ideas and objectives for both White and Black in plain text.>",
     "recommendedNextMoves": "<Suggested next moves for white and common variations without move numbers>"
-  }
-  `;
+  }`;
   
 
   switch (apiName) {
@@ -401,6 +382,10 @@ async getAdviceFromAPI(apiName) {
       return await this.getAdviceFromGPT(prompt);
       case 'Gemini':
         return await this.getAdviceFromGemini(prompt);
+        case 'Perplexity':
+          return await this.getAdviceFromPerplexity(prompt);   
+          case 'Claude':
+            return await this.getAdviceFromClaude(prompt);    
     // ... other cases if any ...
     default:
       throw new Error(`Unknown API name: ${apiName}`);

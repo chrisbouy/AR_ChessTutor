@@ -36,9 +36,26 @@ const getPieceImage = (piece) => {
   return pieceMap[`${piece.color}${piece.type.toUpperCase()}`];
 };
 
-const Square = ({ square, onSquarePress, selectedSquare, advisedMove, illegalMoveSquares, blinkAnimation }) => {
+const Square = ({ square, onSquarePress, selectedSquare, advisedMove, illegalMoveSquares, squareSize, blinkAnimation }) => {
   if (!square) return null;
-
+  const styles = StyleSheet.create({
+    square: {
+      position: 'relative',
+      width: squareSize,
+      height: squareSize,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    pieceImage: {
+      width: squareSize * .9,
+      height: squareSize * .9,
+      resizeMode: 'contain',
+    },
+    shadow: {
+      borderWidth: 2,
+      borderColor: 'yellow',
+    },
+  });
   const isSelected = selectedSquare === square.position;
   const isAdvisedFromSquare = advisedMove?.from === square.position;
   const isAdvisedToSquare = advisedMove?.to === square.position;
@@ -48,10 +65,12 @@ const Square = ({ square, onSquarePress, selectedSquare, advisedMove, illegalMov
   let backgroundColor = square.color;
    let shadowStyle = {};  // Define an empty box shadow style
 
-  if (isSelected && !isAdvisedFromSquare && !isAdvisedToSquare) {
+  if (isSelected) {
     backgroundColor = '#ffeb3b'; // Yellow highlight for selected square (if not green)
-    shadowStyle = styles.shadow; // Apply shadow for selected square
-  }
+    shadowStyle = {
+      borderWidth: 2,
+      borderColor: 'yellow',
+    };  }
 
   if (isIllegalFromSquare || isIllegalToSquare) {
     backgroundColor = blinkAnimation.interpolate({
@@ -60,10 +79,10 @@ const Square = ({ square, onSquarePress, selectedSquare, advisedMove, illegalMov
     });
   }
 
-  if (isAdvisedFromSquare || isAdvisedToSquare) {
-//backgroundColor = 'rgba(0, 255, 0, 1)'; // Green background for advised move
-    shadowStyle = styles.shadow; 
-  }
+//   if (isAdvisedFromSquare || isAdvisedToSquare) {
+// //backgroundColor = 'rgba(0, 255, 0, 1)'; // Green background for advised move
+//     shadowStyle = styles.shadow; 
+//   }
 
   const pieceImage = getPieceImage(square.piece);
 
@@ -74,39 +93,8 @@ const Square = ({ square, onSquarePress, selectedSquare, advisedMove, illegalMov
       </Animated.View>
     </TouchableOpacity>
   );
+
+
+
 };
-
-const styles = StyleSheet.create({
-  square: {
-    position: 'relative',
-    width: 45,
-    height: 45,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  pieceImage: {
-    width: 40,
-    height: 40,
-    resizeMode: 'contain',
-  },
-  shadow: {
-    position: 'relative',
-    width: 45,
-    height: 45,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'white', // Ensure solid background
-    shadowColor: 'white', // White shadow
-    shadowOffset: { width: 0, height: 0 }, // Apply shadow evenly around the square
-    shadowOpacity: 115, // Control shadow opacity
-    shadowRadius: 25, // Control shadow spread
-    elevation: 10, // Elevation for Android
-    // shadowColor: '#000',
-    // shadowOffset: { width: 0, height: 0 },
-    // shadowOpacity: 0.8,
-    // shadowRadius: 10,
-    // elevation: 10, // Android shadow
-  },
-});
-
 export default Square;

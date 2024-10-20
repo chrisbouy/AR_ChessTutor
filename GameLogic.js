@@ -368,7 +368,7 @@ async getAdviceFromAPI(apiName) {
   - Do not include move numbers when mentioning moves.
   - Return all values as plain strings. Do not include nested objects or arrays.
   - Do not include any additional text or explanations outside the JSON format.
-  - Keep response under 80 words
+  - Keep response under 70 words
   Please respond in the following JSON format:
   {
     "openingName": "<Name of the opening>",

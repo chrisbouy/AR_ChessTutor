@@ -1,26 +1,124 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Animated, ScrollView } from 'react-native';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import {
+  View,
+  useWindowDimensions,
+  StyleSheet,
+  TouchableOpacity,
+  Text,
+  Animated,
+  ScrollView,
+  SafeAreaView,
+} from 'react-native';
 import ChessBoard2D from './components/ChessBoard2D';
 import GameLogic from './GameLogic';
 
 const App = () => {
   const gameLogicRef = useRef(new GameLogic());
   const [boardState, setBoardState] = useState(gameLogicRef.current.getBoardState());
-  const [selectedSquare, setSelectedSquare] = useState(null); // Track the selected square
+  const [selectedSquare, setSelectedSquare] = useState(null);
   const [openingName, setOpeningName] = useState('');
   const [openingAnalysis, setOpeningAnalysis] = useState('');
   const [recommendedNextMoves, setRecommendedNextMoves] = useState('');
-  
-  const [illegalMoveSquares, setIllegalMoveSquares] = useState(null); // Track illegal move squares
-  const [advisedMove, setAdvisedMove] = useState(null); // Track advised move, but don't show until analysis fades in
+  const [illegalMoveSquares, setIllegalMoveSquares] = useState(null);
+  const [advisedMove, setAdvisedMove] = useState(null);
 
   const textOpacity = useRef(new Animated.Value(1)).current;
   const thinkingOpacity = useRef(new Animated.Value(0)).current;
-  const analysisComplete = useRef(false); // To track when analysis has faded in
+  const analysisComplete = useRef(false);
 
-  useEffect(() => {
-    setBoardState(gameLogicRef.current.getBoardState());
-  }, []);
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const chessboardSize = Math.min(windowWidth, windowHeight) * 0.9;
+
+  const guidelineBaseWidth = 350; // Base width
+  const scaleFont = (size) => (windowWidth / guidelineBaseWidth) * size;
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        safeArea: {
+          flex: 1,
+          backgroundColor: '#191d24',
+        },
+        reloadButtonContainer: {
+          alignItems: 'flex-end',
+          padding: 5,
+          backgroundColor: '#191d24',
+        },
+        reloadButton: {
+          backgroundColor: 'transparent',
+          borderRadius: 10,
+          padding: 2,
+          borderWidth: 1,
+          borderColor: 'white',
+        },
+        reloadButtonText: {
+          color: 'white',
+          fontWeight: 'bold',
+        },
+        container: {
+          flex: 1,
+          backgroundColor: '#191d24',
+          alignItems: 'center',
+        },
+        chessboardContainer: {
+marginRight: 20,
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: chessboardSize,
+          height: chessboardSize,
+        },
+        textContainer: {
+          flexGrow: 1,
+          alignItems: 'center',
+          width: '100%',
+        },
+        analysisContainer: {
+          alignItems: 'center',
+          marginTop: 2,
+          paddingHorizontal: 10,
+          width: '90%',
+        },
+        prefixText: {
+          fontWeight: 'bold',
+          fontSize: scaleFont(20),
+          color: '#ffffff',
+        },
+        openingName: {
+          fontSize: scaleFont(26),
+          color: '#aec4e8',
+          textAlign: 'center',
+          marginBottom: 1,
+        },
+        openingAnalysis: {
+          fontSize: scaleFont(18),
+          marginTop: 10,
+          marginBottom: 10, // Add if needed
+          color: '#aec4e8',
+          textAlign: 'left',
+          lineHeight: scaleFont(24),
+          paddingHorizontal: 10, // Ensure consistency
+        },
+        recommendedNextMoves: {
+          fontSize: scaleFont(18),
+          marginTop: 10,
+          marginBottom: 10, // Add if needed
+          color: '#aec4e8',
+          textAlign: 'left',
+          lineHeight: scaleFont(24),
+          paddingHorizontal: 10, // Ensure consistency
+        },
+        
+        thinkingText: {
+          fontSize: scaleFont(24),
+          color: '#ffcc00',
+          textAlign: 'center',
+          position: 'absolute',
+          top: '60%',
+        },
+      }),
+    [windowWidth]
+  );
+  
 
   const handleReload = () => {
     gameLogicRef.current = new GameLogic();
@@ -35,7 +133,6 @@ const App = () => {
     thinkingOpacity.setValue(0);
     analysisComplete.current = false;
   };
-  
 
   const onSquarePress = (position) => {
     if (!selectedSquare) {
@@ -47,6 +144,7 @@ const App = () => {
       setSelectedSquare(null);
     }
   };
+
   const onMove = async (fromSquare, toSquare) => {
     try {
       const playerMove = gameLogicRef.current.makeMove({ from: fromSquare, to: toSquare });
@@ -56,6 +154,7 @@ const App = () => {
       }
       setBoardState([...gameLogicRef.current.getBoardState()]);
       setIllegalMoveSquares(null);
+
       // Fade out the current advice and analysis
       Animated.timing(textOpacity, {
         toValue: 0,
@@ -69,22 +168,27 @@ const App = () => {
           useNativeDriver: true,
         }).start();
       });
+
       // Get the best move for Black
       let bestMoveForBlack = await gameLogicRef.current.getBestMoveFromLichess('black');
       if (!bestMoveForBlack) {
         console.log('Lichess API failed for Black, falling back to AI.');
         bestMoveForBlack = await gameLogicRef.current.makeAIMoveForBlack();
+        if (!bestMoveForBlack || !bestMoveForBlack.move) {
+          setOpeningName("Computer's move failed.");
+          return;
+        }
+        // Update the board state since the move was already made
+        setBoardState([...gameLogicRef.current.getBoardState()]);
+      } else {
+        // If we have a move from Lichess, apply it
+        const blackMoveResult = gameLogicRef.current.makeMove(bestMoveForBlack.san);
+        if (!blackMoveResult) {
+          setOpeningName("Computer's move failed.");
+          return;
+        }
+        setBoardState([...gameLogicRef.current.getBoardState()]);
       }
-      else {
-              const blackMoveResult = gameLogicRef.current.makeMove(bestMoveForBlack.san);
-              if (!blackMoveResult) {
-                setOpeningName("Computer's move failed.");
-                return;
-              }
-      }
-
-
-      setBoardState([...gameLogicRef.current.getBoardState()]);
 
       // Get the best move for White
       let bestMoveForWhite = await gameLogicRef.current.getBestMoveFromLichess('white');
@@ -134,14 +238,12 @@ const App = () => {
           analysisComplete.current = true; // Mark analysis as complete
         });
       });
-    }
-    catch (error) {
+    } catch (error) {
       console.error('Error during move:', error);
       setOpeningName('Error processing move, please try again.');
       setIllegalMoveSquares({ from: fromSquare, to: toSquare });
     }
   };
-  
 
   if (!boardState || boardState.length === 0) {
     return (
@@ -152,107 +254,58 @@ const App = () => {
   }
 
   return (
-    <View style={styles.container}>
-    <TouchableOpacity style={styles.reloadButton} onPress={handleReload}>
-      <Text style={styles.reloadButtonText}>Reload</Text>
-    </TouchableOpacity>
+    <SafeAreaView style={styles.safeArea}>
+      {/* Place the reload button at the top */}
+      <View style={styles.reloadButtonContainer}>
+        <TouchableOpacity style={styles.reloadButton} onPress={handleReload}>
+          <Text style={styles.reloadButtonText}>Reload</Text>
+        </TouchableOpacity>
+      </View>
 
-    <View style={styles.chessboardContainer}>
-      <ChessBoard2D
-        boardState={boardState}
-        onSquarePress={onSquarePress}
-        selectedSquare={selectedSquare}
-        illegalMoveSquares={illegalMoveSquares}
-        advisedMove={analysisComplete.current ? advisedMove : null}
-      />
-    </View>
+      {/* Content below the reload button */}
+      <View style={styles.container}>
+        {/* Chessboard */}
+        <View style={styles.chessboardContainer}>
+          <ChessBoard2D
+            boardSize={chessboardSize}
+            boardState={boardState}
+            onSquarePress={onSquarePress}
+            selectedSquare={selectedSquare}
+            illegalMoveSquares={illegalMoveSquares}
+            advisedMove={analysisComplete.current ? advisedMove : null}
+          />
+        </View>
 
-    {/* Wrap texts in a ScrollView in case content overflows */}
-    <ScrollView contentContainerStyle={styles.textContainer}>
-      {/* Analysis texts */}
-      <Animated.View style={[styles.analysisContainer, { opacity: textOpacity }]}>
-        {openingName ? (
-          <Text style={styles.openingName}>{openingName}</Text>
-        ) : null}
+        {/* Analysis texts */}
+        <ScrollView contentContainerStyle={styles.textContainer}>
+          <Animated.View style={[styles.analysisContainer, { opacity: textOpacity }]}>
+            {openingName ? (
+              <Text style={styles.openingName}>{openingName}</Text>
+            ) : null}
 
-        {openingAnalysis ? (
-          <Text style={styles.openingAnalysis}>
-            <Text style={styles.prefixText}>Opening Analysis:{'\n'}</Text>
-            {openingAnalysis}
-          </Text>
-        ) : null}
+            {openingAnalysis ? (
+              <Text style={styles.openingAnalysis}>
+                <Text style={styles.prefixText}>Opening Analysis:{'\n'}</Text>
+                {openingAnalysis}
+              </Text>
+            ) : null}
 
-        {recommendedNextMoves ? (
-          <Text style={styles.recommendedNextMoves}>
-            <Text style={styles.prefixText}>Recommended Moves and Likely Counters:{'\n'}</Text>
-            {recommendedNextMoves}
-          </Text>
-        ) : null}
-      </Animated.View>
-    </ScrollView>
+            {recommendedNextMoves ? (
+              <Text style={styles.recommendedNextMoves}>
+                <Text style={styles.prefixText}>Recommended Moves and Likely Counters:{'\n'}</Text>
+                {recommendedNextMoves}
+              </Text>
+            ) : null}
+          </Animated.View>
+        </ScrollView>
 
-    {/* Thinking text */}
-    <Animated.Text style={[styles.thinkingText, { opacity: thinkingOpacity }]}>
-      Thinking...
-    </Animated.Text>
-  </View>
-);
+        {/* Thinking text */}
+        <Animated.Text style={[styles.thinkingText, { opacity: thinkingOpacity }]}>
+          Thinking...
+        </Animated.Text>
+      </View>
+    </SafeAreaView>
+  );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#191d24',
-    padding: 10,
-    alignItems: 'center',
-  },
-  reloadButton: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
-    backgroundColor: 'transparent',
-    borderRadius: 10,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: 'white',
-    zIndex: 1000,
-  },
-  reloadButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  chessboardContainer: {
-    marginTop: 80,
-    marginLeft: 0,
-    marginRight: 25,
-  },
-  thinkingText: {
-    fontSize: 34,
-    color: '#ffcc00',
-    textAlign: 'center',
-    position: 'absolute',
-    top: '60%', // Adjust as needed
-  },
-  openingName: {
-    fontSize: 26,
-    marginTop: 20,
-    color: '#aec4e8',
-    textAlign: 'center',
-  },
-  openingAnalysis: {
-    fontSize: 24,
-    marginTop: 10,
-    color: '#aec4e8',
-    textAlign: 'center',
-    paddingHorizontal: 10,
-  },
-  recommendedNextMoves: {
-    fontSize: 24,
-    marginTop: 10,
-    color: '#aec4e8',
-    textAlign: 'center',
-    paddingHorizontal: 10,
-  },
-});
 
 export default App;

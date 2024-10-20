@@ -32,6 +32,8 @@ const App = () => {
   const guidelineBaseWidth = 350; // Base width
   const scaleFont = (size) => (windowWidth / guidelineBaseWidth) * size;
 
+  const [movesLeft, setMovesLeft] = useState(20); // Starting from 20 half-moves
+
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -40,14 +42,14 @@ const App = () => {
           backgroundColor: '#191d24',
         },
         reloadButtonContainer: {
-          alignItems: 'flex-end',
-          padding: 5,
+          padding: 0,
           backgroundColor: '#191d24',
+          marginRight:2
         },
         reloadButton: {
           backgroundColor: 'transparent',
           borderRadius: 10,
-          padding: 2,
+          padding: 5,
           borderWidth: 1,
           borderColor: 'white',
         },
@@ -115,6 +117,27 @@ marginRight: 20,
           position: 'absolute',
           top: '60%',
         },
+        moveCounterContainer: {
+
+          top: 0,
+          left: 10,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          padding: 5,
+          borderRadius: 5,
+        },
+        moveCounterText: {
+          color: 'white',
+          fontSize: scaleFont(16),
+        },
+        topBar: {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingHorizontal: 10,
+          paddingVertical: 0,
+          backgroundColor: '#191d24', // Deep black background
+        },
+
       }),
     [windowWidth]
   );
@@ -132,6 +155,7 @@ marginRight: 20,
     textOpacity.setValue(1);
     thinkingOpacity.setValue(0);
     analysisComplete.current = false;
+    setMovesLeft(20); // Reset moves left
   };
 
   const onSquarePress = (position) => {
@@ -155,6 +179,14 @@ marginRight: 20,
       setBoardState([...gameLogicRef.current.getBoardState()]);
       setIllegalMoveSquares(null);
 
+      setMovesLeft((prevMoves) => prevMoves - 1);
+
+      // Check if movesLeft has reached 0
+      if (movesLeft - 1 <= 0) {
+        // Game over logic
+        Alert.alert('Game Over', 'You have reached the maximum number of moves for the opening phase.');
+        return;
+      }
       // Fade out the current advice and analysis
       Animated.timing(textOpacity, {
         toValue: 0,
@@ -188,6 +220,16 @@ marginRight: 20,
           return;
         }
         setBoardState([...gameLogicRef.current.getBoardState()]);
+        setMovesLeft((prevMoves) => prevMoves - 1);
+
+        if (movesLeft - 1 <= 0) {
+          Alert.alert(
+            'Opening Phase Complete',
+            'You have completed the opening phase. Great job practicing your openings!',
+            [{ text: 'OK', onPress: () => {} }]
+          );
+          return;
+        }
       }
 
       // Get the best move for White
@@ -255,13 +297,18 @@ marginRight: 20,
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Place the reload button at the top */}
+
+<View style={styles.topBar}>
+      <View style={styles.moveCounterContainer}>
+        <Text style={styles.moveCounterText}>Moves Left: {movesLeft}</Text>
+      </View>
+
       <View style={styles.reloadButtonContainer}>
         <TouchableOpacity style={styles.reloadButton} onPress={handleReload}>
           <Text style={styles.reloadButtonText}>Reload</Text>
         </TouchableOpacity>
       </View>
-
+ </View>
       {/* Content below the reload button */}
       <View style={styles.container}>
         {/* Chessboard */}

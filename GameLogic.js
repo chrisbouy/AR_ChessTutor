@@ -1,4 +1,5 @@
 import { Chess } from 'chess.js';
+import { exp } from 'three/webgpu';
 
 class GameLogic {
   constructor() {
@@ -114,7 +115,7 @@ class GameLogic {
         return null; // Return null to trigger AI fallback
       }
   
-      // console.log('Lichess API Response:', data);
+      console.log('Lichess API Response:', data);
       if (data.pvs && data.pvs.length > 0) {
         let bestVariant = data.pvs[0];
         data.pvs.forEach((variant) => {
@@ -153,7 +154,6 @@ class GameLogic {
 
     return {
       uci: bestMoveUCI,  // Best move in UCI format
-      san: moveResult.san,  // Best move in SAN format
     };
   }
   makeAIMoveForBlack() {
@@ -212,7 +212,7 @@ class GameLogic {
     if (moveCount <= 30) return 'Midgame';
     return 'Endgame';
   }
-  async getAdviceFromGPT(prompt) {
+  async getAdviceFromGPT(system, prompt) {
     try {
       const response = await fetch(`https://api.openai.com/v1/chat/completions`, {
         method: 'POST',
@@ -221,11 +221,11 @@ class GameLogic {
           Authorization: `Bearer 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`, // Replace with your OpenAI API key
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-4o',
           messages: [
             {
               role: 'system',
-              content: 'You are a helpful assistant that provides responses strictly in the JSON format specified, without any additional text.',
+              content: system
             },
             {
               role: 'user',
@@ -294,15 +294,15 @@ class GameLogic {
       model:"llama-3.1-sonar-large-128k-online",
       messages:[
             {role:"system",
-              content:"Double check piece types before responding."},
+              content:"When recommending moves, reference the current FEN to make sure that move can be played and hasn't already been played."},
             { role:"user",
               content: prompt}
       ],
-      max_tokens:"330",
-      temperature:.75,
+      max_tokens:"1000",
+      temperature:0,
       top_p:0.75,
       return_citations:false,
-      search_domain_filter:["perplexity.ai"],
+      search_domain_filter:["https://www.chess.com"],
       return_images:false,
       return_related_questions:false,
       search_recency_filter:"month",
@@ -319,13 +319,8 @@ class GameLogic {
       let explanation = data.choices[0].message.content; // Adjust this depending on the exact content structure
       // const responseText = jsonResponse.choices[0].message.content;
       //  console.log(`explanation: ${explanation}`)
-      const { strategicAnalysisForBlack, explanationForWhiteBestMove } = this.extractSectionsFromAdvice(
-        explanation
-      );
-      return {
-        analysisSummary: strategicAnalysisForBlack,
-        adviceSummary: explanationForWhiteBestMove,
-      };
+      const { openingName, openingAnalysis, recommendedNextMoves } = this.extractSectionsFromAdvice(explanation);
+      return { openingName, openingAnalysis, recommendedNextMoves };
     }
   }
   async getAdviceFromClaude(prompt) {
@@ -354,11 +349,8 @@ class GameLogic {
 
         if (data && data.content && data.content[0] && data.content[0].text) {
             let explanation = data.content[0].text;
-            const { strategicAnalysisForBlack, explanationForWhiteBestMove } = this.extractSectionsFromAdvice(explanation);
-            return {
-                analysisSummary: strategicAnalysisForBlack,
-                adviceSummary: explanationForWhiteBestMove,
-            };
+            const { openingName, openingAnalysis, recommendedNextMoves } = this.extractSectionsFromAdvice(explanation);
+            return { openingName, openingAnalysis, recommendedNextMoves };
         }
     } catch (error) {
         // console.error('Error fetching analysis from Claude:', error);
@@ -368,39 +360,54 @@ class GameLogic {
 async getAdviceFromAPI(apiName) {
   const fen = this.chess.fen();
   const moveHistory = this.chess.history().map(move => move);
+  // Instructions:
+  // - Identify the opening name
+  // - Explain the main ideas and objectives of this opening for both White and Black.
+  // - Provide recommended next moves for white and common variations.
 
-  const prompt = `
-  You are a chess tutor specializing in chess openings. Based on the current game state, provide detailed information about the opening being played.
-  
-  Current FEN: ${fen}
-  Move History: ${moveHistory.join(', ')}
-  
-  Instructions:
-  - Identify the opening name based on the move history.
-  - Explain the main ideas and objectives of this opening for both White and Black.
-  - Provide recommended next moves and common variations.
-  
-  Important:
-  - **Do not include move numbers when mentioning moves.**
-  - **Return all values as plain strings. Do not include nested objects or arrays.**
-  - **Do not include any additional text or explanations outside the JSON format.**
-  - keep response under 80 words
+  // const prompt = `
+  // You are a chess tutor specializing in chess openings. Based on the current game state, provide detailed information about the opening being played.
+  // Current FEN: ${fen}
+  // Move History: ${moveHistory.join(', ')}
+  // - Do not include move numbers when mentioning moves.
+  // - Base response ONLY on the information from https://www.chess.com.
+  // - Keep response under 50 words.
+  // Please respond in the following JSON format:
+  // {
+  //   "openingName": "<Name of the opening based on the move history.>",
+  //   "openingAnalysis": "<Analysis of the most recent moves for both White and Black.>",
+  //   "recommendedNextMoves": "<Suggested next moves and common counter-moves without move numbers>"
+  // }`;
+  // System Message: Defines behavior and rules
+const systemMessage = `
+You are a chess tutor specializing in chess openings.
+Your task is to analyze openings based on the FEN and move history provided by the user.
+Use only information from https://www.chess.com to identify the opening and analyze it.
+Responses must be concise and formatted according to the specified JSON structure.
+Do not include move numbers in the analysis.
+`;
 
-  Please respond in the following JSON format:
-  
-  {
-    "openingName": "<Name of the opening>",
-    "openingAnalysis": "<Analysis of the opening's main ideas and objectives for both White and Black in plain text.>",
-    "recommendedNextMoves": "<Suggested next moves for white and common variations without move numbers>"
-  }
-  `;
-  
-
+// User Prompt: Only dynamic input from the user
+const prompt = `
+Current FEN: ${fen}
+Move History: ${moveHistory.join(', ')}
+Please respond in the following JSON format:
+{
+  "openingName": "<Name of the opening based on the move history.>",
+  "openingAnalysis": "<Analysis of the most recent moves for both White and Black.>",
+  "recommendedNextMoves": "<Suggested next moves and common counter-moves without move numbers>"
+}
+`;
+console.log(prompt);
   switch (apiName) {
     case 'GPT':
-      return await this.getAdviceFromGPT(prompt);
+      return await this.getAdviceFromGPT(systemMessage, prompt);
       case 'Gemini':
         return await this.getAdviceFromGemini(prompt);
+        case 'Perplexity':
+          return await this.getAdviceFromPerplexity(prompt);   
+          case 'Claude':
+            return await this.getAdviceFromClaude(prompt);    
     // ... other cases if any ...
     default:
       throw new Error(`Unknown API name: ${apiName}`);

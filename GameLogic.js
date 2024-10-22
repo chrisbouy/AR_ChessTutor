@@ -115,7 +115,7 @@ class GameLogic {
         return null; // Return null to trigger AI fallback
       }
   
-      // console.log('Lichess API Response:', data);
+      console.log('Lichess API Response:', data);
       if (data.pvs && data.pvs.length > 0) {
         let bestVariant = data.pvs[0];
         data.pvs.forEach((variant) => {
@@ -212,7 +212,7 @@ class GameLogic {
     if (moveCount <= 30) return 'Midgame';
     return 'Endgame';
   }
-  async getAdviceFromGPT(prompt) {
+  async getAdviceFromGPT(system, prompt) {
     try {
       const response = await fetch(`https://api.openai.com/v1/chat/completions`, {
         method: 'POST',
@@ -221,8 +221,12 @@ class GameLogic {
           Authorization: `Bearer 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`, // Replace with your OpenAI API key
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-4o',
           messages: [
+            {
+              role: 'system',
+              content: system
+            },
             {
               role: 'user',
               content: prompt,
@@ -248,7 +252,7 @@ class GameLogic {
   
   async getAdviceFromGemini(prompt) {
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -287,18 +291,18 @@ class GameLogic {
     headers: {Authorization: 'Bearer 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', 
                               'Content-Type': 'application/json'},
     body: JSON.stringify({
-      model:"llama-3.1-sonar-small-128k-online",
+      model:"llama-3.1-sonar-large-128k-online",
       messages:[
             {role:"system",
-              content:"Double check piece types before responding."},
+              content:"When recommending moves, reference the current FEN to make sure that move can be played and hasn't already been played."},
             { role:"user",
               content: prompt}
       ],
-      max_tokens:"330",
-      temperature:.75,
+      max_tokens:"1000",
+      temperature:0,
       top_p:0.75,
       return_citations:false,
-      search_domain_filter:["perplexity.ai"],
+      search_domain_filter:["https://www.chess.com"],
       return_images:false,
       return_related_questions:false,
       search_recency_filter:"month",
@@ -357,29 +361,47 @@ async getAdviceFromAPI(apiName) {
   const fen = this.chess.fen();
   const moveHistory = this.chess.history().map(move => move);
   // Instructions:
-  // - Identify the opening name based on the move history.
+  // - Identify the opening name
   // - Explain the main ideas and objectives of this opening for both White and Black.
   // - Provide recommended next moves for white and common variations.
-  const prompt = `
-  You are a chess tutor specializing in chess openings. Based on the current game state, provide detailed information about the opening being played.
-  Current FEN: ${fen}
-  Move History: ${moveHistory.join(', ')}
-  Important:
-  - Do not include move numbers when mentioning moves.
-  - Return all values as plain strings. Do not include nested objects or arrays.
-  - Do not include any additional text or explanations outside the JSON format.
-  - Keep response under 70 words
-  Please respond in the following JSON format:
-  {
-    "openingName": "<Name of the opening>",
-    "openingAnalysis": "<Analysis of the opening's main ideas and objectives for both White and Black in plain text.>",
-    "recommendedNextMoves": "<Suggested next moves for white and common variations without move numbers>"
-  }`;
-  
 
+  // const prompt = `
+  // You are a chess tutor specializing in chess openings. Based on the current game state, provide detailed information about the opening being played.
+  // Current FEN: ${fen}
+  // Move History: ${moveHistory.join(', ')}
+  // - Do not include move numbers when mentioning moves.
+  // - Base response ONLY on the information from https://www.chess.com.
+  // - Keep response under 50 words.
+  // Please respond in the following JSON format:
+  // {
+  //   "openingName": "<Name of the opening based on the move history.>",
+  //   "openingAnalysis": "<Analysis of the most recent moves for both White and Black.>",
+  //   "recommendedNextMoves": "<Suggested next moves and common counter-moves without move numbers>"
+  // }`;
+  // System Message: Defines behavior and rules
+const systemMessage = `
+You are a chess tutor specializing in chess openings.
+Your task is to analyze openings based on the FEN and move history provided by the user.
+Use only information from https://www.chess.com to identify the opening and analyze it.
+Responses must be concise and formatted according to the specified JSON structure.
+Do not include move numbers in the analysis.
+`;
+
+// User Prompt: Only dynamic input from the user
+const prompt = `
+Current FEN: ${fen}
+Move History: ${moveHistory.join(', ')}
+Please respond in the following JSON format:
+{
+  "openingName": "<Name of the opening based on the move history.>",
+  "openingAnalysis": "<Analysis of the most recent moves for both White and Black.>",
+  "recommendedNextMoves": "<Suggested next moves and common counter-moves without move numbers>"
+}
+`;
+console.log(prompt);
   switch (apiName) {
     case 'GPT':
-      return await this.getAdviceFromGPT(prompt);
+      return await this.getAdviceFromGPT(systemMessage, prompt);
       case 'Gemini':
         return await this.getAdviceFromGemini(prompt);
         case 'Perplexity':

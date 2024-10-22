@@ -5,8 +5,8 @@ import Square from './Square';
 const ChessBoard2D = ({ boardState, boardSize, onSquarePress, selectedSquare, illegalMoveSquares, advisedMove }) => {
   const blinkAnimation = useRef(new Animated.Value(0)).current;
 const squareSize = boardSize / 9;
-console.log('ChessBoard2D - boardSize:', boardSize);
-console.log('ChessBoard2D - squareSize:', squareSize);
+// console.log('ChessBoard2D - boardSize:', boardSize);
+// console.log('ChessBoard2D - squareSize:', squareSize);
 
   useEffect(() => {
     if (illegalMoveSquares) {

@@ -233,25 +233,25 @@ marginRight: 20,
       }
 
       // Get the best move for White
-      let bestMoveForWhite = await gameLogicRef.current.getBestMoveFromLichess('white');
-      if (!bestMoveForWhite) {
-        console.log('Lichess API failed for White, falling back to AI.');
-        bestMoveForWhite = await gameLogicRef.current.getAdvisedMoveFromAI_ForWhite();
-      }
+      // let bestMoveForWhite = await gameLogicRef.current.getBestMoveFromLichess('white');
+      // if (!bestMoveForWhite) {
+      //   console.log('Lichess API failed for White, falling back to AI.');
+      //   bestMoveForWhite = await gameLogicRef.current.getAdvisedMoveFromAI_ForWhite();
+      // }
 
-      if (!bestMoveForWhite || !bestMoveForWhite.uci) {
-        console.error('bestMoveForWhite.uci is undefined');
-        setOpeningName('Failed to get best move for player from Lichess.');
-        return;
-      } else {
-        setAdvisedMove({
-          from: bestMoveForWhite.uci.slice(0, 2),
-          to: bestMoveForWhite.uci.slice(2, 4),
-        });
-      }
+      // if (!bestMoveForWhite || !bestMoveForWhite.uci) {
+      //   console.error('bestMoveForWhite.uci is undefined');
+      //   setOpeningName('Failed to get best move for player from Lichess.');
+      //   return;
+      // } else {
+      //   setAdvisedMove({
+      //     from: bestMoveForWhite.uci.slice(0, 2),
+      //     to: bestMoveForWhite.uci.slice(2, 4),
+      //   });
+      // }
 
       // Fetch analysis from the API
-      const apiName = 'Claude'; // Change to 'Gemini' if needed
+      const apiName = 'GPT'; // Change to 'Gemini' if needed
       const analysis = await gameLogicRef.current.getAdviceFromAPI(apiName);
 
       if (!analysis) {

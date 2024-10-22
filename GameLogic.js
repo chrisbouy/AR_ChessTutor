@@ -25,7 +25,7 @@ class GameLogic {
     return board.map((row, rowIndex) => {
       return row.map((piece, colIndex) => {
         const position = files[colIndex] + (8 - rowIndex); // 'a8', 'b8', etc.
-        const squareColor = (rowIndex + colIndex) % 2 === 0 ? '#1594da' : '#c0dae6'; // Light and dark squares
+        const squareColor = (rowIndex + colIndex) % 2 === 0 ? '#c0dae6' :'#1594da' ; // Light and dark squares
         return {
           position,
           color: squareColor,
@@ -104,17 +104,21 @@ class GameLogic {
       console.log(`Sending request to Lichess with FEN: ${fen}`);
       const response = await fetch(`https://lichess.org/api/cloud-eval?fen=${encodeURIComponent(fen)}`, {
         method: 'GET',
-        headers: {
-          Authorization: `Bearer lip_iioABYocYPTzLDGEnMrt`, // Replace with your Lichess API token
-        },
-      });
-  
+        // headers: {
+        //   Authorization: `Bearer lip_iioABYocYPTzLDGEnMrt`, // Replace with your Lichess API token
+        // },
+      });    
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Lichess API error: ${response.status} ${response.statusText} - ${errorText}`);
+        return null; // Return null to trigger AI fallback
+      }
       const data = await response.json();
       if (data.error) {
         console.log('Lichess API error:', data.error);
         return null; // Return null to trigger AI fallback
       }
-  
+
       console.log('Lichess API Response:', data);
       if (data.pvs && data.pvs.length > 0) {
         let bestVariant = data.pvs[0];
@@ -128,7 +132,6 @@ class GameLogic {
         if (bestMoveSAN) {
           return { uci: bestMoveUCI, san: bestMoveSAN, fullVariant: bestVariant.moves };
         } else {
-          // console.error('Invalid best move from Lichess');
           return null;
         }
       } else {
@@ -162,24 +165,16 @@ class GameLogic {
        console.error('No legal moves available for AI.');
       return null;  // No legal moves
     }
-    // Log available moves to debug
      console.log('Available moves for AI:', possibleMoves);
-  
-    // Select a random or the best move from possible moves
     const selectedMove = this.selectBestMove(possibleMoves);
-  
-    // Apply the selected move
     const moveResult = this.chess.move(selectedMove);
   console.log(`from: ${moveResult.from} to: ${moveResult.to}`);
-
     if (!moveResult) {
        console.error('AI failed to make a valid move.');
       return null;  // Move failed, return null
     }
-  
     const bestMoveUCI = moveResult.from + moveResult.to;
     const dummyFullVariant = [bestMoveUCI]; // Create a dummy variant with the best move as the first item
-  
     return {
       move: moveResult, // Last move in verbose format
       boardState: this.getBoardState(),  // Updated board state
@@ -221,7 +216,7 @@ class GameLogic {
           Authorization: `Bearer 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`, // Replace with your OpenAI API key
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
@@ -233,7 +228,7 @@ class GameLogic {
             },
           ],
           max_tokens: 500,
-          temperature: 0.7,
+          temperature: 0,
         }),
       });
       const jsonResponse = await response.json();
@@ -379,12 +374,14 @@ async getAdviceFromAPI(apiName) {
   //   "recommendedNextMoves": "<Suggested next moves and common counter-moves without move numbers>"
   // }`;
   // System Message: Defines behavior and rules
+  //  "openingName": "<Name of the White's opening based on the move history after careful analysis of the current FEN.>",
+
 const systemMessage = `
 You are a chess tutor specializing in chess openings.
 Your task is to analyze openings based on the FEN and move history provided by the user.
 Use only information from https://www.chess.com to identify the opening and analyze it.
-Responses must be concise and formatted according to the specified JSON structure.
-Do not include move numbers in the analysis.
+Responses must be concise strings and formatted according to the specified JSON structure.
+Do not include move numbers in the response.
 `;
 
 // User Prompt: Only dynamic input from the user
@@ -393,9 +390,9 @@ Current FEN: ${fen}
 Move History: ${moveHistory.join(', ')}
 Please respond in the following JSON format:
 {
-  "openingName": "<Name of the opening based on the move history.>",
-  "openingAnalysis": "<Analysis of the most recent moves for both White and Black.>",
-  "recommendedNextMoves": "<Suggested next moves and common counter-moves without move numbers>"
+  "openingName": "Name of the White's opening",
+  "openingAnalysis": "Analysis of only the most recent move for both White and Black.",
+  "recommendedNextMoves": "Suggested next moves and common counter-moves.  Suggest only moves that are possible given the current FEN"
 }
 `;
 console.log(prompt);

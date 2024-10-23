@@ -8,6 +8,7 @@ import {
   Animated,
   ScrollView,
   SafeAreaView,
+  FlatList,
 } from 'react-native';
 import ChessBoard2D from './ChessBoard2D';
 import GameLogic from '../GameLogic';
@@ -18,7 +19,7 @@ const ChessTutorApp = () => {
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [openingName, setOpeningName] = useState('');
   const [openingAnalysis, setOpeningAnalysis] = useState('');
-  const [recommendedNextMoves, setRecommendedNextMoves] = useState('');
+  const [recommendedNextMoves, setRecommendedNextMoves] = useState([]);
   const [illegalMoveSquares, setIllegalMoveSquares] = useState(null);
   const [advisedMove, setAdvisedMove] = useState(null);
 
@@ -40,6 +41,8 @@ const ChessTutorApp = () => {
         safeArea: {
           flex: 1,
           backgroundColor: '#191d24',
+          // justifyContent: 'center',
+          // alignItems: 'center',
         },
         reloadButtonContainer: {
           padding: 0,
@@ -71,11 +74,11 @@ marginRight: 20,
         },
         textContainer: {
           flexGrow: 1,
-          alignItems: 'center',
+          alignItems: 'stretch',
           width: '100%',
         },
         analysisContainer: {
-          alignItems: 'center',
+          alignItems: 'stretch',
           marginTop: 2,
           paddingHorizontal: 10,
           width: '90%',
@@ -137,7 +140,38 @@ marginRight: 20,
           paddingVertical: 0,
           backgroundColor: '#191d24', // Deep black background
         },
-
+        tableContainer: {
+          width: '90%', // Ensure table fits within the screen
+          borderWidth: 1,
+          borderColor: 'white',
+          borderRadius: 8,
+          overflow: 'hidden',
+        },
+        tableRow: {
+          flexDirection: 'row', // Align cells horizontally
+          borderBottomWidth: 1,
+          borderColor: 'white',
+        },
+        tableCell: {
+          flex: 1, // Distribute space evenly between cells
+          padding: 10,
+          fontSize: 16,
+          color: '#aec4e8',
+          textAlign: 'center',
+          borderRightWidth: 1,
+          borderColor: 'white',
+        },
+        tableHeader: {
+          fontWeight: 'bold',
+          backgroundColor: '#333',
+          color: 'white',
+        },   
+        scrollContainer: {
+          flexGrow: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 10,
+        },
       }),
     [windowWidth]
   );
@@ -171,6 +205,7 @@ marginRight: 20,
 
   const onMove = async (fromSquare, toSquare) => {
     try {
+      // Player (White) makes a move
       const playerMove = gameLogicRef.current.makeMove({ from: fromSquare, to: toSquare });
       if (!playerMove) {
         setIllegalMoveSquares({ from: fromSquare, to: toSquare });
@@ -178,50 +213,66 @@ marginRight: 20,
       }
       setBoardState([...gameLogicRef.current.getBoardState()]);
       setIllegalMoveSquares(null);
-
       setMovesLeft((prevMoves) => prevMoves - 1);
-
-      // Check if movesLeft has reached 0
       if (movesLeft - 1 <= 0) {
-        // Game over logic
         Alert.alert('Game Over', 'You have reached the maximum number of moves for the opening phase.');
         return;
       }
-      // Fade out the current advice and analysis
+  
+      // Start the thinking animation
       Animated.timing(textOpacity, {
         toValue: 0,
         duration: 500,
         useNativeDriver: true,
       }).start(() => {
-        // Once advice fades out, show "Thinking..."
         Animated.timing(thinkingOpacity, {
           toValue: 1,
           duration: 500,
           useNativeDriver: true,
         }).start();
       });
-
-      // Get the best move for Black
-      let bestMoveForBlack = await gameLogicRef.current.getBestMoveFromLichess('black');
-      if (!bestMoveForBlack) {
-        console.log('Lichess API failed for Black, falling back to AI.');
-        bestMoveForBlack = await gameLogicRef.current.makeAIMoveForBlack();
-        if (!bestMoveForBlack || !bestMoveForBlack.move) {
-          setOpeningName("Computer's move failed.");
-          return;
+  
+      // Determine if it's the first move
+      const isFirstMove = gameLogicRef.current.chess.history().length === 1;
+  
+      // Make Black's move
+      let blackMoveResult;
+      if (isFirstMove) {
+        // First move: Use Lichess
+        let bestMoveForBlack = await gameLogicRef.current.getBestMoveFromLichess('black');
+        if (!bestMoveForBlack || !bestMoveForBlack.san) {
+          console.log('Lichess API failed for Black, making random move.');
+          blackMoveResult = gameLogicRef.current.makeRandomMove();
+        } else {
+          blackMoveResult = gameLogicRef.current.makeMove(bestMoveForBlack.san);
+          if (!blackMoveResult) {
+            console.log('Failed to make Lichess move, making random move.');
+            blackMoveResult = gameLogicRef.current.makeRandomMove();
+          }
         }
-        // Update the board state since the move was already made
-        setBoardState([...gameLogicRef.current.getBoardState()]);
       } else {
-        // If we have a move from Lichess, apply it
-        const blackMoveResult = gameLogicRef.current.makeMove(bestMoveForBlack.san);
-        if (!blackMoveResult) {
-          setOpeningName("Computer's move failed.");
-          return;
+        // Subsequent moves: Use AI advice
+        blackMoveResult = await gameLogicRef.current.makeMoveForBlack();
+        if (!blackMoveResult || !blackMoveResult.move) {
+          console.log('AI failed to make a move for Black, falling back to Lichess.');
+          let bestMoveForBlack = await gameLogicRef.current.getBestMoveFromLichess('black');
+          if (!bestMoveForBlack || !bestMoveForBlack.san) {
+            console.log('Lichess API failed for Black, making random move.');
+            blackMoveResult = gameLogicRef.current.makeRandomMove();
+          } else {
+            blackMoveResult = gameLogicRef.current.makeMove(bestMoveForBlack.san);
+            if (!blackMoveResult) {
+              console.log('Failed to make Lichess move, making random move.');
+              blackMoveResult = gameLogicRef.current.makeRandomMove();
+            }
+          }
         }
+      }
+  
+      // Update the board state after Black's move
+      if (blackMoveResult) {
         setBoardState([...gameLogicRef.current.getBoardState()]);
         setMovesLeft((prevMoves) => prevMoves - 1);
-
         if (movesLeft - 1 <= 0) {
           Alert.alert(
             'Opening Phase Complete',
@@ -230,54 +281,41 @@ marginRight: 20,
           );
           return;
         }
-      }
-
-      // Get the best move for White
-      // let bestMoveForWhite = await gameLogicRef.current.getBestMoveFromLichess('white');
-      // if (!bestMoveForWhite) {
-      //   console.log('Lichess API failed for White, falling back to AI.');
-      //   bestMoveForWhite = await gameLogicRef.current.getAdvisedMoveFromAI_ForWhite();
-      // }
-
-      // if (!bestMoveForWhite || !bestMoveForWhite.uci) {
-      //   console.error('bestMoveForWhite.uci is undefined');
-      //   setOpeningName('Failed to get best move for player from Lichess.');
-      //   return;
-      // } else {
-      //   setAdvisedMove({
-      //     from: bestMoveForWhite.uci.slice(0, 2),
-      //     to: bestMoveForWhite.uci.slice(2, 4),
-      //   });
-      // }
-
-      // Fetch analysis from the API
-      const apiName = 'GPT'; // Change to 'Gemini' if needed
-      const analysis = await gameLogicRef.current.getAdviceFromAPI(apiName);
-
-      if (!analysis) {
-        setOpeningName('Failed to get analysis from AI');
-        setOpeningAnalysis('');
-        setRecommendedNextMoves('');
+      } else {
+        setOpeningName("Computer's move failed.");
         return;
       }
-
-      // Fade out "Thinking..." and show the analysis
+  
+      // Fetch analysis from the AI
+      const apiName = 'GPT'; // Change to 'Gemini' if needed
+      const advice = await gameLogicRef.current.getAdviceFromAPI(apiName);
+  
+      if (!advice) {
+        setOpeningName('Failed to get advice from AI');
+        setOpeningAnalysis('');
+        setRecommendedNextMoves([]);
+        return;
+      } else {
+        // Store the latest advice in GameLogic
+        gameLogicRef.current.latestAdvice = advice;
+      }
+  
+      // Stop the thinking animation and display the advice
       Animated.timing(thinkingOpacity, {
         toValue: 0,
         duration: 500,
         useNativeDriver: true,
       }).start(() => {
-        // Set the new state variables
-        setOpeningName(analysis.openingName);
-        setOpeningAnalysis(analysis.openingAnalysis);
-        setRecommendedNextMoves(analysis.recommendedNextMoves);
-
+        setOpeningName(advice.openingName);
+        setOpeningAnalysis(advice.openingAnalysis);
+        setRecommendedNextMoves(advice.recommendedNextMoves);
+  
         Animated.timing(textOpacity, {
           toValue: 1,
           duration: 500,
           useNativeDriver: true,
         }).start(() => {
-          analysisComplete.current = true; // Mark analysis as complete
+          analysisComplete.current = true;
         });
       });
     } catch (error) {
@@ -286,6 +324,7 @@ marginRight: 20,
       setIllegalMoveSquares({ from: fromSquare, to: toSquare });
     }
   };
+  
 
   if (!boardState || boardState.length === 0) {
     return (
@@ -294,7 +333,12 @@ marginRight: 20,
       </View>
     );
   }
-
+  const renderRow = ({ item }) => (
+    <View style={styles.tableRow}>
+      <Text style={styles.tableCell}>{item.whiteMove}</Text>
+      <Text style={styles.tableCell}>{item.blackResponses.join(', ')}</Text>
+    </View>
+  );
   return (
     <SafeAreaView style={styles.safeArea}>
 
@@ -337,12 +381,37 @@ marginRight: 20,
               </Text>
             ) : null}
 
-            {recommendedNextMoves ? (
-              <Text style={styles.recommendedNextMoves}>
-                <Text style={styles.prefixText}>Recommended Moves and Likely Counters:{'\n'}</Text>
-                {recommendedNextMoves}
-              </Text>
-            ) : null}
+<SafeAreaView style={styles.safeArea}>
+  <View style={styles.tableContainer}>
+    {/* Table Header */}
+    <View style={styles.tableRow}>
+      <Text style={[styles.tableCell, styles.tableHeader]}>Advice</Text>
+      <Text style={[styles.tableCell, styles.tableHeader]}>Likely Responses</Text>
+    </View>
+
+    {/* Table Rows - Mapping through recommended moves */}
+    {Array.isArray(recommendedNextMoves) && recommendedNextMoves.length > 0 ? (
+      recommendedNextMoves.map((move, index) => (
+        <View key={index} style={styles.tableRow}>
+          <Text style={styles.tableCell}>{move.whiteMove}</Text>
+          <Text style={styles.tableCell}>{move.blackResponses.join(', ')}</Text>
+        </View>
+      ))
+    ) : (
+      <View style={styles.tableRow}>
+        <Text style={styles.tableCell}>No advice available</Text>
+        <Text style={styles.tableCell}>N/A</Text>
+      </View>
+    )}
+  </View>
+</SafeAreaView>
+
+
+
+
+
+
+
           </Animated.View>
         </ScrollView>
 

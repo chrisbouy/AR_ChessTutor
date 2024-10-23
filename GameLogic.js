@@ -6,6 +6,7 @@ class GameLogic {
     //     chess.clear()
     // chess.fen()
     this.chess = new Chess();
+    this.latestAdvice = null; 
     // this.chess.clear()
     // this.chess.fen()
   }
@@ -159,35 +160,99 @@ class GameLogic {
       uci: bestMoveUCI,  // Best move in UCI format
     };
   }
-  makeAIMoveForBlack() {
-    const possibleMoves = this.chess.moves(); // Get all possible moves
-    if (possibleMoves.length === 0) {
-       console.error('No legal moves available for AI.');
-      return null;  // No legal moves
+
+  // makeAIMoveForBlack() {
+  //   const possibleMoves = this.chess.moves(); // Get all possible moves
+  //   if (possibleMoves.length === 0) {
+  //      console.error('No legal moves available for AI.');
+  //     return null;  // No legal moves
+  //   }
+  //    console.log('Available moves for AI:', possibleMoves);
+  //   const selectedMove = this.selectBestMove(possibleMoves);
+  //   const moveResult = this.chess.move(selectedMove);
+  // console.log(`from: ${moveResult.from} to: ${moveResult.to}`);
+  //   if (!moveResult) {
+  //      console.error('AI failed to make a valid move.');
+  //     return null;  // Move failed, return null
+  //   }
+  //   const bestMoveUCI = moveResult.from + moveResult.to;
+  //   const dummyFullVariant = [bestMoveUCI]; // Create a dummy variant with the best move as the first item
+  //   return {
+  //     move: moveResult, // Last move in verbose format
+  //     boardState: this.getBoardState(),  // Updated board state
+  //     status: this.getGameStatus(),  // Game status (e.g., ongoing, checkmate)
+  //     fullVariant: dummyFullVariant.join(' '), // Return the dummy fullVariant array as a string
+  //     uci: bestMoveUCI,  // Best move in UCI format
+  //     san: moveResult.san,  // Best move in SAN format
+  //   };
+  // }
+  async makeMoveForBlack() {
+    try {
+      const userLastMove = this.chess.history({ verbose: true }).slice(-1)[0];
+      const userLastMoveSAN = userLastMove.san;
+  
+      let blackMove = null;
+  
+      if (this.latestAdvice && this.latestAdvice.recommendedNextMoves) {
+        // Find if the user's move matches any of the AI's recommended moves
+        const matchingAdvice = this.latestAdvice.recommendedNextMoves.find(
+          (advice) => advice.whiteMove === userLastMoveSAN
+        );
+  
+        if (matchingAdvice && matchingAdvice.blackResponses.length > 0) {
+          // User took the AI's advice; pick one of the suggested black responses
+          blackMove = this.selectBestBlackResponse(matchingAdvice.blackResponses);
+        }
+      }
+  
+      if (!blackMove) {
+        // Option 2: Get the best move from Lichess
+        const bestMove = await this.getBestMoveFromLichess();
+        if (bestMove && bestMove.san) {
+          blackMove = bestMove.san;
+        } else {
+          // Lichess API failed; make a random move
+          blackMove = this.selectRandomMove();
+        }
+      }
+  
+      // Make the move
+      const moveResult = this.chess.move(blackMove);
+      if (moveResult) {
+        return {
+          move: moveResult,
+          boardState: this.getBoardState(),
+          status: this.getGameStatus(),
+          uci: moveResult.from + moveResult.to,
+          san: moveResult.san,
+        };
+      } else {
+        console.error('Failed to make black move:', blackMove);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error in makeMoveForBlack:', error);
+      return null;
     }
-     console.log('Available moves for AI:', possibleMoves);
-    const selectedMove = this.selectBestMove(possibleMoves);
-    const moveResult = this.chess.move(selectedMove);
-  console.log(`from: ${moveResult.from} to: ${moveResult.to}`);
-    if (!moveResult) {
-       console.error('AI failed to make a valid move.');
-      return null;  // Move failed, return null
-    }
-    const bestMoveUCI = moveResult.from + moveResult.to;
-    const dummyFullVariant = [bestMoveUCI]; // Create a dummy variant with the best move as the first item
-    return {
-      move: moveResult, // Last move in verbose format
-      boardState: this.getBoardState(),  // Updated board state
-      status: this.getGameStatus(),  // Game status (e.g., ongoing, checkmate)
-      fullVariant: dummyFullVariant.join(' '), // Return the dummy fullVariant array as a string
-      uci: bestMoveUCI,  // Best move in UCI format
-      san: moveResult.san,  // Best move in SAN format
-    };
   }
-  selectBestMove(possibleMoves) {
-    const randomIndex = Math.floor(Math.random() * possibleMoves.length);
-    return possibleMoves[randomIndex];
+  
+
+  selectBestBlackResponse(blackResponses) {
+    // You can implement any selection logic here
+    // For simplicity, we'll pick the first move
+    return blackResponses[0];
   }
+
+selectRandomMove() {
+  const possibleMoves = this.chess.moves();
+  if (possibleMoves.length === 0) {
+    console.error('No legal moves available.');
+    return null;
+  }
+  const randomIndex = Math.floor(Math.random() * possibleMoves.length);
+  return possibleMoves[randomIndex];
+}
+
 
   getBestVariantWithHighestCP(data) {
     if (!data.pvs || data.pvs.length === 0) {
@@ -237,8 +302,10 @@ class GameLogic {
         return null;
       }
       const responseText = jsonResponse.choices[0].message.content;
-      const { openingName, openingAnalysis, recommendedNextMoves } = this.extractSectionsFromAdvice(responseText);
-      return { openingName, openingAnalysis, recommendedNextMoves };
+      // const { openingName, openingAnalysis, recommendedNextMoves } = this.extractSectionsFromAdvice(responseText);
+      // return { openingName, openingAnalysis, recommendedNextMoves };
+      const advice = this.extractSectionsFromAdvice(responseText);
+      return advice;
     } catch (error) {
       console.error('Error fetching analysis from AI:', error);
       return null;
@@ -351,65 +418,71 @@ class GameLogic {
         // console.error('Error fetching analysis from Claude:', error);
         return null;
     }
-}
-async getAdviceFromAPI(apiName) {
-  const fen = this.chess.fen();
-  const moveHistory = this.chess.history().map(move => move);
-  // Instructions:
-  // - Identify the opening name
-  // - Explain the main ideas and objectives of this opening for both White and Black.
-  // - Provide recommended next moves for white and common variations.
-
-  // const prompt = `
-  // You are a chess tutor specializing in chess openings. Based on the current game state, provide detailed information about the opening being played.
-  // Current FEN: ${fen}
-  // Move History: ${moveHistory.join(', ')}
-  // - Do not include move numbers when mentioning moves.
-  // - Base response ONLY on the information from https://www.chess.com.
-  // - Keep response under 50 words.
-  // Please respond in the following JSON format:
-  // {
-  //   "openingName": "<Name of the opening based on the move history.>",
-  //   "openingAnalysis": "<Analysis of the most recent moves for both White and Black.>",
-  //   "recommendedNextMoves": "<Suggested next moves and common counter-moves without move numbers>"
-  // }`;
-  // System Message: Defines behavior and rules
-  //  "openingName": "<Name of the White's opening based on the move history after careful analysis of the current FEN.>",
-
-const systemMessage = `
-You are a chess tutor specializing in chess openings.
-Your task is to analyze openings based on the FEN and move history provided by the user.
-Use only information from https://www.chess.com to identify the opening and analyze it.
-Responses must be concise strings and formatted according to the specified JSON structure.
-Do not include move numbers in the response.
-`;
-
-// User Prompt: Only dynamic input from the user
-const prompt = `
-Current FEN: ${fen}
-Move History: ${moveHistory.join(', ')}
-Please respond in the following JSON format:
-{
-  "openingName": "Name of the White's opening",
-  "openingAnalysis": "Analysis of only the most recent move for both White and Black.",
-  "recommendedNextMoves": "Suggested next moves and common counter-moves.  Suggest only moves that are possible given the current FEN"
-}
-`;
-console.log(prompt);
-  switch (apiName) {
-    case 'GPT':
-      return await this.getAdviceFromGPT(systemMessage, prompt);
-      case 'Gemini':
-        return await this.getAdviceFromGemini(prompt);
-        case 'Perplexity':
-          return await this.getAdviceFromPerplexity(prompt);   
-          case 'Claude':
-            return await this.getAdviceFromClaude(prompt);    
-    // ... other cases if any ...
-    default:
-      throw new Error(`Unknown API name: ${apiName}`);
   }
-}
+  async getAdviceFromAPI(apiName) {
+    const fen = this.chess.fen();
+    const moveHistory = this.chess.history().map(move => move);
+    // Instructions:
+    // - Identify the opening name
+    // - Explain the main ideas and objectives of this opening for both White and Black.
+    // - Provide recommended next moves for white and common variations.
+
+    // const prompt = `
+    // You are a chess tutor specializing in chess openings. Based on the current game state, provide detailed information about the opening being played.
+    // Current FEN: ${fen}
+    // Move History: ${moveHistory.join(', ')}
+    // - Do not include move numbers when mentioning moves.
+    // - Base response ONLY on the information from https://www.chess.com.
+    // - Keep response under 50 words.
+    // Please respond in the following JSON format:
+    // {
+    //   "openingName": "<Name of the opening based on the move history.>",
+    //   "openingAnalysis": "<Analysis of the most recent moves for both White and Black.>",
+    //   "recommendedNextMoves": "<Suggested next moves and common counter-moves without move numbers>"
+    // }`;
+    // System Message: Defines behavior and rules
+    //  "openingName": "<Name of the White's opening based on the move history after careful analysis of the current FEN.>",
+
+  const systemMessage = `
+  You are a chess tutor specializing in chess openings.
+  Your task is to analyze openings based on the FEN and move history provided by the user.
+  Use only information from https://www.chess.com to identify the opening and analyze it.
+  Responses must be concise strings and formatted according to the specified JSON structure.
+  For each recommended White move, you should provide possible Black responses.
+  Do not include move numbers in the response.
+  `;
+
+  // User Prompt: Only dynamic input from the user
+  const prompt = `
+  Current FEN: ${fen}
+  Move History: ${moveHistory.join(', ')}
+  Please respond in the following JSON format:
+  {
+    "openingName": "Name of the White's opening",
+    "openingAnalysis": "Analysis of only the most recent move for both White and Black.",
+    "recommendedNextMoves": [
+      {
+        "whiteMove": "<Suggested move for White>",
+        "blackResponses": ["<Possible response 1>", "<Possible response 2>", "..."]
+      },
+      // ... more recommended moves
+    ]  }
+  `;
+  console.log(prompt);
+    switch (apiName) {
+      case 'GPT':
+        return await this.getAdviceFromGPT(systemMessage, prompt);
+        case 'Gemini':
+          return await this.getAdviceFromGemini(prompt);
+          case 'Perplexity':
+            return await this.getAdviceFromPerplexity(prompt);   
+            case 'Claude':
+              return await this.getAdviceFromClaude(prompt);    
+      // ... other cases if any ...
+      default:
+        throw new Error(`Unknown API name: ${apiName}`);
+    }
+  }
 
   generateChessPrompt(bestMoveForWhiteLAN) {
     const fen = this.chess.fen();
@@ -459,37 +532,22 @@ console.log(prompt);
   
   extractSectionsFromAdvice(adviceText) {
     try {
+      console.log(adviceText);
       const cleanedText = adviceText.replace(/```(?:json)?/g, '').trim();
-  
-      // Log the cleaned text before parsing
-      console.log('Cleaned AI Response:', cleanedText);
-  
       const parsedResponse = JSON.parse(cleanedText);
-  
-      let { openingName, openingAnalysis, recommendedNextMoves } = parsedResponse;
-  
-      // Check if openingAnalysis is an object
-      if (typeof openingAnalysis === 'object') {
-        // Convert it to a string
-        openingAnalysis = Object.entries(openingAnalysis)
-          .map(([key, value]) => `${key}: ${value}`)
-          .join('\n');
-      }
-  
-      // Similarly for recommendedNextMoves if needed
-  
+      const { openingName, openingAnalysis, recommendedNextMoves } = parsedResponse;
       return { openingName, openingAnalysis, recommendedNextMoves };
     } catch (e) {
       console.error("Error parsing the assistant's response:", e);
       console.log('Original AI Response:', adviceText);
-      return {
-        openingName: 'Unknown Opening',
-        openingAnalysis: 'Unable to parse opening analysis.',
-        recommendedNextMoves: 'No recommendations available.',
-      };
+      return null;
     }
   }
   
+  validateMove(sanMove) {
+    const moves = this.chess.moves({ verbose: true });
+    return moves.some((move) => move.san === sanMove);
+  }
   
   convertUCItoLAN(uciMove, fen) {
     const chessInstance = new Chess(fen);

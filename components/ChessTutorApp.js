@@ -22,14 +22,14 @@ const ChessTutorApp = () => {
   const [recommendedNextMoves, setRecommendedNextMoves] = useState([]);
   const [illegalMoveSquares, setIllegalMoveSquares] = useState(null);
   const [advisedMove, setAdvisedMove] = useState(null);
-
+  const scrollViewRef = useRef(null); // Create a ref for the ScrollView
   const textOpacity = useRef(new Animated.Value(1)).current;
   const thinkingOpacity = useRef(new Animated.Value(0)).current;
   const analysisComplete = useRef(false);
 
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const chessboardSize = Math.min(windowWidth, windowHeight) * 0.9;
-
+  const [isLandscape, setIsLandscape] = useState(false);
   const guidelineBaseWidth = 350; // Base width
   const scaleFont = (size) => (windowWidth / guidelineBaseWidth) * size;
 
@@ -59,6 +59,18 @@ const ChessTutorApp = () => {
         reloadButtonText: {
           color: 'white',
           fontWeight: 'bold',
+        },
+        warningContainer: {
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#191d24',
+        },
+        warningText: {
+          fontSize: 24,
+          color: '#fff',
+          textAlign: 'center',
+          paddingHorizontal: 20,
         },
         container: {
           flex: 1,
@@ -172,6 +184,12 @@ marginRight: 20,
           alignItems: 'center',
           padding: 10,
         },
+        noDataText: {
+          fontSize: scaleFont(20),
+          color: '#aec4e8',
+          textAlign: 'center',
+          marginVertical: 10,
+        }
       }),
     [windowWidth]
   );
@@ -189,7 +207,7 @@ marginRight: 20,
     textOpacity.setValue(1);
     thinkingOpacity.setValue(0);
     analysisComplete.current = false;
-    setMovesLeft(20); // Reset moves left
+    setMovesLeft(12); // Reset moves left
   };
 
   const onSquarePress = (position) => {
@@ -231,7 +249,9 @@ marginRight: 20,
           useNativeDriver: true,
         }).start();
       });
-  
+      // Start of game?
+      const isGameStart = gameLogicRef.current.chess.history().length === 0;
+
       // Determine if it's the first move
       const isFirstMove = gameLogicRef.current.chess.history().length === 1;
   
@@ -272,7 +292,7 @@ marginRight: 20,
       // Update the board state after Black's move
       if (blackMoveResult) {
         setBoardState([...gameLogicRef.current.getBoardState()]);
-        setMovesLeft((prevMoves) => prevMoves - 1);
+        // setMovesLeft((prevMoves) => prevMoves - 1);
         if (movesLeft - 1 <= 0) {
           Alert.alert(
             'Opening Phase Complete',
@@ -287,7 +307,7 @@ marginRight: 20,
       }
   
       // Fetch analysis from the AI
-      const apiName = 'GPT'; // Change to 'Gemini' if needed
+      const apiName = 'Gemini'; // Change to 'Gemini' if needed
       const advice = await gameLogicRef.current.getAdviceFromAPI(apiName);
   
       if (!advice) {
@@ -309,7 +329,7 @@ marginRight: 20,
         setOpeningName(advice.openingName);
         setOpeningAnalysis(advice.openingAnalysis);
         setRecommendedNextMoves(advice.recommendedNextMoves);
-  
+
         Animated.timing(textOpacity, {
           toValue: 1,
           duration: 500,
@@ -318,6 +338,9 @@ marginRight: 20,
           analysisComplete.current = true;
         });
       });
+
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+
     } catch (error) {
       console.error('Error during move:', error);
       setOpeningName('Error processing move, please try again.');
@@ -333,12 +356,25 @@ marginRight: 20,
       </View>
     );
   }
+
   const renderRow = ({ item }) => (
     <View style={styles.tableRow}>
       <Text style={styles.tableCell}>{item.whiteMove}</Text>
       <Text style={styles.tableCell}>{item.blackResponses.join(', ')}</Text>
     </View>
   );
+
+  useEffect(() => {
+    setIsLandscape(windowWidth > windowHeight); // Detect if the device is in landscape mode
+  }, [windowWidth, windowHeight]);
+  if (isLandscape) {
+    return (
+      <View style={styles.warningContainer}>
+        <Text style={styles.warningText}>Please rotate your device back to portrait mode.</Text>
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
 
@@ -368,7 +404,9 @@ marginRight: 20,
         </View>
 
         {/* Analysis texts */}
-        <ScrollView contentContainerStyle={styles.textContainer}>
+        <ScrollView 
+          ref={scrollViewRef}
+          contentContainerStyle={styles.textContainer}>
           <Animated.View style={[styles.analysisContainer, { opacity: textOpacity }]}>
             {openingName ? (
               <Text style={styles.openingName}>{openingName}</Text>
@@ -380,7 +418,7 @@ marginRight: 20,
                 {openingAnalysis}
               </Text>
             ) : null}
-
+{recommendedNextMoves.length > 0 ? (
 <SafeAreaView style={styles.safeArea}>
   <View style={styles.tableContainer}>
     {/* Table Header */}
@@ -389,7 +427,6 @@ marginRight: 20,
       <Text style={[styles.tableCell, styles.tableHeader]}>Likely Responses</Text>
     </View>
 
-    {/* Table Rows - Mapping through recommended moves */}
     {Array.isArray(recommendedNextMoves) && recommendedNextMoves.length > 0 ? (
       recommendedNextMoves.map((move, index) => (
         <View key={index} style={styles.tableRow}>
@@ -405,7 +442,9 @@ marginRight: 20,
     )}
   </View>
 </SafeAreaView>
-
+  ) : (
+    <Text style={styles.noDataText}>Make your move.</Text>
+  )}
 
 
 

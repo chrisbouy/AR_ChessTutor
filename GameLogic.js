@@ -107,11 +107,11 @@ class GameLogic {
   async getBestMoveFromAI_Black() {
     try {
       const fen = this.chess.fen();
-      const prompt = `You are a chess tutor, analyze the current position and respond with only the best move for Black in SAN notation. NO OTHER WORDS. Current FEN: ${fen}`;
+      const prompt = `You are a chess tutor, analyze the current FEN and respond with only the best move for Black in SAN notation. NO OTHER WORDS. Current FEN: ${fen}`;
   
       // Call your AI API (e.g., OpenAI) to get the best move
       const aiResponse = await this.callAIForMove_Black(prompt);
-      console.log(`this is either black's first move or white has gone off script.  ai: ${aiResponse}`);
+      console.log(`this is either black's first move or white has gone off script.  current fen: ${fen}.  ai move: ${aiResponse}`);
       const bestMoveSAN = aiResponse.trim();
   
       // Validate the move
@@ -136,14 +136,14 @@ class GameLogic {
           Authorization: `Bearer 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`, // Use environment variable or secure storage
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini', // Or your chosen model
+          model: 'gpt-4o', 
           messages: [
             {
               role: 'user',
               content: prompt,
             },
           ],
-          max_tokens: 10,
+          max_tokens: 100,
           temperature: 0,
         }),
       });
@@ -204,8 +204,8 @@ class GameLogic {
       // Make the move
       const moveResult = this.chess.move(blackMove);
       if (moveResult) {
-        console.log(`whites move: ${this.getLastWhiteMove.san}`);
-        console.log(`blacks move: ${this.getLastBlackMove.san}`);
+        console.log(`whites move: ${this.getLastWhiteMove().san}`);
+        console.log(`blacks move: ${this.getLastBlackMove().san}`);
         
         return {
           move: moveResult,
@@ -258,7 +258,7 @@ class GameLogic {
           Authorization: `Bearer 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`, // Replace with your OpenAI API key
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-4o',
           messages: [
             {
               role: 'system',
@@ -370,7 +370,7 @@ class GameLogic {
                 'x-api-key': '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'
             },
             body: JSON.stringify({
-                model: "claude-3-sonnet-20240229",
+                model: "claude-3-5-sonnet-20241022",
                 max_tokens: 1000,
                 messages: [
                     {
@@ -524,5 +524,9 @@ class GameLogic {
   getLastBlackMove() {
     return this.getLastMoveByColor('b'); // 'b' for Black
   }
+  getLegalMoves(position) {
+    return this.chess.moves({ square: position, verbose: true });
+  }
+  
 }
 export default GameLogic;

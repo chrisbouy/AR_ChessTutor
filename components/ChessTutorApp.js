@@ -22,19 +22,17 @@ const ChessTutorApp = () => {
   const [recommendedNextMoves, setRecommendedNextMoves] = useState([]);
   const [illegalMoveSquares, setIllegalMoveSquares] = useState(null);
   const [advisedMove, setAdvisedMove] = useState(null);
-
+  const scrollViewRef = useRef(null); // Create a ref for the ScrollView
   const textOpacity = useRef(new Animated.Value(1)).current;
   const thinkingOpacity = useRef(new Animated.Value(0)).current;
   const analysisComplete = useRef(false);
 
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const chessboardSize = Math.min(windowWidth, windowHeight) * 0.9;
-
+  const [isLandscape, setIsLandscape] = useState(false);
   const guidelineBaseWidth = 350; // Base width
   const scaleFont = (size) => (windowWidth / guidelineBaseWidth) * size;
-
   const [movesLeft, setMovesLeft] = useState(20); // Starting from 20 half-moves
-
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -60,6 +58,18 @@ const ChessTutorApp = () => {
           color: 'white',
           fontWeight: 'bold',
         },
+        warningContainer: {
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#191d24',
+        },
+        warningText: {
+          fontSize: 24,
+          color: '#fff',
+          textAlign: 'center',
+          paddingHorizontal: 20,
+        },
         container: {
           flex: 1,
           backgroundColor: '#191d24',
@@ -76,12 +86,15 @@ marginRight: 20,
           flexGrow: 1,
           alignItems: 'stretch',
           width: '100%',
+          
         },
         analysisContainer: {
           alignItems: 'stretch',
-          marginTop: 2,
+          marginTop: 25,
           paddingHorizontal: 10,
           width: '90%',
+          marginLeft: 35,
+          
         },
         prefixText: {
           fontWeight: 'bold',
@@ -92,11 +105,11 @@ marginRight: 20,
           fontSize: scaleFont(26),
           color: '#aec4e8',
           textAlign: 'center',
-          marginBottom: 1,
+          marginBottom: 15,
         },
         openingAnalysis: {
           fontSize: scaleFont(18),
-          marginTop: 10,
+          marginTop: 25,
           marginBottom: 10, // Add if needed
           color: '#aec4e8',
           textAlign: 'left',
@@ -111,8 +124,8 @@ marginRight: 20,
           textAlign: 'left',
           lineHeight: scaleFont(24),
           paddingHorizontal: 10, // Ensure consistency
+          
         },
-        
         thinkingText: {
           fontSize: scaleFont(24),
           color: '#ffcc00',
@@ -172,11 +185,15 @@ marginRight: 20,
           alignItems: 'center',
           padding: 10,
         },
+        noDataText: {
+          fontSize: scaleFont(20),
+          color: '#aec4e8',
+          textAlign: 'center',
+          marginVertical: 10,
+        }
       }),
     [windowWidth]
   );
-  
-
   const handleReload = () => {
     gameLogicRef.current = new GameLogic();
     setBoardState(gameLogicRef.current.getBoardState());
@@ -189,9 +206,8 @@ marginRight: 20,
     textOpacity.setValue(1);
     thinkingOpacity.setValue(0);
     analysisComplete.current = false;
-    setMovesLeft(20); // Reset moves left
+    setMovesLeft(12); // Reset moves left
   };
-
   const onSquarePress = (position) => {
     if (!selectedSquare) {
       if (gameLogicRef.current.getPieceAt(position)) {
@@ -202,7 +218,6 @@ marginRight: 20,
       setSelectedSquare(null);
     }
   };
-
   const onMove = async (fromSquare, toSquare) => {
     try {
       // Player (White) makes a move
@@ -232,68 +247,38 @@ marginRight: 20,
         }).start();
       });
   
-      // Determine if it's the first move
-      const isFirstMove = gameLogicRef.current.chess.history().length === 1;
-  
       // Make Black's move
-      let blackMoveResult;
-      if (isFirstMove) {
-        // First move: Use Lichess
-        let bestMoveForBlack = await gameLogicRef.current.getBestMoveFromLichess('black');
-        if (!bestMoveForBlack || !bestMoveForBlack.san) {
-          console.log('Lichess API failed for Black, making random move.');
-          blackMoveResult = gameLogicRef.current.makeRandomMove();
-        } else {
-          blackMoveResult = gameLogicRef.current.makeMove(bestMoveForBlack.san);
-          if (!blackMoveResult) {
-            console.log('Failed to make Lichess move, making random move.');
-            blackMoveResult = gameLogicRef.current.makeRandomMove();
-          }
-        }
-      } else {
-        // Subsequent moves: Use AI advice
-        blackMoveResult = await gameLogicRef.current.makeMoveForBlack();
-        if (!blackMoveResult || !blackMoveResult.move) {
-          console.log('AI failed to make a move for Black, falling back to Lichess.');
-          let bestMoveForBlack = await gameLogicRef.current.getBestMoveFromLichess('black');
-          if (!bestMoveForBlack || !bestMoveForBlack.san) {
-            console.log('Lichess API failed for Black, making random move.');
-            blackMoveResult = gameLogicRef.current.makeRandomMove();
-          } else {
-            blackMoveResult = gameLogicRef.current.makeMove(bestMoveForBlack.san);
-            if (!blackMoveResult) {
-              console.log('Failed to make Lichess move, making random move.');
-              blackMoveResult = gameLogicRef.current.makeRandomMove();
-            }
-          }
+      let blackMoveResult = await gameLogicRef.current.makeMove_Black();
+      if (!blackMoveResult || !blackMoveResult.move) {
+        console.log('AI failed to make a move for Black, making random move.');
+        const randomMove = gameLogicRef.current.selectRandomMove();
+        blackMoveResult = gameLogicRef.current.makeMove_Black(randomMove);
+        if (!blackMoveResult) {
+          setOpeningName("Computer's move failed.");
+          return;
         }
       }
   
       // Update the board state after Black's move
-      if (blackMoveResult) {
-        setBoardState([...gameLogicRef.current.getBoardState()]);
-        setMovesLeft((prevMoves) => prevMoves - 1);
-        if (movesLeft - 1 <= 0) {
-          Alert.alert(
-            'Opening Phase Complete',
-            'You have completed the opening phase. Great job practicing your openings!',
-            [{ text: 'OK', onPress: () => {} }]
-          );
-          return;
-        }
-      } else {
-        setOpeningName("Computer's move failed.");
+      setBoardState([...gameLogicRef.current.getBoardState()]);
+      setMovesLeft((prevMoves) => prevMoves - 1);
+      if (movesLeft - 1 <= 0) {
+        Alert.alert(
+          'Opening Phase Complete',
+          'You have completed the opening phase. Great job practicing your openings!',
+          [{ text: 'OK', onPress: () => {} }]
+        );
         return;
       }
   
-      // Fetch analysis from the AI
-      const apiName = 'GPT'; // Change to 'Gemini' if needed
+      // Fetch advice from the AI
+      const apiName = 'GPT'; // Or 'Gemini', depending on your choice
       const advice = await gameLogicRef.current.getAdviceFromAPI(apiName);
   
       if (!advice) {
         setOpeningName('Failed to get advice from AI');
-        setOpeningAnalysis('');
         setRecommendedNextMoves([]);
+        setOpeningAnalysis('');
         return;
       } else {
         // Store the latest advice in GameLogic
@@ -307,9 +292,8 @@ marginRight: 20,
         useNativeDriver: true,
       }).start(() => {
         setOpeningName(advice.openingName);
-        setOpeningAnalysis(advice.openingAnalysis);
         setRecommendedNextMoves(advice.recommendedNextMoves);
-  
+        setOpeningAnalysis(advice.openingAnalysis);
         Animated.timing(textOpacity, {
           toValue: 1,
           duration: 500,
@@ -318,14 +302,14 @@ marginRight: 20,
           analysisComplete.current = true;
         });
       });
+  
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
     } catch (error) {
       console.error('Error during move:', error);
       setOpeningName('Error processing move, please try again.');
       setIllegalMoveSquares({ from: fromSquare, to: toSquare });
     }
   };
-  
-
   if (!boardState || boardState.length === 0) {
     return (
       <View style={styles.loadingContainer}>
@@ -339,6 +323,16 @@ marginRight: 20,
       <Text style={styles.tableCell}>{item.blackResponses.join(', ')}</Text>
     </View>
   );
+  useEffect(() => {
+    setIsLandscape(windowWidth > windowHeight); // Detect if the device is in landscape mode
+  }, [windowWidth, windowHeight]);
+  if (isLandscape) {
+    return (
+      <View style={styles.warningContainer}>
+        <Text style={styles.warningText}>Please rotate your device back to portrait mode.</Text>
+      </View>
+    );
+  }
   return (
     <SafeAreaView style={styles.safeArea}>
 
@@ -368,53 +362,54 @@ marginRight: 20,
         </View>
 
         {/* Analysis texts */}
-        <ScrollView contentContainerStyle={styles.textContainer}>
+        <ScrollView 
+          ref={scrollViewRef}
+          contentContainerStyle={styles.textContainer}>
           <Animated.View style={[styles.analysisContainer, { opacity: textOpacity }]}>
-            {openingName ? (
+            
+            {/* {openingName ? (
               <Text style={styles.openingName}>{openingName}</Text>
-            ) : null}
+            ) : null
+            } */}
+
+            {recommendedNextMoves.length > 0 ? (
+            <SafeAreaView style={styles.safeArea}>
+              <View style={styles.tableContainer}>
+                {/* Table Header */}
+                <View style={styles.tableRow}>
+                  <Text style={[styles.tableCell, styles.tableHeader]}>Advice</Text>
+                  <Text style={[styles.tableCell, styles.tableHeader]}>Likely Responses</Text>
+                </View>
+
+                {Array.isArray(recommendedNextMoves) && recommendedNextMoves.length > 0 ? (
+                  recommendedNextMoves.map((move, index) => (
+                      <View key={index} style={styles.tableRow}>
+                        <Text style={styles.tableCell}>{move.whiteMove}</Text>
+                        <Text style={styles.tableCell}>{move.blackResponses.join(', ')}</Text>
+                      </View>
+                    ))
+                ) : (
+                  <View style={styles.tableRow}>
+                    <Text style={styles.tableCell}>No advice available</Text>
+                    <Text style={styles.tableCell}>N/A</Text>
+                  </View>
+                )}
+              </View>
+            </SafeAreaView>
+              ) : (  <Text style={styles.noDataText}>Make your move.</Text>  )
+              }
 
             {openingAnalysis ? (
               <Text style={styles.openingAnalysis}>
                 <Text style={styles.prefixText}>Opening Analysis:{'\n'}</Text>
                 {openingAnalysis}
               </Text>
-            ) : null}
-
-<SafeAreaView style={styles.safeArea}>
-  <View style={styles.tableContainer}>
-    {/* Table Header */}
-    <View style={styles.tableRow}>
-      <Text style={[styles.tableCell, styles.tableHeader]}>Advice</Text>
-      <Text style={[styles.tableCell, styles.tableHeader]}>Likely Responses</Text>
-    </View>
-
-    {/* Table Rows - Mapping through recommended moves */}
-    {Array.isArray(recommendedNextMoves) && recommendedNextMoves.length > 0 ? (
-      recommendedNextMoves.map((move, index) => (
-        <View key={index} style={styles.tableRow}>
-          <Text style={styles.tableCell}>{move.whiteMove}</Text>
-          <Text style={styles.tableCell}>{move.blackResponses.join(', ')}</Text>
-        </View>
-      ))
-    ) : (
-      <View style={styles.tableRow}>
-        <Text style={styles.tableCell}>No advice available</Text>
-        <Text style={styles.tableCell}>N/A</Text>
-      </View>
-    )}
-  </View>
-</SafeAreaView>
-
-
-
-
-
+            ) : null
+            }
 
 
           </Animated.View>
         </ScrollView>
-
         {/* Thinking text */}
         <Animated.Text style={[styles.thinkingText, { opacity: thinkingOpacity }]}>
           Thinking...

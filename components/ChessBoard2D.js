@@ -2,8 +2,16 @@ import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import Square from './Square';
 
-const ChessBoard2D = ({ boardState, boardSize, onSquarePress, selectedSquare, illegalMoveSquares, advisedMove }) => {
-  const blinkAnimation = useRef(new Animated.Value(0)).current;
+const ChessBoard2D = ({ 
+  boardState, 
+  boardSize, 
+  onSquarePress, 
+  selectedSquare, 
+  illegalMoveSquares, 
+  advisedMove,
+  possibleMoves,
+ }) => {
+const blinkAnimation = useRef(new Animated.Value(0)).current;
 const squareSize = boardSize / 9;
 // console.log('ChessBoard2D - boardSize:', boardSize);
 // console.log('ChessBoard2D - squareSize:', squareSize);
@@ -82,6 +90,7 @@ const styles = StyleSheet.create({
               illegalMoveSquares={illegalMoveSquares}
               blinkAnimation={blinkAnimation}
               squareSize={squareSize}
+              possibleMoves={possibleMoves}
             />
           ))}
         </View>

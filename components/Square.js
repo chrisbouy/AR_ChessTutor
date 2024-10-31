@@ -36,7 +36,15 @@ const getPieceImage = (piece) => {
   return pieceMap[`${piece.color}${piece.type.toUpperCase()}`];
 };
 
-const Square = ({ square, onSquarePress, selectedSquare, advisedMove, illegalMoveSquares, squareSize, blinkAnimation }) => {
+const Square = ({ square, 
+  onSquarePress, 
+  selectedSquare, 
+  advisedMove, 
+  illegalMoveSquares, 
+  squareSize, 
+  blinkAnimation,
+  possibleMoves,
+ }) => {
   if (!square) return null;
   const styles = StyleSheet.create({
     square: {
@@ -55,12 +63,22 @@ const Square = ({ square, onSquarePress, selectedSquare, advisedMove, illegalMov
       borderWidth: 2,
       borderColor: 'yellow',
     },
+    possibleMoveIndicator: {
+      position: 'absolute',
+      width: squareSize * 0.3,
+      height: squareSize * 0.3,
+      borderRadius: squareSize * 0.15,
+      backgroundColor: 'rgba(0, 255, 0, 0.5)', // Semi-transparent green
+      alignSelf: 'center',
+      top: squareSize * 0.35,
+    },
   });
   const isSelected = selectedSquare === square.position;
   const isAdvisedFromSquare = advisedMove?.from === square.position;
   const isAdvisedToSquare = advisedMove?.to === square.position;
   const isIllegalFromSquare = illegalMoveSquares?.from === square.position;
   const isIllegalToSquare = illegalMoveSquares?.to === square.position;
+  const isPossibleMove = possibleMoves && possibleMoves.includes(square.position);
 
   let backgroundColor = square.color;
    let shadowStyle = {};  // Define an empty box shadow style
@@ -90,6 +108,7 @@ const Square = ({ square, onSquarePress, selectedSquare, advisedMove, illegalMov
     <TouchableOpacity onPress={() => onSquarePress(square.position)}>
       <Animated.View style={[styles.square, { backgroundColor }, shadowStyle]}>
         {pieceImage && <Image source={pieceImage} style={styles.pieceImage} />}
+        {isPossibleMove && <View style={styles.possibleMoveIndicator} />}
       </Animated.View>
     </TouchableOpacity>
   );

@@ -26,7 +26,7 @@ const ChessTutorApp = () => {
   const textOpacity = useRef(new Animated.Value(1)).current;
   const thinkingOpacity = useRef(new Animated.Value(0)).current;
   const analysisComplete = useRef(false);
-
+  const [possibleMoves, setPossibleMoves] = useState([]);
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const chessboardSize = Math.min(windowWidth, windowHeight) * 0.9;
   const [isLandscape, setIsLandscape] = useState(false);
@@ -209,15 +209,37 @@ marginRight: 20,
     setMovesLeft(12); // Reset moves left
   };
   const onSquarePress = (position) => {
+    const selectedPiece = gameLogicRef.current.getPieceAt(position);
+  
     if (!selectedSquare) {
-      if (gameLogicRef.current.getPieceAt(position)) {
+      // No piece is currently selected
+      if (selectedPiece && selectedPiece.color === 'w') {
+        // Only allow selecting white pieces
         setSelectedSquare(position);
+        const legalMoves = gameLogicRef.current.getLegalMoves(position);
+        const targetSquares = legalMoves.map((move) => move.to);
+        setPossibleMoves(targetSquares);
       }
     } else {
-      onMove(selectedSquare, position);
-      setSelectedSquare(null);
+      if (selectedSquare === position) {
+        // User tapped on the selected square again; deselect
+        setSelectedSquare(null);
+        setPossibleMoves([]);
+      } else if (selectedPiece && selectedPiece.color === 'w') {
+        // User selected a different white piece; update selection
+        setSelectedSquare(position);
+        const legalMoves = gameLogicRef.current.getLegalMoves(position);
+        const targetSquares = legalMoves.map((move) => move.to);
+        setPossibleMoves(targetSquares);
+      } else {
+        // Attempt to make a move
+        onMove(selectedSquare, position);
+        setSelectedSquare(null);
+        setPossibleMoves([]);
+      }
     }
   };
+  
   const onMove = async (fromSquare, toSquare) => {
     try {
       // Player (White) makes a move
@@ -268,11 +290,14 @@ marginRight: 20,
           'You have completed the opening phase. Great job practicing your openings!',
           [{ text: 'OK', onPress: () => {} }]
         );
+
+        setSelectedSquare(null);
+        setPossibleMoves([]);
         return;
       }
   
       // Fetch advice from the AI
-      const apiName = 'GPT'; // Or 'Gemini', depending on your choice
+      const apiName = 'GPT'; 
       const advice = await gameLogicRef.current.getAdviceFromAPI(apiName);
   
       if (!advice) {
@@ -358,6 +383,7 @@ marginRight: 20,
             selectedSquare={selectedSquare}
             illegalMoveSquares={illegalMoveSquares}
             advisedMove={analysisComplete.current ? advisedMove : null}
+            possibleMoves={possibleMoves} 
           />
         </View>
 

@@ -10,6 +10,7 @@ const ChessBoard2D = ({
   illegalMoveSquares, 
   advisedMove,
   possibleMoves,
+  isThinking,
  }) => {
 const blinkAnimation = useRef(new Animated.Value(0)).current;
 const squareSize = boardSize / 9;
@@ -66,6 +67,20 @@ const styles = StyleSheet.create({
     fontSize: squareSize * .4,
     color: '#fff',
   },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: boardSize,
+    height: boardSize,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  overlayText: {
+    color: 'white',
+    fontSize: 24,
+  },
 });
 
   return (
@@ -91,10 +106,16 @@ const styles = StyleSheet.create({
               blinkAnimation={blinkAnimation}
               squareSize={squareSize}
               possibleMoves={possibleMoves}
+              isThinking={isThinking}
             />
           ))}
         </View>
       ))}
+      {isThinking && (
+      <View style={styles.overlay}>
+        <Text style={styles.overlayText}>Thinking...</Text>
+      </View>
+      )}
     </View>
   );
 

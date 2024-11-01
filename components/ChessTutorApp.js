@@ -33,6 +33,8 @@ const ChessTutorApp = () => {
   const guidelineBaseWidth = 350; // Base width
   const scaleFont = (size) => (windowWidth / guidelineBaseWidth) * size;
   const [movesLeft, setMovesLeft] = useState(20); // Starting from 20 half-moves
+  const [isThinking, setIsThinking] = useState(false);
+
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -209,6 +211,10 @@ marginRight: 20,
     setMovesLeft(12); // Reset moves left
   };
   const onSquarePress = (position) => {
+    if (isThinking) {
+      // Optionally, you can show a message or feedback to the user
+      return;
+    }
     const selectedPiece = gameLogicRef.current.getPieceAt(position);
   
     if (!selectedSquare) {
@@ -255,7 +261,7 @@ marginRight: 20,
         Alert.alert('Game Over', 'You have reached the maximum number of moves for the opening phase.');
         return;
       }
-  
+      setIsThinking(true);
       // Start the thinking animation
       Animated.timing(textOpacity, {
         toValue: 0,
@@ -299,7 +305,10 @@ marginRight: 20,
       // Fetch advice from the AI
       const apiName = 'GPT'; 
       const advice = await gameLogicRef.current.getAdviceFromAPI(apiName);
-  
+     
+      // Re-enable user interactions
+      setIsThinking(false);
+
       if (!advice) {
         setOpeningName('Failed to get advice from AI');
         setRecommendedNextMoves([]);
@@ -384,6 +393,7 @@ marginRight: 20,
             illegalMoveSquares={illegalMoveSquares}
             advisedMove={analysisComplete.current ? advisedMove : null}
             possibleMoves={possibleMoves} 
+            isThinking={isThinking}
           />
         </View>
 

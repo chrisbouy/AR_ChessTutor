@@ -44,6 +44,7 @@ const Square = ({ square,
   squareSize, 
   blinkAnimation,
   possibleMoves,
+  isThinking,
  }) => {
   if (!square) return null;
   const styles = StyleSheet.create({
@@ -105,7 +106,8 @@ const Square = ({ square,
   const pieceImage = getPieceImage(square.piece);
 
   return (
-    <TouchableOpacity onPress={() => onSquarePress(square.position)}>
+    <TouchableOpacity onPress={() => onSquarePress(square.position)}
+    disabled={isThinking} >
       <Animated.View style={[styles.square, { backgroundColor }, shadowStyle]}>
         {pieceImage && <Image source={pieceImage} style={styles.pieceImage} />}
         {isPossibleMove && <View style={styles.possibleMoveIndicator} />}

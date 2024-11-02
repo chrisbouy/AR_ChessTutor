@@ -3,13 +3,13 @@ import {
   View,
   useWindowDimensions,
   StyleSheet,
-  TouchableOpacity,
-  Text,
+  Text, TouchableOpacity,
   Animated,
   ScrollView,
   SafeAreaView,
   FlatList,
-} from 'react-native';
+   Alert
+} from 'react-native'; 
 import ChessBoard2D from './ChessBoard2D';
 import GameLogic from '../GameLogic';
 
@@ -78,7 +78,7 @@ const ChessTutorApp = () => {
           alignItems: 'center',
         },
         chessboardContainer: {
-marginRight: 20,
+          marginRight: 20,
           alignItems: 'center',
           justifyContent: 'center',
           width: chessboardSize,
@@ -128,6 +128,11 @@ marginRight: 20,
           paddingHorizontal: 10, // Ensure consistency
           
         },
+        likelyResponsesContainer: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+        },
         thinkingText: {
           fontSize: scaleFont(24),
           color: '#ffcc00',
@@ -161,6 +166,7 @@ marginRight: 20,
           borderColor: 'white',
           borderRadius: 8,
           overflow: 'hidden',
+          alignSelf: 'center',
         },
         tableRow: {
           flexDirection: 'row', // Align cells horizontally
@@ -175,6 +181,12 @@ marginRight: 20,
           textAlign: 'center',
           borderRightWidth: 1,
           borderColor: 'white',
+        },
+        adviceColumn: {
+          width: '40%', // Fixed width for Advice column
+        },
+        responseColumn: {
+          width: '60%', // Fixed width for Responses column
         },
         tableHeader: {
           fontWeight: 'bold',
@@ -192,10 +204,20 @@ marginRight: 20,
           color: '#aec4e8',
           textAlign: 'center',
           marginVertical: 10,
-        }
+        },
+        tappableMove: {
+          textDecorationLine: 'underline',
+          color: 'white',
+          marginRight: 5, // Spacing between moves
+          marginBottom: 5,
+        },
       }),
     [windowWidth]
   );
+  const handleMovePress = (move) => {
+    const description = gameLogicRef.current.convertMoveToDescription(move);
+    Alert.alert('Move Description', description);
+  };
   const handleReload = () => {
     gameLogicRef.current = new GameLogic();
     setBoardState(gameLogicRef.current.getBoardState());
@@ -255,6 +277,7 @@ marginRight: 20,
         return;
       }
       setBoardState([...gameLogicRef.current.getBoardState()]);
+      setRecommendedNextMoves([]);
       setIllegalMoveSquares(null);
       setMovesLeft((prevMoves) => prevMoves - 1);
       if (movesLeft - 1 <= 0) {
@@ -342,6 +365,7 @@ marginRight: 20,
       console.error('Error during move:', error);
       setOpeningName('Error processing move, please try again.');
       setIllegalMoveSquares({ from: fromSquare, to: toSquare });
+       setIsThinking(false);
     }
   };
   if (!boardState || boardState.length === 0) {
@@ -357,6 +381,27 @@ marginRight: 20,
       <Text style={styles.tableCell}>{item.blackResponses.join(', ')}</Text>
     </View>
   );
+  const getRecommendedMovesForArrows = () => {
+    if (!recommendedNextMoves || recommendedNextMoves.length === 0) {
+      return [];
+    }
+    return recommendedNextMoves
+    .map((move) => {
+      const moveSan = move.whiteMove;
+      const chess = gameLogicRef.current.chess;
+      const moves = chess.moves({ verbose: true });
+      const moveObj = moves.find((m) => m.san === moveSan);
+
+      if (moveObj) {
+        return { from: moveObj.from, to: moveObj.to };
+      } else {
+        console.error('Invalid advised move:', moveSan);
+        return null;
+      }
+    })
+    .filter((move) => move !== null);
+  };
+  
   useEffect(() => {
     setIsLandscape(windowWidth > windowHeight); // Detect if the device is in landscape mode
   }, [windowWidth, windowHeight]);
@@ -367,8 +412,9 @@ marginRight: 20,
       </View>
     );
   }
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+<SafeAreaView style={styles.safeArea}>
 
 <View style={styles.topBar}>
       <View style={styles.moveCounterContainer}>
@@ -393,14 +439,13 @@ marginRight: 20,
             illegalMoveSquares={illegalMoveSquares}
             advisedMove={analysisComplete.current ? advisedMove : null}
             possibleMoves={possibleMoves} 
+            recommendedMoves={getRecommendedMovesForArrows()}
             isThinking={isThinking}
           />
         </View>
 
         {/* Analysis texts */}
-        <ScrollView 
-          ref={scrollViewRef}
-          contentContainerStyle={styles.textContainer}>
+        <ScrollView ref={scrollViewRef} contentContainerStyle={styles.textContainer}>
           <Animated.View style={[styles.analysisContainer, { opacity: textOpacity }]}>
             
             {/* {openingName ? (
@@ -413,15 +458,25 @@ marginRight: 20,
               <View style={styles.tableContainer}>
                 {/* Table Header */}
                 <View style={styles.tableRow}>
-                  <Text style={[styles.tableCell, styles.tableHeader]}>Advice</Text>
-                  <Text style={[styles.tableCell, styles.tableHeader]}>Likely Responses</Text>
+                  <Text style={[styles.tableCell, styles.tableHeader, styles.adviceColumn]}>Advice</Text>
+                  <Text style={[styles.tableCell, styles.tableHeader, styles.responseColumn]}>Likely Responses</Text>
                 </View>
 
                 {Array.isArray(recommendedNextMoves) && recommendedNextMoves.length > 0 ? (
                   recommendedNextMoves.map((move, index) => (
                       <View key={index} style={styles.tableRow}>
-                        <Text style={styles.tableCell}>{move.whiteMove}</Text>
-                        <Text style={styles.tableCell}>{move.blackResponses.join(', ')}</Text>
+                        <View style={[styles.tableCell, styles.responseColumn]}>
+                          <TouchableOpacity onPress={() => handleMovePress(move.whiteMove)}>
+                            <Text style={styles.tappableMove}>{move.whiteMove}</Text>
+                          </TouchableOpacity>
+                        </View>
+                        <View style={[styles.tableCell, styles.responseColumn]}>
+                          {move.blackResponses.map((response, idx) => (
+                            <TouchableOpacity key={idx} onPress={() => handleMovePress(response)}>
+                              <Text style={styles.tappableMove}>{response}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
                       </View>
                     ))
                 ) : (
@@ -429,8 +484,10 @@ marginRight: 20,
                     <Text style={styles.tableCell}>No advice available</Text>
                     <Text style={styles.tableCell}>N/A</Text>
                   </View>
+                  
                 )}
               </View>
+            
             </SafeAreaView>
               ) : (  <Text style={styles.noDataText}>Make your move.</Text>  )
               }

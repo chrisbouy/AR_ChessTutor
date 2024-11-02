@@ -527,6 +527,34 @@ class GameLogic {
   getLegalMoves(position) {
     return this.chess.moves({ square: position, verbose: true });
   }
+  convertMoveToDescription(sanMove) {
+    const chess = new Chess(this.chess.fen());
+    const moves = chess.moves({ verbose: true });
+  
+    const move = moves.find((m) => m.san === sanMove || m.san === sanMove.split(', ')[0]);
+  
+    if (move) {
+      const pieceName = this.getPieceName(move.piece);
+      const from = move.from.toUpperCase();
+      const to = move.to.toUpperCase();
+      const action = move.captured ? 'captures on' : 'to';
+      const promotion = move.promotion ? ` and promotes to ${this.getPieceName(move.promotion)}` : '';
+      return `${pieceName} from ${from} ${action} ${to}${promotion}`;
+    }
+    return sanMove; // Fallback to original notation
+  }
+  
+  getPieceName(pieceSymbol) {
+    const pieceNames = {
+      p: 'Pawn',
+      n: 'Knight',
+      b: 'Bishop',
+      r: 'Rook',
+      q: 'Queen',
+      k: 'King',
+    };
+    return pieceNames[pieceSymbol.toLowerCase()] || 'Piece';
+  }
   
 }
 export default GameLogic;

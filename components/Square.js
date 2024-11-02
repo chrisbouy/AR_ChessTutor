@@ -106,8 +106,10 @@ const Square = ({ square,
   const pieceImage = getPieceImage(square.piece);
 
   return (
-    <TouchableOpacity onPress={() => onSquarePress(square.position)}
-    disabled={isThinking} >
+    <TouchableOpacity 
+    onPress={() => onSquarePress(square.position)}
+    disabled={isThinking}
+    >
       <Animated.View style={[styles.square, { backgroundColor }, shadowStyle]}>
         {pieceImage && <Image source={pieceImage} style={styles.pieceImage} />}
         {isPossibleMove && <View style={styles.possibleMoveIndicator} />}

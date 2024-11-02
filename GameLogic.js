@@ -527,22 +527,45 @@ class GameLogic {
   getLegalMoves(position) {
     return this.chess.moves({ square: position, verbose: true });
   }
-  convertMoveToDescription(sanMove) {
-    const chess = new Chess(this.chess.fen());
-    const moves = chess.moves({ verbose: true });
-  
-    const move = moves.find((m) => m.san === sanMove || m.san === sanMove.split(', ')[0]);
-  
-    if (move) {
-      const pieceName = this.getPieceName(move.piece);
-      const from = move.from.toUpperCase();
-      const to = move.to.toUpperCase();
-      const action = move.captured ? 'captures on' : 'to';
-      const promotion = move.promotion ? ` and promotes to ${this.getPieceName(move.promotion)}` : '';
-      return `${pieceName} from ${from} ${action} ${to}${promotion}`;
+  convertMoveToDescription(sanMove, color) {
+    // Get the current FEN
+    const originalFEN = this.chess.fen();
+
+    // Modify the FEN to switch the turn if necessary
+    let modifiedFEN = originalFEN;
+    if (color === 'b') {
+        // FEN format: [FEN position] [turn] [castling] [en passant] [halfmove clock] [fullmove number]
+        const fenParts = originalFEN.split(' ');
+        fenParts[1] = 'b'; // Set turn to Black
+        modifiedFEN = fenParts.join(' ');
+    } else if (color === 'w') {
+        const fenParts = originalFEN.split(' ');
+        fenParts[1] = 'w'; // Ensure turn is White
+        modifiedFEN = fenParts.join(' ');
     }
-    return sanMove; // Fallback to original notation
-  }
+
+    // Create a new chess instance with the modified FEN
+    const tempChess = new Chess(modifiedFEN);
+
+    // Get all possible moves for the current turn
+    const moves = tempChess.moves({ verbose: true });
+
+    // Find the move matching the SAN notation
+    const move = moves.find((m) => m.san === sanMove);
+
+    if (move) {
+        const pieceName = this.getPieceName(move.piece);
+        const from = move.from.toUpperCase();
+        const to = move.to.toUpperCase();
+        const action = move.captured ? 'captures on' : 'to';
+        const promotion = move.promotion ? ` and promotes to ${this.getPieceName(move.promotion)}` : '';
+        return `${pieceName} from ${from} ${action} ${to}${promotion}`;
+    }
+
+    // If move not found, return the SAN notation
+    return sanMove;
+}
+
   
   getPieceName(pieceSymbol) {
     const pieceNames = {

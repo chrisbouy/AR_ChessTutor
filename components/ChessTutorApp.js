@@ -214,10 +214,11 @@ const ChessTutorApp = () => {
       }),
     [windowWidth]
   );
-  const handleMovePress = (move) => {
-    const description = gameLogicRef.current.convertMoveToDescription(move);
+  const handleMovePress = (sanMove, color) => {
+    const description = gameLogicRef.current.convertMoveToDescription(sanMove, color);
     Alert.alert('Move Description', description);
-  };
+};
+  
   const handleReload = () => {
     gameLogicRef.current = new GameLogic();
     setBoardState(gameLogicRef.current.getBoardState());
@@ -466,13 +467,13 @@ const ChessTutorApp = () => {
                   recommendedNextMoves.map((move, index) => (
                       <View key={index} style={styles.tableRow}>
                         <View style={[styles.tableCell, styles.responseColumn]}>
-                          <TouchableOpacity onPress={() => handleMovePress(move.whiteMove)}>
+                          <TouchableOpacity onPress={() => handleMovePress(move.whiteMove, 'w')}>
                             <Text style={styles.tappableMove}>{move.whiteMove}</Text>
                           </TouchableOpacity>
                         </View>
-                        <View style={[styles.tableCell, styles.responseColumn]}>
+                        <View style={[styles.tableCell, { flexDirection: 'row', flexWrap: 'nowrap' }]}>
                           {move.blackResponses.map((response, idx) => (
-                            <TouchableOpacity key={idx} onPress={() => handleMovePress(response)}>
+                            <TouchableOpacity key={idx} onPress={() => handleMovePress(response, 'b')}>
                               <Text style={styles.tappableMove}>{response}</Text>
                             </TouchableOpacity>
                           ))}

@@ -1,14 +1,10 @@
 import { Chess } from 'chess.js';
-import { exp } from 'three/webgpu';
+// import { exp } from 'three/webgpu';
 
 class GameLogic {
   constructor() {
-    //     chess.clear()
-    // chess.fen()
     this.chess = new Chess();
-    this.latestAdvice = null; 
-    // this.chess.clear()
-    // this.chess.fen()
+    this.latestAdvice = null;   
   }
   getGameStatus() {
     if (this.chess.isCheckmate()) {
@@ -136,7 +132,7 @@ class GameLogic {
           Authorization: `Bearer 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`, // Use environment variable or secure storage
         },
         body: JSON.stringify({
-          model: 'gpt-4o', 
+          model: 'gpt-4o-mini', 
           messages: [
             {
               role: 'user',
@@ -327,7 +323,7 @@ class GameLogic {
     headers: {Authorization: 'Bearer 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', 
                               'Content-Type': 'application/json'},
     body: JSON.stringify({
-      model:"llama-3.1-sonar-small-128k-chat",
+      model:"llama-3.1-sonar-large-128k-chat",
       messages:[
             {role:"system",
               content:system_prompt
@@ -372,11 +368,9 @@ class GameLogic {
             body: JSON.stringify({
                 model: "claude-3-5-sonnet-20241022",
                 max_tokens: 1000,
+                system: system_prompt,
                 messages: [
-                    {
-                        role: "system",
-                        content: system_prompt
-                    },
+
                     {
                       role: "user",
                       content: user_prompt
@@ -386,18 +380,18 @@ class GameLogic {
         });
 
         const data = await response.json();
-
+        console.log('Claude API Response:', data);
         if (data && data.content && data.content[0] && data.content[0].text) {
             let explanation = data.content[0].text;
-            const { openingName, openingAnalysis, recommendedNextMoves } = this.extractSectionsFromAdvice(explanation);
-            return { openingName, openingAnalysis, recommendedNextMoves };
+            const { openingAnalysis, recommendedNextMoves } = this.extractSectionsFromAdvice(explanation);
+            return {  openingAnalysis, recommendedNextMoves };
         }
     } catch (error) {
         // console.error('Error fetching analysis from Claude:', error);
         return null;
     }
   }
-  async getAdviceFromAPI(apiName) {
+getAdviceFromAPI(apiName) {
     const fen = this.chess.fen();
     const moveHistory = this.chess.history().map(move => move);
   const system_prompt = `
@@ -407,6 +401,7 @@ class GameLogic {
   Responses must be concise strings and formatted strictly according to the specified JSON structure.
   For each recommended White move, you should provide possible Black responses.
   Do not include move numbers in the response.
+  Do not include the opening name in the analysis
   `;
   // User Prompt: Only dynamic input from the user
   const user_prompt = `
@@ -414,7 +409,6 @@ class GameLogic {
   Move History: ${moveHistory.join(', ')}
   Please respond in the following JSON format:
   {
-    "openingName": "Name of the White's opening",
     "openingAnalysis": "Analysis of only the most recent move for both White and Black.",
     "recommendedNextMoves": [
       {
@@ -554,17 +548,27 @@ class GameLogic {
     const move = moves.find((m) => m.san === sanMove);
 
     if (move) {
-        const pieceName = this.getPieceName(move.piece);
-        const from = move.from.toUpperCase();
-        const to = move.to.toUpperCase();
-        const action = move.captured ? 'captures on' : 'to';
-        const promotion = move.promotion ? ` and promotes to ${this.getPieceName(move.promotion)}` : '';
-        return `${pieceName} from ${from} ${action} ${to}${promotion}`;
+        if (move.flags.includes('k') || move.flags.includes('q')) {
+            // Handle castling
+            const side = move.san === 'O-O' ? 'king-side' : 'queen-side';
+            const from = move.from.toUpperCase();
+            const to = move.to.toUpperCase();
+            return `Castling ${side} from ${from} to ${to}`;
+        } else {
+            // Handle normal moves
+            const pieceName = this.getPieceName(move.piece);
+            const from = move.from.toUpperCase();
+            const to = move.to.toUpperCase();
+            const action = move.captured ? 'captures on' : 'to';
+            const promotion = move.promotion ? ` and promotes to ${this.getPieceName(move.promotion)}` : '';
+            return `${pieceName} from ${from} ${action} ${to}${promotion}`;
+        }
     }
 
     // If move not found, return the SAN notation
     return sanMove;
 }
+
 
   
   getPieceName(pieceSymbol) {

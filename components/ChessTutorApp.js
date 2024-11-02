@@ -12,8 +12,13 @@ import {
 } from 'react-native'; 
 import ChessBoard2D from './ChessBoard2D';
 import GameLogic from '../GameLogic';
+import { ActivityIndicator } from 'react-native';
+import SplashScreen from 'react-native-splash-screen';
 
 const ChessTutorApp = () => {
+  // useEffect(() => {
+  //   SplashScreen.hide(); // Hide the splash screen after the app has loaded
+  // }, []);
   const gameLogicRef = useRef(new GameLogic());
   const [boardState, setBoardState] = useState(gameLogicRef.current.getBoardState());
   const [selectedSquare, setSelectedSquare] = useState(null);
@@ -32,7 +37,7 @@ const ChessTutorApp = () => {
   const [isLandscape, setIsLandscape] = useState(false);
   const guidelineBaseWidth = 350; // Base width
   const scaleFont = (size) => (windowWidth / guidelineBaseWidth) * size;
-  const [movesLeft, setMovesLeft] = useState(20); // Starting from 20 half-moves
+  const [movesLeft, setMovesLeft] = useState(12); // Starting from 20 half-moves
   const [isThinking, setIsThinking] = useState(false);
 
   const styles = useMemo(
@@ -144,7 +149,7 @@ const ChessTutorApp = () => {
 
           top: 0,
           left: 10,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: '#191d24',
           padding: 5,
           borderRadius: 5,
         },
@@ -161,12 +166,13 @@ const ChessTutorApp = () => {
           backgroundColor: '#191d24', // Deep black background
         },
         tableContainer: {
-          width: '90%', // Ensure table fits within the screen
+          width: '95%', // Ensure table fits within the screen
           borderWidth: 1,
           borderColor: 'white',
           borderRadius: 8,
           overflow: 'hidden',
           alignSelf: 'center',
+
         },
         tableRow: {
           flexDirection: 'row', // Align cells horizontally
@@ -210,6 +216,11 @@ const ChessTutorApp = () => {
           color: 'white',
           marginRight: 5, // Spacing between moves
           marginBottom: 5,
+        },
+        overlayText: {
+          color: 'white',
+          fontSize: 18,
+          marginTop: 10, // Add margin to separate from the spinner
         },
       }),
     [windowWidth]
@@ -273,8 +284,17 @@ const ChessTutorApp = () => {
     try {
       // Player (White) makes a move
       const playerMove = gameLogicRef.current.makeMove({ from: fromSquare, to: toSquare });
+
       if (!playerMove) {
         setIllegalMoveSquares({ from: fromSquare, to: toSquare });
+        return;
+      }
+      if (gameLogicRef.current.chess.isCheckmate()) {
+        Alert.alert(
+          'Game Over',
+          'Checkmate! The game has ended.',
+          [{ text: 'OK', onPress: () => handleReload() }]
+        );
         return;
       }
       setBoardState([...gameLogicRef.current.getBoardState()]);
@@ -282,7 +302,14 @@ const ChessTutorApp = () => {
       setIllegalMoveSquares(null);
       setMovesLeft((prevMoves) => prevMoves - 1);
       if (movesLeft - 1 <= 0) {
-        Alert.alert('Game Over', 'You have reached the maximum number of moves for the opening phase.');
+        Alert.alert(
+          'Opening Phase Complete',
+          'You have completed the opening phase. Great job practicing your openings!',
+          [{ text: 'OK', onPress: () => handleReload() }] // Call handleReload on press
+        );
+      
+        setSelectedSquare(null);
+        setPossibleMoves([]);
         return;
       }
       setIsThinking(true);
@@ -310,10 +337,18 @@ const ChessTutorApp = () => {
           return;
         }
       }
+      if (gameLogicRef.current.chess.isCheckmate()) {
+        Alert.alert(
+          'Game Over',
+          'Checkmate! The game has ended.',
+          [{ text: 'OK', onPress: () => handleReload() }]
+        );
+        return;
+      }
   
       // Update the board state after Black's move
       setBoardState([...gameLogicRef.current.getBoardState()]);
-      setMovesLeft((prevMoves) => prevMoves - 1);
+      // setMovesLeft((prevMoves) => prevMoves - 1);
       if (movesLeft - 1 <= 0) {
         Alert.alert(
           'Opening Phase Complete',
@@ -327,10 +362,24 @@ const ChessTutorApp = () => {
       }
   
       // Fetch advice from the AI
-      const apiName = 'GPT'; 
-      const advice = await gameLogicRef.current.getAdviceFromAPI(apiName);
-     
-      // Re-enable user interactions
+      const apiName = 'Claude'; 
+      let advice = await gameLogicRef.current.getAdviceFromAPI(apiName);
+
+      if (advice && advice.recommendedNextMoves) {
+          const chess = gameLogicRef.current.chess;
+          const legalMoves = chess.moves({ verbose: true }); // Get all legal moves in the current position
+      
+          advice.recommendedNextMoves = advice.recommendedNextMoves.filter((move, index, self) => {
+              // Remove duplicates
+              const isDuplicate = index === self.findIndex((m) => m.whiteMove === move.whiteMove);
+              
+              // Check if the move is legal
+              const isLegal = legalMoves.some((legalMove) => legalMove.san === move.whiteMove);
+      
+              // Keep the move only if it's unique and legal
+              return isDuplicate && isLegal;
+          });
+      }      // Re-enable user interactions
       setIsThinking(false);
 
       if (!advice) {
@@ -505,9 +554,18 @@ const ChessTutorApp = () => {
           </Animated.View>
         </ScrollView>
         {/* Thinking text */}
-        <Animated.Text style={[styles.thinkingText, { opacity: thinkingOpacity }]}>
+        {/* <Animated.Text 
+        style={[styles.thinkingText, 
+              { opacity: thinkingOpacity }]}>
           Thinking...
-        </Animated.Text>
+        </Animated.Text> */}
+        {isThinking && (
+  <View style={styles.overlay} pointerEvents="none">
+    <ActivityIndicator size="large" color="#ffffff" />
+    {/* Optionally include text */}
+    <Text style={styles.overlayText}>Thinking...</Text>
+  </View>
+)}
       </View>
     </SafeAreaView>
   );

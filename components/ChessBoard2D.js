@@ -1,14 +1,14 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import Svg, { Line, Defs, Marker, Path } from 'react-native-svg';
 import Square from './Square';
 
-const ChessBoard2D = ({ 
-  boardState, 
-  boardSize, 
-  onSquarePress, 
-  selectedSquare, 
-  illegalMoveSquares,  
+const ChessBoard2D = ({
+  boardState,
+  boardSize,
+  onSquarePress,
+  selectedSquare,
+  illegalMoveSquares,
   advisedMove,
   possibleMoves,
   isThinking,
@@ -36,7 +36,7 @@ const ChessBoard2D = ({
 
   const rankLabels = ['8', '7', '6', '5', '4', '3', '2', '1'];
   const fileLabels = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-  
+
   const styles = StyleSheet.create({
     container: {
       width: boardSize,
@@ -46,8 +46,6 @@ const ChessBoard2D = ({
       position: 'absolute',
       top: 0,
       left: 0,
-      right: 0,
-      bottom: 0,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -78,8 +76,8 @@ const ChessBoard2D = ({
       position: 'absolute',
       top: 0,
       left: 0,
-      right: 0,
-      bottom: 0,
+      width: boardSize,
+      height: boardSize,
       pointerEvents: 'none',
     },
     overlay: {
@@ -115,7 +113,9 @@ const ChessBoard2D = ({
         <View style={styles.row}>
           <View style={styles.emptyCorner} />
           {fileLabels.map((file, index) => (
-            <Text key={index} style={styles.fileLabel}>{file}</Text>
+            <Text key={index} style={styles.fileLabel}>
+              {file}
+            </Text>
           ))}
         </View>
 
@@ -153,25 +153,50 @@ const ChessBoard2D = ({
               orient="auto"
               markerUnits="strokeWidth"
             >
-              <Path d="M0,0 L0,7 L10,3.5 z" fill="rgba(255, 0, 0, 0.7)" />
+              <Path d="M0,0 L0,7 L10,3.5 z" fill="red" />
             </Marker>
           </Defs>
-          {recommendedMoves && recommendedMoves.map((move, index) => {
-            const fromCoords = getSquareCoordinates(move.from);
-            const toCoords = getSquareCoordinates(move.to);
-            return (
-              <Line
-                key={index}
-                x1={fromCoords.x}
-                y1={fromCoords.y}
-                x2={toCoords.x}
-                y2={toCoords.y}
-                stroke="rgba(255, 0, 0, 0.7)"
-                strokeWidth="3"
-                markerEnd="url(#arrowhead)"
-              />
-            );
-          })}
+          {recommendedMoves &&
+            recommendedMoves.map((move, index) => {
+              const fromCoords = getSquareCoordinates(move.from);
+              const toCoords = getSquareCoordinates(move.to);
+
+              // Determine arrow style based on priority
+              let strokeOpacity = 1;
+              let strokeWidth = 3;
+
+              switch (move.priority) {
+                case 'FORCED':
+                  strokeOpacity = 1;
+                  strokeWidth = 4;
+                  break;
+                case 'STRONG':
+                  strokeOpacity = 0.7;
+                  strokeWidth = 3;
+                  break;
+                case 'OPTIONAL':
+                  strokeOpacity = 0.4;
+                  strokeWidth = 2;
+                  break;
+                default:
+                  strokeOpacity = 1;
+                  strokeWidth = 3;
+              }
+
+              return (
+                <Line
+                  key={index}
+                  x1={fromCoords.x}
+                  y1={fromCoords.y}
+                  x2={toCoords.x}
+                  y2={toCoords.y}
+                  stroke="red"
+                  strokeWidth={strokeWidth}
+                  strokeOpacity={strokeOpacity}
+                  markerEnd="url(#arrowhead)"
+                />
+              );
+            })}
         </Svg>
       </View>
 

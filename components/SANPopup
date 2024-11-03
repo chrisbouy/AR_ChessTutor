@@ -1,0 +1,50 @@
+import React, { useEffect } from 'react';
+import { Modal, View, Text, TouchableWithoutFeedback, StyleSheet } from 'react-native';
+
+const SANPopup = ({ visible, description, onClose }) => {
+    useEffect(() => {
+        if (!visible) return;
+        const handleOutsidePress = () => onClose();
+        document.addEventListener('mousedown', handleOutsidePress);
+        return () => document.removeEventListener('mousedown', handleOutsidePress);
+    }, [visible, onClose]);
+
+    if (!visible) return null;
+
+    return (
+        <Modal transparent visible={visible} animationType="fade">
+            <TouchableWithoutFeedback onPress={onClose}>
+                <View style={styles.overlay}>
+                    <TouchableWithoutFeedback>
+                        <View style={styles.popupContainer}>
+                            <Text style={styles.descriptionText}>{description}</Text>
+                        </View>
+                    </TouchableWithoutFeedback>
+                </View>
+            </TouchableWithoutFeedback>
+        </Modal>
+    );
+};
+
+const styles = StyleSheet.create({
+    overlay: {
+        flex: 1,
+        justifyContent: 'flex-end', // Place popup at the bottom
+        backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent overlay
+    },
+    popupContainer: {
+        backgroundColor: '#333', // Dark background
+        padding: 15,
+        borderTopLeftRadius: 10,
+        borderTopRightRadius: 10,
+        marginHorizontal: 20,
+        marginBottom: 20,
+    },
+    descriptionText: {
+        fontSize: 18, // Larger font size
+        color: 'white',
+        textAlign: 'center',
+    },
+});
+
+export default SANPopup;

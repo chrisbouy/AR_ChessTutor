@@ -13,6 +13,7 @@ import {
 import ChessBoard2D from './ChessBoard2D';
 import GameLogic from '../GameLogic';
 import { ActivityIndicator } from 'react-native';
+import SANPopup from './SANPopup.js'; 
 
 const ChessTutorApp = () => {
   const gameLogicRef = useRef(new GameLogic());
@@ -37,6 +38,9 @@ const ChessTutorApp = () => {
   const scaleFont = (size) => (windowWidth / guidelineBaseWidth) * size;
   const [movesLeft, setMovesLeft] = useState(12); // Starting from 12 half-moves
   const [isThinking, setIsThinking] = useState(false);
+  const [popupVisible, setPopupVisible] = useState(false);
+  const [popupDescription, setPopupDescription] = useState('');
+
 
   const styles = useMemo(
     () =>
@@ -102,10 +106,11 @@ const ChessTutorApp = () => {
           fontSize: scaleFont(20),
           color: '#ffffff',
           marginBottom: 5,
+          alignSelf: 'center',
         },
         analysisText: {
           fontSize: scaleFont(18),
-          color: '#aec4e8',
+          color: 'white',
           marginBottom: 15,
         },
         tableContainer: {
@@ -115,6 +120,7 @@ const ChessTutorApp = () => {
           borderRadius: 8,
           overflow: 'hidden',
           alignSelf: 'center',
+          marginBottom: 25,
         },
         tableRow: {
           flexDirection: 'row',
@@ -123,15 +129,17 @@ const ChessTutorApp = () => {
         },
         tableCell: {
           flex: 1,
-          padding: 10,
-          fontSize: 16,
+          padding: 3,
+          fontSize: 18,
           color: '#aec4e8',
           textAlign: 'center',
+          fontSize:20,
           borderRightWidth: 1,
           borderColor: 'white',
         },
         adviceColumn: {
           width: '40%',
+
         },
         responseColumn: {
           width: '60%',
@@ -155,9 +163,12 @@ const ChessTutorApp = () => {
         },
         tappableMove: {
           textDecorationLine: 'underline',
-          color: 'white',
+          color: '#aec4e8',
           marginRight: 5,
           marginBottom: 5,
+          marginLeft:5,
+          fontSize:20,
+          
         },
         overlay: {
           position: 'absolute',
@@ -170,9 +181,9 @@ const ChessTutorApp = () => {
           alignItems: 'center',
         },
         overlayText: {
-          color: 'white',
-          fontSize: 18,
-          marginTop: 10,
+          color: '#ebc634',
+          fontSize: 48,
+          marginTop: 150,
         },
         moveCounterContainer: {
           top: 0,
@@ -197,9 +208,18 @@ const ChessTutorApp = () => {
     [windowWidth]
   );
 
-  const handleMovePress = (sanMove, color, reasoning) => {
-    const description = gameLogicRef.current.convertMoveToDescription(sanMove, color);
-    Alert.alert(`${sanMove} - ${description}`, reasoning, [{ text: 'OK' }]);
+  const handleMovePress = (sanMove, color, reasoning, respondingTo = null) => {
+    const descript = gameLogicRef.current.convertMoveToDescription(sanMove, color);
+    const displayText = respondingTo
+        ? `Response to White's ${respondingTo}:\n\n${descript}\n\n${reasoning}`
+        : `${descript}\n\n${reasoning}`;
+    console.log(`san ${sanMove} - 
+      color ${color} - 
+      reasoning ${reasoning} - 
+      description ${descript} -
+      respondingTo ${respondingTo}`)
+    setPopupDescription(displayText);
+    setPopupVisible(true);
   };
 
   const handleReload = () => {
@@ -314,23 +334,65 @@ const ChessTutorApp = () => {
       setBoardState([...gameLogicRef.current.getBoardState()]);
 
       // Fetch advice from the AI
-      const apiName = 'GPT';
+      const apiName = 'Claude';
       let advice = await gameLogicRef.current.getAdviceFromAPI(apiName);
-
+      //console.log("First Move API Response:", advice);
       if (advice && advice.recommendedNextMoves) {
         const chess = gameLogicRef.current.chess;
         const legalMoves = chess.moves({ verbose: true });
 
-        advice.recommendedNextMoves = advice.recommendedNextMoves.filter((move, index, self) => {
-          // Remove duplicates
-          const isDuplicate = index === self.findIndex((m) => m.move === move.move);
+//         advice.recommendedNextMoves = advice.recommendedNextMoves.filter(
+//           (move, index, self) => {
+//           // Remove duplicates
+//           const isDuplicate = index === self.findIndex((m) =>
+//              m.move === move.move);
 
-          // Check if the move is legal
-          const isLegal = legalMoves.some((legalMove) => legalMove.san === move.move);
+//           // Check if the move is legal
+//           const isLegal = legalMoves.some((legalMove) =>
+//              legalMove.san === move.move);
 
-          // Keep the move only if it's unique and legal
-          return isDuplicate && isLegal;
-        });
+//           // Keep the move only if it's unique and legal
+//           return isDuplicate && isLegal;
+//         });
+
+//         // Then for each remaining move, filter its responses
+// advice.recommendedNextMoves = advice.recommendedNextMoves.map(moveObj => {
+//   // Make the move to get the new position's legal moves
+//   const newPosition = chess.move(moveObj.move);
+//   const blackLegalMoves = chess.moves({ verbose: true });
+//   // Undo the move to restore the original position
+//   chess.undo();
+
+//   // Filter the responses
+//   const filteredResponses = moveObj.blackResponses
+//     .filter((response, index, self) => {
+//       // Remove duplicates
+//       const isDuplicate = index === self.findIndex((r) => r === response);
+//       // Check if the response is legal in the resulting position
+//       const isLegal = blackLegalMoves.some((legalMove) => legalMove.san === response);
+//       // Keep the response only if it's unique and legal
+//       return isDuplicate && isLegal;
+//     });
+
+//   // Return the move object with filtered responses
+//   return {
+//     ...moveObj,
+//     blackResponses: filteredResponses
+//   };
+// });
+
+// Optional: Remove any moves that end up with no legal responses
+// advice.recommendedNextMoves = advice.recommendedNextMoves.filter(
+//   moveObj => moveObj.blackResponses.length > 0
+// );
+
+
+        
+        // Use a deep copy for setting state
+        //  setRecommendedNextMoves(JSON.parse(JSON.stringify(legalMoves)));
+      //   useEffect(() => {
+      //     console.log("Updated Recommended Moves:", recommendedNextMoves);
+      // }, [recommendedNextMoves]);
       }
 
       setIsThinking(false);
@@ -371,6 +433,8 @@ const ChessTutorApp = () => {
       setIllegalMoveSquares({ from: fromSquare, to: toSquare });
       setIsThinking(false);
     }
+    // console.log("recommendedNextMoves:", recommendedNextMoves);
+
   };
 
   const getRecommendedMovesForArrows = () => {
@@ -439,24 +503,8 @@ const ChessTutorApp = () => {
         {/* Analysis texts */}
         <ScrollView ref={scrollViewRef} contentContainerStyle={styles.textContainer}>
           <Animated.View style={[styles.analysisContainer, { opacity: textOpacity }]}>
-            {positionAnalysis.immediateTactics || positionAnalysis.lastMoveAnalysis ? (
-              <View>
-                {positionAnalysis.immediateTactics ? (
-                  <View>
-                    <Text style={styles.analysisTitle}>Immediate Tactics:</Text>
-                    <Text style={styles.analysisText}>{positionAnalysis.immediateTactics}</Text>
-                  </View>
-                ) : null}
-                {positionAnalysis.lastMoveAnalysis ? (
-                  <View>
-                    <Text style={styles.analysisTitle}>Last Move Analysis:</Text>
-                    <Text style={styles.analysisText}>{positionAnalysis.lastMoveAnalysis}</Text>
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
-
-            {recommendedNextMoves.length > 0 ? (
+            
+          {recommendedNextMoves.length > 0 ? (
               <SafeAreaView style={styles.safeArea}>
                 <View style={styles.tableContainer}>
                   {/* Table Header */}
@@ -475,7 +523,7 @@ const ChessTutorApp = () => {
                         </View>
                         <View style={[styles.tableCell, { flexDirection: 'row', flexWrap: 'wrap' }]}>
                           {move.blackResponses.map((response, idx) => (
-                            <TouchableOpacity key={idx} onPress={() => handleMovePress(response.move, 'b', response.threat)}>
+                            <TouchableOpacity key={idx} onPress={() => handleMovePress(response.move, 'b', response.threat, move.whiteMove)}>
                               <Text style={styles.tappableMove}>{response.move}</Text>
                             </TouchableOpacity>
                           ))}
@@ -493,16 +541,40 @@ const ChessTutorApp = () => {
             ) : (
               <Text style={styles.noDataText}>Make your move.</Text>
             )}
+
+            {positionAnalysis.immediateTactics || positionAnalysis.lastMoveAnalysis ? (
+              <View>
+                {positionAnalysis.immediateTactics ? (
+                  <View>
+                    <Text style={styles.analysisTitle}>Immediate Tactics:</Text>
+                    <Text style={styles.analysisText}>{positionAnalysis.immediateTactics}</Text>
+                  </View>
+                ) : null}
+                {positionAnalysis.lastMoveAnalysis ? (
+                  <View>
+                    <Text style={styles.analysisTitle}>Last Move Analysis:</Text>
+                    <Text style={styles.analysisText}>{positionAnalysis.lastMoveAnalysis}</Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
+
           </Animated.View>
         </ScrollView>
         {/* Thinking overlay */}
         {isThinking && (
           <View style={styles.overlay} pointerEvents="none">
-            <ActivityIndicator size="large" color="#ffffff" />
+
             <Text style={styles.overlayText}>Thinking...</Text>
           </View>
         )}
       </View>
+      <SANPopup
+                visible={popupVisible}
+                description={popupDescription}
+                onClose={() => setPopupVisible(false)}
+      />
     </SafeAreaView>
   );
 };

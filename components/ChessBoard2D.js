@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import Svg, { Line, Defs, Marker, Path } from 'react-native-svg';
 import Square from './Square';
+import { ActivityIndicator } from 'react-native';
 
 const ChessBoard2D = ({
   boardState,
@@ -168,15 +169,15 @@ const ChessBoard2D = ({
               switch (move.priority) {
                 case 'FORCED':
                   strokeOpacity = 1;
-                  strokeWidth = 4;
+                  strokeWidth = 5;
                   break;
                 case 'STRONG':
-                  strokeOpacity = 0.7;
+                  strokeOpacity = 0.3;
                   strokeWidth = 3;
                   break;
                 case 'OPTIONAL':
-                  strokeOpacity = 0.4;
-                  strokeWidth = 2;
+                  strokeOpacity = 0.5;
+                  strokeWidth = 3;
                   break;
                 default:
                   strokeOpacity = 1;
@@ -203,7 +204,8 @@ const ChessBoard2D = ({
       {/* Thinking Overlay */}
       {isThinking && (
         <View style={styles.overlay} pointerEvents="none">
-          <Text style={styles.overlayText}>Thinking...</Text>
+                      <ActivityIndicator size="large" color="#ffffff" />
+
         </View>
       )}
     </View>

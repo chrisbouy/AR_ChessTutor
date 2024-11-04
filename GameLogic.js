@@ -348,6 +348,7 @@ class GameLogic {
       For each recommended move, you should provide possible Black responses.
       Do not include move numbers in the response.
       Do not include the opening name in the analysis.
+      Do not use any acronyms.
     `;
 
     const user_prompt = `Current FEN: ${fen}
@@ -435,47 +436,7 @@ class GameLogic {
     const moves = this.chess.moves({ verbose: true });
     return moves.some((move) => move.san === sanMove);
   }
-  // convertUCItoLAN(uciMove, fen) {
-  //   const chessInstance = new Chess(fen);
-  //   const moves = chessInstance.moves({ verbose: true });
-  //  // console.log(`moves ${moves}`);
-  //   const move = moves.find(
-  //     (m) =>
-  //       m.from === uciMove.slice(0, 2) &&
-  //       m.to === uciMove.slice(2, 4) &&
-  //       (uciMove.length > 4 ? m.promotion === uciMove.slice(4) : true)
-  //   );
-  //   //console.log(`move ${move}`);
 
-  //   return move ? move.lan : null;
-  // }
-  // getMoveListLAN() {
-  //   const history = this.chess.history({ verbose: true });
-  //   return history
-  //     .map((move) => {
-  //       return move.lan;
-  //     })
-  //     .join(' ');
-  // }
-  // getLastMoveByColor(color) {
-  //   const history = this.chess.history({ verbose: true });
-  //   // Filter for the most recent move of the specified color
-  //   for (let i = history.length - 1; i >= 0; i--) {
-  //     if (history[i].color === color) {
-  //       return history[i];
-  //     }
-  //   }
-  //   return null; // No moves found for that color
-  // }
-  // getLastWhiteMove() {
-  //   return this.getLastMoveByColor('w'); // 'w' for White
-  // }
-  // getLastBlackMove() {
-  //   return this.getLastMoveByColor('b'); // 'b' for Black
-  // }
-  // getLegalMoves(position) {
-  //   return this.chess.moves({ square: position, verbose: true });
-  // }
   convertMoveToDescription(sanMove, color) {
     // Get the current FEN
     const originalFEN = this.chess.fen();

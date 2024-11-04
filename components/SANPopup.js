@@ -1,14 +1,7 @@
-import React, { useEffect } from 'react';
-import { Modal, View, Text, TouchableWithoutFeedback, StyleSheet } from 'react-native';
+import React from 'react';
+import { Modal, View, Text, TouchableOpacity, StyleSheet, TouchableWithoutFeedback } from 'react-native';
 
 const SANPopup = ({ visible, description, onClose }) => {
-    useEffect(() => {
-        if (!visible) return;
-        const handleOutsidePress = () => onClose();
-        document.addEventListener('mousedown', handleOutsidePress);
-        return () => document.removeEventListener('mousedown', handleOutsidePress);
-    }, [visible, onClose]);
-
     if (!visible) return null;
 
     return (
@@ -17,7 +10,9 @@ const SANPopup = ({ visible, description, onClose }) => {
                 <View style={styles.overlay}>
                     <TouchableWithoutFeedback>
                         <View style={styles.popupContainer}>
-                            <Text style={styles.descriptionText}>{description}</Text>
+                            {description.split('\n').map((text, index) => (
+                                <Text key={index} style={styles.descriptionText}>{text}</Text>
+                            ))}                        
                         </View>
                     </TouchableWithoutFeedback>
                 </View>
@@ -29,21 +24,22 @@ const SANPopup = ({ visible, description, onClose }) => {
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        justifyContent: 'flex-end', // Place popup at the bottom
-        backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent overlay
+        justifyContent: 'flex-start', // Start from the top
+        alignItems: 'center',
+        paddingTop: 630, // Adjust to position the popup 30 pixels below the board
+        backgroundColor: 'rgba(0, 0, 0, 0.5)' // Semi-transparent overlay
     },
     popupContainer: {
-        backgroundColor: '#333', // Dark background
+        backgroundColor: '#333',
         padding: 15,
-        borderTopLeftRadius: 10,
-        borderTopRightRadius: 10,
+        borderRadius: 10,
         marginHorizontal: 20,
-        marginBottom: 20,
     },
     descriptionText: {
         fontSize: 18, // Larger font size
         color: 'white',
         textAlign: 'center',
+        marginBottom: 5,
     },
 });
 

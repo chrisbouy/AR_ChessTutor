@@ -98,6 +98,10 @@ const ChessBoard2D = ({
   });
 
   const getSquareCoordinates = (square) => {
+    if (!square || square.length < 2) {
+      console.error('Invalid square:', square);
+      return { x: 0, y: 0 }; // Return default coordinates
+    }
     const file = square.charCodeAt(0) - 'a'.charCodeAt(0);
     const rank = 8 - parseInt(square[1], 10);
 
@@ -110,7 +114,7 @@ const ChessBoard2D = ({
   return (
     <View style={styles.container}>
       {/* Chess Board Layer */}
-      <View style={styles.boardWrapper}>
+      <View style={styles.boardWrapper}> 
         <View style={styles.row}>
           <View style={styles.emptyCorner} />
           {fileLabels.map((file, index) => (
@@ -119,7 +123,6 @@ const ChessBoard2D = ({
             </Text>
           ))}
         </View>
-
         {boardState.map((row, rowIndex) => (
           <View key={rowIndex} style={styles.row}>
             <Text style={styles.rankLabel}>{rankLabels[rowIndex]}</Text>
@@ -143,10 +146,26 @@ const ChessBoard2D = ({
 
       {/* Arrow Layer */}
       <View style={styles.arrowLayer}>
+      {/* Check if recommendedMoves is a non-empty array */}
+      {Array.isArray(recommendedMoves) && recommendedMoves.length > 0 && (
         <Svg height={boardSize} width={boardSize}>
           <Defs>
+            {/* Marker for opacity 1.0 */}
             <Marker
-              id="arrowhead"
+              id="arrowheadOpacity1"
+              markerWidth="15"
+              markerHeight="7"
+              refX="9"
+              refY="3.5"
+              orient="auto"
+              markerUnits="strokeWidth"
+            >
+              <Path d="M0,0 L0,7 L10,3.5 z" fill="red" fillOpacity="1.0" />
+            </Marker>
+
+            {/* Marker for opacity 0.8 */}
+            <Marker
+              id="arrowheadOpacity0_8"
               markerWidth="10"
               markerHeight="7"
               refX="9"
@@ -154,58 +173,66 @@ const ChessBoard2D = ({
               orient="auto"
               markerUnits="strokeWidth"
             >
-              <Path d="M0,0 L0,7 L10,3.5 z" fill="red" />
+              <Path d="M0,0 L0,7 L10,3.5 z" fill="red" fillOpacity="0.8" />
+            </Marker>
+
+            {/* Marker for opacity 0.4 */}
+            <Marker
+              id="arrowheadOpacity0_4"
+              markerWidth="10"
+              markerHeight="7"
+              refX="9"
+              refY="3.5"
+              orient="auto"
+              markerUnits="strokeWidth"
+            >
+              <Path d="M0,0 L0,7 L10,3.5 z" fill="red" fillOpacity="0.4" />
             </Marker>
           </Defs>
-          {recommendedMoves &&
-            recommendedMoves.map((move, index) => {
-              const fromCoords = getSquareCoordinates(move.from);
-              const toCoords = getSquareCoordinates(move.to);
-
-              // Determine arrow style based on priority
-              let strokeOpacity = 1;
-              let strokeWidth = 3;
-
-              switch (move.priority) {
-                case 'FORCED':
-                  strokeOpacity = 1;
-                  strokeWidth = 5;
-                  break;
-                case 'STRONG':
-                  strokeOpacity = 0.3;
-                  strokeWidth = 3;
-                  break;
-                case 'OPTIONAL':
-                  strokeOpacity = 0.5;
-                  strokeWidth = 3;
-                  break;
-                default:
-                  strokeOpacity = 1;
-                  strokeWidth = 3;
-              }
-
-              return (
-                <Line
-                  key={index}
-                  x1={fromCoords.x}
-                  y1={fromCoords.y}
-                  x2={toCoords.x}
-                  y2={toCoords.y}
-                  stroke="red"
-                  strokeWidth={strokeWidth}
-                  strokeOpacity={strokeOpacity}
-                  markerEnd="url(#arrowhead)"
-                />
-              );
-            })}
+          {recommendedMoves.map((move, index) => {
+            if (!move.from || !move.to) {
+              console.error('Invalid move:', move);
+              return null; 
+            }
+            const fromCoords = getSquareCoordinates(move.from);
+            const toCoords = getSquareCoordinates(move.to);
+            let strokeOpacity = move.arrowOpacity !== undefined ? move.arrowOpacity : 1.0;
+            let strokeWidth =4; 
+            
+            // Determine the marker id based on strokeOpacity
+            let markerId = '';
+            if (strokeOpacity === 1.0) {
+              markerId = 'url(#arrowheadOpacity1)';
+            } else if (strokeOpacity === 0.8) {
+              markerId = 'url(#arrowheadOpacity0_8)';
+            } else if (strokeOpacity === 0.1) {
+              markerId = 'url(#arrowheadOpacity0_4)';
+            } else {
+              // For any other opacity, default to opacity 1
+              markerId = 'url(#arrowheadOpacity1)';
+            }
+            
+            return (
+              <Line
+                key={index}
+                x1={fromCoords.x}
+                y1={fromCoords.y}
+                x2={toCoords.x}
+                y2={toCoords.y}
+                stroke="red"
+                strokeWidth={strokeWidth}
+                strokeOpacity={strokeOpacity}
+                markerEnd={markerId}
+              />
+            );
+          })}
         </Svg>
+      )}
       </View>
-
       {/* Thinking Overlay */}
       {isThinking && (
         <View style={styles.overlay} pointerEvents="none">
-                      <ActivityIndicator size="large" color="#ffffff" />
-
+          <ActivityIndicator size="large" color="#ffffff" />
         </View>
       )}
     </View>

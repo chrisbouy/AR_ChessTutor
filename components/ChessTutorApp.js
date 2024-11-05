@@ -40,6 +40,7 @@ const ChessTutorApp = () => {
   const [isThinking, setIsThinking] = useState(false);
   const [popupVisible, setPopupVisible] = useState(false);
   const [popupDescription, setPopupDescription] = useState('');
+  const [displayedArrows, setDisplayedArrows] = useState([]);
 
 
   const styles = useMemo(
@@ -114,7 +115,7 @@ const ChessTutorApp = () => {
           marginBottom: 15,
         },
         tableContainer: {
-          width: '95%',
+          width: '105%',
           borderWidth: 1,
           borderColor: 'white',
           borderRadius: 8,
@@ -182,7 +183,7 @@ const ChessTutorApp = () => {
         },
         overlayText: {
           color: '#ebc634',
-          fontSize: 48,
+          fontSize: 28,
           marginTop: 150,
         },
         moveCounterContainer: {
@@ -204,24 +205,65 @@ const ChessTutorApp = () => {
           paddingVertical: 0,
           backgroundColor: '#191d24',
         },
+        tableFooter: {
+          paddingVertical: 10, // Adjust as needed
+          alignItems: 'center',
+          backgroundColor: '#191d24', // Optional
+          borderColor: 'black',
+        },
+        footerText: {
+          fontSize: 16,
+          color: '#aec4e8',
+          fontStyle: 'italic', // Optional
+          fontWeight: 'bold',  // Optional
+        },
       }),
     [windowWidth]
   );
 
   const handleMovePress = (sanMove, color, reasoning, respondingTo = null) => {
-    const descript = gameLogicRef.current.convertMoveToDescription(sanMove, color);
+    const description = gameLogicRef.current.convertMoveToDescription(sanMove, color);
     const displayText = respondingTo
-        ? `Response to White's ${respondingTo}:\n\n${descript}\n\n${reasoning}`
-        : `${descript}\n\n${reasoning}`;
-    console.log(`san ${sanMove} - 
-      color ${color} - 
-      reasoning ${reasoning} - 
-      description ${descript} -
-      respondingTo ${respondingTo}`)
+      ? `Response to White's ${respondingTo}:\n\n${description}\n\n${reasoning}`
+      : `${description}\n\n${reasoning}`;
     setPopupDescription(displayText);
     setPopupVisible(true);
+  
+    if (color === 'w') {
+      const moveObj = recommendedNextMoves.find(move => move.originalMove === sanMove);
+      if (moveObj && moveObj.from && moveObj.to) {
+        setDisplayedArrows([
+          {
+            from: moveObj.from,
+            to: moveObj.to,
+            arrowOpacity: moveObj.arrowOpacity,
+          },
+        ]);
+      }
+    } else if (color === 'b') {
+      const advisedMoveObj = recommendedNextMoves.find(move => move.originalMove === respondingTo);
+      const responseMoveObj = advisedMoveObj.blackResponses.find(response => response.move === sanMove);
+  
+      let arrows = [];
+      if (advisedMoveObj && advisedMoveObj.from && advisedMoveObj.to) {
+        arrows.push({
+          from: advisedMoveObj.from,
+          to: advisedMoveObj.to,
+          arrowOpacity: advisedMoveObj.arrowOpacity,
+        });
+      }
+      if (responseMoveObj && responseMoveObj.from && responseMoveObj.to) {
+        arrows.push({
+          from: responseMoveObj.from,
+          to: responseMoveObj.to,
+          arrowOpacity: 1.0, // Use full opacity for black's move
+        });
+      }
+      setDisplayedArrows(arrows);
+    }
   };
-
+  
+  
   const handleReload = () => {
     gameLogicRef.current = new GameLogic();
     setBoardState(gameLogicRef.current.getBoardState());
@@ -233,11 +275,14 @@ const ChessTutorApp = () => {
       lastMoveAnalysis: '',
     });
     setRecommendedNextMoves([]);
+    setDisplayedArrows([]); // Clear arrows
+    setPossibleMoves([]);    // Clear green dots (legal move indicators)
     textOpacity.setValue(1);
     thinkingOpacity.setValue(0);
     analysisComplete.current = false;
     setMovesLeft(12); // Reset moves left
   };
+  
 
   const onSquarePress = (position) => {
     if (isThinking) {
@@ -275,10 +320,8 @@ const ChessTutorApp = () => {
   };
 
   const onMove = async (fromSquare, toSquare) => {
-    try {
-      // Player (White) makes a move
+    try {      // Player (White) makes a move
       const playerMove = gameLogicRef.current.makeMove({ from: fromSquare, to: toSquare });
-
       if (!playerMove) {
         setIllegalMoveSquares({ from: fromSquare, to: toSquare });
         return;
@@ -301,8 +344,7 @@ const ChessTutorApp = () => {
         return;
       }
       setIsThinking(true);
-      // Start the thinking animation
-      Animated.timing(textOpacity, {
+      Animated.timing(textOpacity, {      // Start the thinking animation
         toValue: 0,
         duration: 500,
         useNativeDriver: true,
@@ -313,9 +355,7 @@ const ChessTutorApp = () => {
           useNativeDriver: true,
         }).start();
       });
-
-      // Make Black's move
-      let blackMoveResult = await gameLogicRef.current.makeMove_Black();
+      let blackMoveResult = await gameLogicRef.current.makeMove_Black();      // Make Black's move
       if (!blackMoveResult || !blackMoveResult.move) {
         console.log('AI failed to make a move for Black, making random move.');
         const randomMove = gameLogicRef.current.selectRandomMove();
@@ -329,57 +369,40 @@ const ChessTutorApp = () => {
         Alert.alert('Game Over', 'Checkmate! The game has ended.', [{ text: 'OK', onPress: () => handleReload() }]);
         return;
       }
-
       // Update the board state after Black's move
       setBoardState([...gameLogicRef.current.getBoardState()]);
-
+      setDisplayedArrows([]);
       // Fetch advice from the AI
-      const apiName = 'Claude';
+      const apiName = 'GPT';
       let advice = await gameLogicRef.current.getAdviceFromAPI(apiName);
       //console.log("First Move API Response:", advice);
       if (advice && advice.recommendedNextMoves) {
         const chess = gameLogicRef.current.chess;
         const legalMoves = chess.moves({ verbose: true });
-
-//         advice.recommendedNextMoves = advice.recommendedNextMoves.filter(
-//           (move, index, self) => {
-//           // Remove duplicates
-//           const isDuplicate = index === self.findIndex((m) =>
-//              m.move === move.move);
-
-//           // Check if the move is legal
-//           const isLegal = legalMoves.some((legalMove) =>
-//              legalMove.san === move.move);
-
-//           // Keep the move only if it's unique and legal
-//           return isDuplicate && isLegal;
-//         });
-
-//         // Then for each remaining move, filter its responses
-// advice.recommendedNextMoves = advice.recommendedNextMoves.map(moveObj => {
-//   // Make the move to get the new position's legal moves
-//   const newPosition = chess.move(moveObj.move);
-//   const blackLegalMoves = chess.moves({ verbose: true });
-//   // Undo the move to restore the original position
-//   chess.undo();
-
-//   // Filter the responses
-//   const filteredResponses = moveObj.blackResponses
-//     .filter((response, index, self) => {
-//       // Remove duplicates
-//       const isDuplicate = index === self.findIndex((r) => r === response);
-//       // Check if the response is legal in the resulting position
-//       const isLegal = blackLegalMoves.some((legalMove) => legalMove.san === response);
-//       // Keep the response only if it's unique and legal
-//       return isDuplicate && isLegal;
-//     });
-
-//   // Return the move object with filtered responses
-//   return {
-//     ...moveObj,
-//     blackResponses: filteredResponses
-//   };
-// });
+          // Remove duplicates and illegals
+        advice.recommendedNextMoves = advice.recommendedNextMoves.filter((move, index, self) => {
+          const isUnique = index === self.findIndex((m) => m.move === move.move);
+          const isLegal = legalMoves.some((legalMove) => legalMove.san === move.move);
+          //const isPriority = move.priority !== 'OPTIONAL';
+          return isUnique && isLegal ;
+          //return isUnique && isLegal && isPriority;          
+        });
+        // for each move, filter its responses
+        // advice.recommendedNextMoves = advice.recommendedNextMoves.map(moveObj => {
+        //   const newPosition = chess.move(moveObj.move);  
+        //   const blackLegalMoves = chess.moves({ verbose: true });
+        //   chess.undo();  
+        //   // Filter the responses      // Remove duplicates      // Check if the response is legal in the resulting position
+        //   const filteredResponses = moveObj.blackResponses.filter((response, index, self) => {
+        //     const isUnique = index === self.findIndex((r) => r === response);
+        //     const isLegal = blackLegalMoves.some((legalMove) => legalMove.san === response);
+        //     return isUnique && isLegal;
+        //   });
+        //   // Return the move object with filtered responses
+        //   console.log(` ___ ${moveObj.blackResponses}`);
+          
+        //   return {...moveObj, blackResponses: filteredResponses};
+        // });
 
 // Optional: Remove any moves that end up with no legal responses
 // advice.recommendedNextMoves = advice.recommendedNextMoves.filter(
@@ -394,62 +417,140 @@ const ChessTutorApp = () => {
       //     console.log("Updated Recommended Moves:", recommendedNextMoves);
       // }, [recommendedNextMoves]);
       }
-
       setIsThinking(false);
-
       if (!advice) {
-        setPositionAnalysis({
-          immediateTactics: '',
-          lastMoveAnalysis: '',
-        });
+        setPositionAnalysis({immediateTactics: '',lastMoveAnalysis: '',});
         setRecommendedNextMoves([]);
         return;
-      } else {
-        // Store the latest advice in GameLogic
+      } else {        // Store the latest advice in GameLogic
         gameLogicRef.current.latestAdvice = advice;
       }
-
-      // Stop the thinking animation and display the advice
-      Animated.timing(thinkingOpacity, {
+      Animated.timing(thinkingOpacity, {      // Stop the thinking animation and display the advice
         toValue: 0,
         duration: 500,
         useNativeDriver: true,
       }).start(() => {
         setPositionAnalysis(advice.positionAnalysis);
-        setRecommendedNextMoves(advice.recommendedNextMoves);
-        Animated.timing(textOpacity, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }).start(() => {
-          analysisComplete.current = true;
-        });
-      });
-
+        //setRecommendedNextMoves(advice.recommendedNextMoves);
+        if (advice) {
+          // Process the advice to adjust move labels and arrow opacity
+          const processedAdvice = renderMoveAdvice(advice);
+          setPositionAnalysis(advice.positionAnalysis);
+          setRecommendedNextMoves(processedAdvice);
+          gameLogicRef.current.latestAdvice = advice; // Store the latest advice in GameLogic
+        
+          // Set displayedArrows to show the default advice arrows
+          setDisplayedArrows(
+            processedAdvice.map((move) => ({
+              from: move.from,
+              to: move.to,
+              arrowOpacity: move.arrowOpacity,
+            }))
+          );
+          Animated.timing(textOpacity, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }).start(() => {
+            analysisComplete.current = true;
+          });
+        };
       scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-    } catch (error) {
+      })
+    }
+    catch (error) {
       console.error('Error during move:', error);
       Alert.alert('Error', 'Error processing move, please try again.', [{ text: 'OK' }]);
       setIllegalMoveSquares({ from: fromSquare, to: toSquare });
       setIsThinking(false);
     }
     // console.log("recommendedNextMoves:", recommendedNextMoves);
-
   };
-
+  function renderMoveAdvice(advice) {
+    return advice.recommendedNextMoves.map((move) => {
+      let arrowOpacity = 1.0;
+      let moveLabel = move.move;
+  
+      // Adjust arrow opacity and move label based on priority
+      switch (move.priority) {
+        case 'FORCED':
+          arrowOpacity = 1.0;
+          moveLabel = `${move.move} (FORCED)`;
+          break;
+        case 'STRONG':
+          arrowOpacity = 0.8;
+          moveLabel = `${move.move} (STRONG)`;
+          break;
+        case 'OPTIONAL':
+          arrowOpacity = 0.1;
+          moveLabel = `${move.move} (OPTIONAL)`;
+          break;
+        default:
+          arrowOpacity = 1.0;
+      }
+  
+      // Get move details for the advised move
+      const moveDetails = gameLogicRef.current.getMoveDetailsFromSAN(move.originalMove || move.move);
+      let from = null;
+      let to = null;
+      let newFEN = null;
+      if (moveDetails) {
+        from = moveDetails.from;
+        to = moveDetails.to;
+  
+        // Make the advised move to get the new FEN
+        gameLogicRef.current.chess.move(move.originalMove || move.move);
+        newFEN = gameLogicRef.current.chess.fen();
+        gameLogicRef.current.chess.undo();
+      }
+  
+      // Enrich blackResponses
+      const enrichedBlackResponses = (move.blackResponses || []).map((response) => {
+        // Get move details for the black response in the new position
+        const responseDetails = gameLogicRef.current.getMoveDetailsFromSAN(response.move, newFEN);
+        let responseFrom = null;
+        let responseTo = null;
+        if (responseDetails) {
+          responseFrom = responseDetails.from;
+          responseTo = responseDetails.to;
+        }
+        return {
+          ...response,
+          from: responseFrom,
+          to: responseTo,
+        };
+      });
+  
+      return {
+        ...move,
+        move: moveLabel,
+        arrowOpacity: arrowOpacity,
+        originalMove: move.move,
+        from: from,
+        to: to,
+        blackResponses: enrichedBlackResponses,
+      };
+    });
+  }
+  
+  
   const getRecommendedMovesForArrows = () => {
-    if (!recommendedNextMoves || recommendedNextMoves.length === 0) {
+    if (!Array.isArray(recommendedNextMoves) || recommendedNextMoves.length === 0) {
       return [];
     }
     return recommendedNextMoves
       .map((move) => {
-        const moveSan = move.move;
+        const moveSan = move.originalMove; // Use originalMove without priority labels
         const chess = gameLogicRef.current.chess;
         const moves = chess.moves({ verbose: true });
         const moveObj = moves.find((m) => m.san === moveSan);
-
+  
         if (moveObj) {
-          return { from: moveObj.from, to: moveObj.to, priority: move.priority };
+          return {
+            from: moveObj.from,
+            to: moveObj.to,
+            arrowOpacity: move.arrowOpacity,
+          };
         } else {
           console.error('Invalid advised move:', moveSan);
           return null;
@@ -457,6 +558,7 @@ const ChessTutorApp = () => {
       })
       .filter((move) => move !== null);
   };
+  
 
   useEffect(() => {
     setIsLandscape(windowWidth > windowHeight); // Detect if the device is in landscape mode
@@ -495,53 +597,53 @@ const ChessTutorApp = () => {
             illegalMoveSquares={illegalMoveSquares}
             advisedMove={analysisComplete.current ? advisedMove : null}
             possibleMoves={possibleMoves}
-            recommendedMoves={getRecommendedMovesForArrows()}
             isThinking={isThinking}
+            recommendedMoves={displayedArrows}
           />
         </View>
-
         {/* Analysis texts */}
         <ScrollView ref={scrollViewRef} contentContainerStyle={styles.textContainer}>
           <Animated.View style={[styles.analysisContainer, { opacity: textOpacity }]}>
-            
-          {recommendedNextMoves.length > 0 ? (
-              <SafeAreaView style={styles.safeArea}>
-                <View style={styles.tableContainer}>
-                  {/* Table Header */}
-                  <View style={styles.tableRow}>
-                    <Text style={[styles.tableCell, styles.tableHeader, styles.adviceColumn]}>Advice</Text>
-                    <Text style={[styles.tableCell, styles.tableHeader, styles.responseColumn]}>Likely Responses</Text>
-                  </View>
-
-                  {Array.isArray(recommendedNextMoves) && recommendedNextMoves.length > 0 ? (
-                    recommendedNextMoves.map((move, index) => (
-                      <View key={index} style={styles.tableRow}>
-                        <View style={[styles.tableCell, styles.adviceColumn]}>
-                          <TouchableOpacity onPress={() => handleMovePress(move.move, 'w', move.reasoning)}>
-                            <Text style={styles.tappableMove}>{move.move}</Text>
-                          </TouchableOpacity>
-                        </View>
-                        <View style={[styles.tableCell, { flexDirection: 'row', flexWrap: 'wrap' }]}>
-                          {move.blackResponses.map((response, idx) => (
-                            <TouchableOpacity key={idx} onPress={() => handleMovePress(response.move, 'b', response.threat, move.whiteMove)}>
-                              <Text style={styles.tappableMove}>{response.move}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      </View>
-                    ))
-                  ) : (
-                    <View style={styles.tableRow}>
-                      <Text style={styles.tableCell}>No advice available</Text>
-                      <Text style={styles.tableCell}>N/A</Text>
-                    </View>
-                  )}
+          {Array.isArray(recommendedNextMoves) && recommendedNextMoves.length > 0 ? (
+            <SafeAreaView style={styles.safeArea}>
+              <View style={styles.tableContainer}>
+                {/* Table Header */}
+                <View style={styles.tableRow}>
+                  <Text style={[styles.tableCell, styles.tableHeader, styles.adviceColumn]}>Advice</Text>
+                  <Text style={[styles.tableCell, styles.tableHeader, styles.responseColumn]}>Likely Responses</Text>
                 </View>
-              </SafeAreaView>
+                {Array.isArray(recommendedNextMoves) && recommendedNextMoves.length > 0 ? (
+                recommendedNextMoves.map((move, index) => (
+                  <View key={index} style={styles.tableRow}>
+                    <View style={[styles.tableCell, styles.adviceColumn]}>
+                      <TouchableOpacity onPress={() => handleMovePress(move.originalMove, 'w', move.reasoning)} >
+                          <Text style={styles.tappableMove}>{move.move}</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View style={[styles.tableCell, { flexDirection: 'row', flexWrap: 'wrap' }]}>
+                      {move.blackResponses.map((response, idx) => (
+                        <TouchableOpacity key={idx} onPress={() =>
+                          handleMovePress(response.move, 'b', response.threat, move.originalMove)
+                          } >
+                          <Text style={styles.tappableMove}>{response.move}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                ))) : (
+                  <View style={styles.tableRow}>
+                    <Text style={styles.tableCell}>No advice available</Text>
+                    <Text style={styles.tableCell}>N/A</Text>
+                  </View>
+                )} 
+                  <View style={styles.tableFooter}>
+                    <Text style={styles.footerText}>Click a move for analysis</Text>
+                 </View>               
+              </View>
+            </SafeAreaView>
             ) : (
               <Text style={styles.noDataText}>Make your move.</Text>
             )}
-
             {positionAnalysis.immediateTactics || positionAnalysis.lastMoveAnalysis ? (
               <View>
                 {positionAnalysis.immediateTactics ? (
@@ -558,25 +660,33 @@ const ChessTutorApp = () => {
                 ) : null}
               </View>
             ) : null}
-
-
           </Animated.View>
         </ScrollView>
         {/* Thinking overlay */}
         {isThinking && (
           <View style={styles.overlay} pointerEvents="none">
-
             <Text style={styles.overlayText}>Thinking...</Text>
           </View>
         )}
       </View>
       <SANPopup
-                visible={popupVisible}
-                description={popupDescription}
-                onClose={() => setPopupVisible(false)}
-      />
+  visible={popupVisible}
+  description={popupDescription}
+  onClose={() => {
+    setPopupVisible(false);
+    // Restore original advice arrows
+    setDisplayedArrows(
+      recommendedNextMoves.map((move) => ({
+        from: move.from,
+        to: move.to,
+        arrowOpacity: move.arrowOpacity,
+      }))
+    );
+  }}
+/>
+
     </SafeAreaView>
-  );
+  ); 
 };
 
 export default ChessTutorApp;

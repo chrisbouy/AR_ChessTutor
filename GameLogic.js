@@ -84,7 +84,7 @@ class GameLogic {
           Authorization: `Bearer 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`, // Replace with your OpenAI API key
         },
         body: JSON.stringify({
-          model: 'gpt-4o', 
+          model: 'gpt-4o-mini', 
           messages: [
             {
               role: 'user',
@@ -202,7 +202,7 @@ class GameLogic {
           Authorization: `Bearer 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`, // Replace with your OpenAI API key
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
@@ -238,17 +238,14 @@ class GameLogic {
         body: JSON.stringify({
           "contents": [
             {
-              "role": "system",
-              "parts": [{"text": system_prompt}]
-            },
-            {
               "role": "user",
-              "parts": [{"text": user_prompt}]
+              "parts": [{"text": system_prompt + user_prompt}]
             },
           ]
         }),
       });
       const data = await response.json();
+      console.log(`gemini response ${data}`);
       if (data && data.candidates && data.candidates[0] && data.candidates[0].content){      // Extract the content from the response
         let responseText = data.candidates[0].content.parts[0].text; ;
         // Extract the sections from the response
@@ -279,7 +276,7 @@ class GameLogic {
             }
       ],
       max_tokens:"1000",
-      temperature:0.3,
+      temperature:0,
       top_p:0.8,
       return_citations:false,
       search_domain_filter:["https://www.chess.com"],
@@ -293,6 +290,7 @@ class GameLogic {
     })
     })
     data = await response.json();
+    console.log(`perplexity response ${data}`);
     // Extract the content from the response
     if (data && data.choices && data.choices[0] && data.choices[0].message) {
       let explanation = data.choices[0].message.content; // Adjust this depending on the exact content structure
@@ -422,7 +420,7 @@ class GameLogic {
   // }
   extractSectionsFromAdvice(adviceText) {
     try {
-      console.log(adviceText);
+      console.log(`advice text ${adviceText}`);
       const cleanedText = adviceText.replace(/```(?:json)?/g, '').trim();
       const parsedResponse = JSON.parse(cleanedText);
       const { positionAnalysis, recommendedNextMoves } = parsedResponse;

@@ -202,7 +202,7 @@ class GameLogic {
           Authorization: `Bearer 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`, // Replace with your OpenAI API key
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-4o',
           messages: [
             {
               role: 'system',
@@ -217,6 +217,7 @@ class GameLogic {
           temperature: 0,
         }),
       });
+      console.log(response);
       const jsonResponse = await response.json();
       if (jsonResponse.error) {
         console.error('API Error:', jsonResponse.error);
@@ -513,6 +514,13 @@ class GameLogic {
     };
     return pieceNames[pieceSymbol.toLowerCase()] || 'Piece';
   }
+  getMoveDetailsFromSAN(sanMove, fen = null) {
+    const chessInstance = new Chess(fen || this.chess.fen());
+    const moves = chessInstance.moves({ verbose: true });
+    const move = moves.find((m) => m.san === sanMove);
+    return move || null;
+  }
+  
   
 }
 export default GameLogic;

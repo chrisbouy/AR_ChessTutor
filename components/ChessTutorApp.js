@@ -40,6 +40,7 @@ const ChessTutorApp = () => {
   const [isThinking, setIsThinking] = useState(false);
   const [popupVisible, setPopupVisible] = useState(false);
   const [popupDescription, setPopupDescription] = useState('');
+  const [displayedArrows, setDisplayedArrows] = useState([]);
 
 
   const styles = useMemo(
@@ -114,7 +115,7 @@ const ChessTutorApp = () => {
           marginBottom: 15,
         },
         tableContainer: {
-          width: '95%',
+          width: '105%',
           borderWidth: 1,
           borderColor: 'white',
           borderRadius: 8,
@@ -204,24 +205,65 @@ const ChessTutorApp = () => {
           paddingVertical: 0,
           backgroundColor: '#191d24',
         },
+        tableFooter: {
+          paddingVertical: 10, // Adjust as needed
+          alignItems: 'center',
+          backgroundColor: '#191d24', // Optional
+          borderColor: 'black',
+        },
+        footerText: {
+          fontSize: 16,
+          color: '#aec4e8',
+          fontStyle: 'italic', // Optional
+          fontWeight: 'bold',  // Optional
+        },
       }),
     [windowWidth]
   );
 
   const handleMovePress = (sanMove, color, reasoning, respondingTo = null) => {
-    const descript = gameLogicRef.current.convertMoveToDescription(sanMove, color);
+    const description = gameLogicRef.current.convertMoveToDescription(sanMove, color);
     const displayText = respondingTo
-        ? `Response to White's ${respondingTo}:\n\n${descript}\n\n${reasoning}`
-        : `${descript}\n\n${reasoning}`;
-    console.log(`san ${sanMove} - 
-      color ${color} - 
-      reasoning ${reasoning} - 
-      description ${descript} -
-      respondingTo ${respondingTo}`)
+      ? `Response to White's ${respondingTo}:\n\n${description}\n\n${reasoning}`
+      : `${description}\n\n${reasoning}`;
     setPopupDescription(displayText);
     setPopupVisible(true);
+  
+    if (color === 'w') {
+      const moveObj = recommendedNextMoves.find(move => move.originalMove === sanMove);
+      if (moveObj && moveObj.from && moveObj.to) {
+        setDisplayedArrows([
+          {
+            from: moveObj.from,
+            to: moveObj.to,
+            arrowOpacity: moveObj.arrowOpacity,
+          },
+        ]);
+      }
+    } else if (color === 'b') {
+      const advisedMoveObj = recommendedNextMoves.find(move => move.originalMove === respondingTo);
+      const responseMoveObj = advisedMoveObj.blackResponses.find(response => response.move === sanMove);
+  
+      let arrows = [];
+      if (advisedMoveObj && advisedMoveObj.from && advisedMoveObj.to) {
+        arrows.push({
+          from: advisedMoveObj.from,
+          to: advisedMoveObj.to,
+          arrowOpacity: advisedMoveObj.arrowOpacity,
+        });
+      }
+      if (responseMoveObj && responseMoveObj.from && responseMoveObj.to) {
+        arrows.push({
+          from: responseMoveObj.from,
+          to: responseMoveObj.to,
+          arrowOpacity: 1.0, // Use full opacity for black's move
+        });
+      }
+      setDisplayedArrows(arrows);
+    }
   };
-
+  
+  
   const handleReload = () => {
     gameLogicRef.current = new GameLogic();
     setBoardState(gameLogicRef.current.getBoardState());
@@ -233,11 +275,14 @@ const ChessTutorApp = () => {
       lastMoveAnalysis: '',
     });
     setRecommendedNextMoves([]);
+    setDisplayedArrows([]); // Clear arrows
+    setPossibleMoves([]);    // Clear green dots (legal move indicators)
     textOpacity.setValue(1);
     thinkingOpacity.setValue(0);
     analysisComplete.current = false;
     setMovesLeft(12); // Reset moves left
   };
+  
 
   const onSquarePress = (position) => {
     if (isThinking) {
@@ -326,8 +371,9 @@ const ChessTutorApp = () => {
       }
       // Update the board state after Black's move
       setBoardState([...gameLogicRef.current.getBoardState()]);
+      setDisplayedArrows([]);
       // Fetch advice from the AI
-      const apiName = 'Claude';
+      const apiName = 'GPT';
       let advice = await gameLogicRef.current.getAdviceFromAPI(apiName);
       //console.log("First Move API Response:", advice);
       if (advice && advice.recommendedNextMoves) {
@@ -386,21 +432,33 @@ const ChessTutorApp = () => {
       }).start(() => {
         setPositionAnalysis(advice.positionAnalysis);
         //setRecommendedNextMoves(advice.recommendedNextMoves);
-        if (advice) {          // Process the advice to adjust move labels and arrow opacity
+        if (advice) {
+          // Process the advice to adjust move labels and arrow opacity
           const processedAdvice = renderMoveAdvice(advice);
+          setPositionAnalysis(advice.positionAnalysis);
           setRecommendedNextMoves(processedAdvice);
-          gameLogicRef.current.latestAdvice = advice;          // Store the latest advice in GameLogic
-        }
-        Animated.timing(textOpacity, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }).start(() => {
-          analysisComplete.current = true;
-        });
-      });
+          gameLogicRef.current.latestAdvice = advice; // Store the latest advice in GameLogic
+        
+          // Set displayedArrows to show the default advice arrows
+          setDisplayedArrows(
+            processedAdvice.map((move) => ({
+              from: move.from,
+              to: move.to,
+              arrowOpacity: move.arrowOpacity,
+            }))
+          );
+          Animated.timing(textOpacity, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }).start(() => {
+            analysisComplete.current = true;
+          });
+        };
       scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-    } catch (error) {
+      })
+    }
+    catch (error) {
       console.error('Error during move:', error);
       Alert.alert('Error', 'Error processing move, please try again.', [{ text: 'OK' }]);
       setIllegalMoveSquares({ from: fromSquare, to: toSquare });
@@ -410,8 +468,8 @@ const ChessTutorApp = () => {
   };
   function renderMoveAdvice(advice) {
     return advice.recommendedNextMoves.map((move) => {
-      let arrowOpacity = 1.0; // Default to fully opaque arrows
-      let moveLabel = move.move; // Original move label
+      let arrowOpacity = 1.0;
+      let moveLabel = move.move;
   
       // Adjust arrow opacity and move label based on priority
       switch (move.priority) {
@@ -424,21 +482,58 @@ const ChessTutorApp = () => {
           moveLabel = `${move.move} (STRONG)`;
           break;
         case 'OPTIONAL':
-          arrowOpacity = .1;
+          arrowOpacity = 0.1;
           moveLabel = `${move.move} (OPTIONAL)`;
           break;
         default:
           arrowOpacity = 1.0;
       }
   
+      // Get move details for the advised move
+      const moveDetails = gameLogicRef.current.getMoveDetailsFromSAN(move.originalMove || move.move);
+      let from = null;
+      let to = null;
+      let newFEN = null;
+      if (moveDetails) {
+        from = moveDetails.from;
+        to = moveDetails.to;
+  
+        // Make the advised move to get the new FEN
+        gameLogicRef.current.chess.move(move.originalMove || move.move);
+        newFEN = gameLogicRef.current.chess.fen();
+        gameLogicRef.current.chess.undo();
+      }
+  
+      // Enrich blackResponses
+      const enrichedBlackResponses = (move.blackResponses || []).map((response) => {
+        // Get move details for the black response in the new position
+        const responseDetails = gameLogicRef.current.getMoveDetailsFromSAN(response.move, newFEN);
+        let responseFrom = null;
+        let responseTo = null;
+        if (responseDetails) {
+          responseFrom = responseDetails.from;
+          responseTo = responseDetails.to;
+        }
+        return {
+          ...response,
+          from: responseFrom,
+          to: responseTo,
+        };
+      });
+  
       return {
         ...move,
-        move: moveLabel,         // Move label with priority
+        move: moveLabel,
         arrowOpacity: arrowOpacity,
-        originalMove: move.move, // Keep the original move without labels
+        originalMove: move.move,
+        from: from,
+        to: to,
+        blackResponses: enrichedBlackResponses,
       };
     });
   }
+  
+  
   const getRecommendedMovesForArrows = () => {
     if (!Array.isArray(recommendedNextMoves) || recommendedNextMoves.length === 0) {
       return [];
@@ -502,8 +597,8 @@ const ChessTutorApp = () => {
             illegalMoveSquares={illegalMoveSquares}
             advisedMove={analysisComplete.current ? advisedMove : null}
             possibleMoves={possibleMoves}
-            recommendedMoves={getRecommendedMovesForArrows()}
             isThinking={isThinking}
+            recommendedMoves={displayedArrows}
           />
         </View>
         {/* Analysis texts */}
@@ -540,7 +635,10 @@ const ChessTutorApp = () => {
                     <Text style={styles.tableCell}>No advice available</Text>
                     <Text style={styles.tableCell}>N/A</Text>
                   </View>
-                )}                
+                )} 
+                  <View style={styles.tableFooter}>
+                    <Text style={styles.footerText}>Click a move for analysis</Text>
+                 </View>               
               </View>
             </SafeAreaView>
             ) : (
@@ -572,10 +670,21 @@ const ChessTutorApp = () => {
         )}
       </View>
       <SANPopup
-                visible={popupVisible}
-                description={popupDescription}
-                onClose={() => setPopupVisible(false)}
-      />
+  visible={popupVisible}
+  description={popupDescription}
+  onClose={() => {
+    setPopupVisible(false);
+    // Restore original advice arrows
+    setDisplayedArrows(
+      recommendedNextMoves.map((move) => ({
+        from: move.from,
+        to: move.to,
+        arrowOpacity: move.arrowOpacity,
+      }))
+    );
+  }}
+/>
+
     </SafeAreaView>
   ); 
 };

@@ -41,7 +41,15 @@ const ChessTutorApp = () => {
   const [popupVisible, setPopupVisible] = useState(false);
   const [popupDescription, setPopupDescription] = useState('');
   const [displayedArrows, setDisplayedArrows] = useState([]);
+  // const [retrievedApiKey, setRetrievedApiKey] = useState(null);
+  
+  async function initializeApiKey() {
+    await gameLogicRef.current.storeApiKey('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')
 
+  }
+  useEffect(() => {
+    initializeApiKey();
+  }, []);
 
   const styles = useMemo(
     () =>
@@ -319,6 +327,9 @@ const ChessTutorApp = () => {
     }
   };
 
+
+
+
   const onMove = async (fromSquare, toSquare) => {
     try {      // Player (White) makes a move
       const playerMove = gameLogicRef.current.makeMove({ from: fromSquare, to: toSquare });
@@ -459,7 +470,7 @@ const ChessTutorApp = () => {
       })
     }
     catch (error) {
-      console.error('Error during move:', error);
+      console.log('Error during move:', error);
       Alert.alert('Error', 'Error processing move, please try again.', [{ text: 'OK' }]);
       setIllegalMoveSquares({ from: fromSquare, to: toSquare });
       setIsThinking(false);
@@ -552,7 +563,7 @@ const ChessTutorApp = () => {
             arrowOpacity: move.arrowOpacity,
           };
         } else {
-          console.error('Invalid advised move:', moveSan);
+          console.log('Invalid advised move:', moveSan);
           return null;
         }
       })

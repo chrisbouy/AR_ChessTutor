@@ -99,7 +99,7 @@ const ChessBoard2D = ({
 
   const getSquareCoordinates = (square) => {
     if (!square || square.length < 2) {
-      console.error('Invalid square:', square);
+      console.log('Invalid square:', square);
       return { x: 0, y: 0 }; // Return default coordinates
     }
     const file = square.charCodeAt(0) - 'a'.charCodeAt(0);
@@ -191,7 +191,7 @@ const ChessBoard2D = ({
           </Defs>
           {recommendedMoves.map((move, index) => {
             if (!move.from || !move.to) {
-              console.error('Invalid move:', move);
+              console.log('Invalid move:', move);
               return null; 
             }
             const fromCoords = getSquareCoordinates(move.from);

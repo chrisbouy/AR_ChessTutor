@@ -1,4 +1,5 @@
 import { Chess } from 'chess.js';
+import EncryptedStorage from 'react-native-encrypted-storage';
 
 class GameLogic {
   constructor() {
@@ -41,7 +42,7 @@ class GameLogic {
     } catch (error) {
       return null;
     }
-  }
+  } 
 
   getPieceAt(position) {
     const rowIndex = 8 - parseInt(position[1]);
@@ -66,11 +67,11 @@ class GameLogic {
       if (this.validateMove(bestMoveSAN)) {
         return bestMoveSAN;
       } else {
-        console.error('AI suggested an invalid move:', bestMoveSAN);
+        console.log('AI suggested an invalid move:', bestMoveSAN);
         return null;
       }
     } catch (error) {
-      console.error('Error fetching best move from AI:', error);
+      console.log('Error fetching best move from AI:', error);
       return null;
     }
   }
@@ -98,14 +99,14 @@ class GameLogic {
 
       const jsonResponse = await response.json();
       if (jsonResponse.error) {
-        console.error('AI API Error:', jsonResponse.error);
+        console.log('AI API Error:', jsonResponse.error);
         return null;
       }
 
       const aiMove = jsonResponse.choices[0].message.content;
       return aiMove;
     } catch (error) {
-      console.error('Error calling AI API:', error);
+      console.log('Error calling AI API:', error);
       return null;
     }
   }
@@ -164,11 +165,11 @@ class GameLogic {
           san: moveResult.san,
         };
       } else {
-        console.error('Failed to make black move:', blackMove);
+        console.log('Failed to make black move:', blackMove);
         return null;
       }
     } catch (error) {
-      console.error('Error in makeMove_Black:', error);
+      console.log('Error in makeMove_Black:', error);
       return null;
     }
   }
@@ -186,20 +187,54 @@ class GameLogic {
   selectRandomMove() {
     const possibleMoves = this.chess.moves();
     if (possibleMoves.length === 0) {
-      console.error('No legal moves available.');
+      console.log('No legal moves available.');
       return null;
     }
     const randomIndex = Math.floor(Math.random() * possibleMoves.length);
     return possibleMoves[randomIndex];
   }
+  async storeApiKey(key) {
+    try {
+      await EncryptedStorage.setItem('apiKey', key);
+      this.apiKey = key; // Optionally update the instance variable
+    } catch (error) {
+      console.error('Error storing the API key:', error);
+    }
+  }
 
+  // Method to retrieve API key
+  async retrieveApiKey() {
+    try {
+      const key = await EncryptedStorage.getItem('apiKey');
+      this.apiKey = key; // Optionally store it in the instance variable
+      return key;
+    } catch (error) {
+      console.error('Error retrieving the API key:', error);
+      return null;
+    }
+  }
+
+  // Method to remove API key
+  async removeApiKey() {
+    try {
+      await EncryptedStorage.removeItem('apiKey');
+      this.apiKey = null; // Optionally clear the instance variable
+    } catch (error) {
+      console.error('Error removing the API key:', error);
+    }
+  }
   async getAdviceFromGPT(system_prompt, user_prompt) {
     try {
+      const apiKey = this.apiKey || await this.retrieveApiKey(); 
+      if (!apiKey) {
+        console.error('API key not found');
+        return;
+      }
       const response = await fetch(`https://api.openai.com/v1/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer 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`, // Replace with your OpenAI API key
+          Authorization:`Bearer ${apiKey}`
         },
         body: JSON.stringify({
           model: 'gpt-4o',
@@ -220,17 +255,18 @@ class GameLogic {
       console.log(response);
       const jsonResponse = await response.json();
       if (jsonResponse.error) {
-        console.error('API Error:', jsonResponse.error);
+        console.log('API Error:', jsonResponse.error);
         return null;
       }
       const responseText = jsonResponse.choices[0].message.content;
       const advice = this.extractSectionsFromAdvice(responseText);
       return advice;
     } catch (error) {
-      console.error('Error fetching analysis from AI:', error);
+      console.log('Error fetching analysis from AI:', error);
       return null;
     }
   }
+
   async getAdviceFromGemini(system_prompt, user_prompt) {
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
@@ -253,11 +289,11 @@ class GameLogic {
         const advice = this.extractSectionsFromAdvice(responseText);
         return advice;
       } else {
-        console.error('No candidates found in Gemini API response.');
+        console.log('No candidates found in Gemini API response.');
         return null;
       }
     } catch (error) {
-      console.error('Error fetching analysis from Gemini:', error);
+      console.log('Error fetching analysis from Gemini:', error);
       return null;
     }
   }
@@ -332,7 +368,7 @@ class GameLogic {
             return advice;
         }
     } catch (error) {
-        // console.error('Error fetching analysis from Claude:', error);
+        console.log('Error fetching analysis from Claude:', error);
         return null;
     }
   }
@@ -427,7 +463,7 @@ class GameLogic {
       const { positionAnalysis, recommendedNextMoves } = parsedResponse;
       return { positionAnalysis, recommendedNextMoves };
     } catch (e) {
-      console.error("Error parsing the assistant's response:", e);
+      console.log("Error parsing the assistant's response:", e);
       return null;
     }
   }

@@ -237,7 +237,7 @@ class GameLogic {
           Authorization:`Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
@@ -269,7 +269,7 @@ class GameLogic {
 
   async getAdviceFromGemini(system_prompt, user_prompt) {
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -303,7 +303,7 @@ class GameLogic {
     headers: {Authorization: 'Bearer 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', 
                               'Content-Type': 'application/json'},
     body: JSON.stringify({
-      model:"llama-3.1-sonar-large-128k-chat",
+      model:"llama-3.1-sonar-huge-128k-online",
       messages:[
             {role:"system",
               content:system_prompt

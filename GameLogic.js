@@ -1,6 +1,7 @@
 import { Chess } from 'chess.js';
 import EncryptedStorage from 'react-native-encrypted-storage';
-
+import { Configuration, OpenAIApi } from 'openai';
+import { Alert } from 'react-native';
 class GameLogic {
   constructor() {
     this.chess = new Chess();
@@ -225,6 +226,29 @@ class GameLogic {
   }
   async getAdviceFromGPT(system_prompt, user_prompt) {
     try {
+      // Log the request headers (mask the API key)
+      console.log('Request Headers:', {
+        'Content-Type': 'application/json',
+        'Authorization': '***MASKED_API_KEY***' // Masked for security
+      });
+  
+      // Log the request body
+      console.log('Request Body:', {
+          model: "gpt-4o",
+          messages: [
+            {
+              role: 'system',
+              content: system_prompt,
+            },
+            {
+              role: 'user',
+              content: user_prompt,
+            },
+          ],
+          max_tokens: 500,
+          temperature: 0,
+        });
+    
       const apiKey = this.apiKey || await this.retrieveApiKey(); 
       if (!apiKey) {
         console.error('API key not found');
@@ -252,13 +276,15 @@ class GameLogic {
           temperature: 0,
         }),
       });
-      console.log(response);
+
       const jsonResponse = await response.json();
       if (jsonResponse.error) {
         console.log('API Error:', jsonResponse.error);
         return null;
-      }
+      }      
       const responseText = jsonResponse.choices[0].message.content;
+      console.log(responseText);
+
       const advice = this.extractSectionsFromAdvice(responseText);
       return advice;
     } catch (error) {
@@ -266,10 +292,71 @@ class GameLogic {
       return null;
     }
   }
+async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
 
+        // Combine system_prompt and user_prompt
+        const combinedPrompt = `${system_prompt}\n\n${user_prompt}`;
+
+  const apiKey = this.apiKey || await this.retrieveApiKey(); 
+  if (!apiKey) {
+    console.error('API key not found');
+    return;
+  }
+  const url = "https://api.openai.com/v1/completions";
+  const headers = {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${apiKey}`,
+  };
+  const data = {
+    model: 'gpt-3.5-turbo-instruct',
+    prompt: combinedPrompt,
+    temperature: 0.1,
+    max_tokens: 750,
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+    console.log(result);
+    if (response.ok) {
+      const gptResponseText = result.choices[0].text;
+      const gptResponse = JSON.parse(gptResponseText);
+      return gptResponse;
+    } else {
+      console.error("Error:", result);
+      Alert.alert("Error", "Failed to fetch data from OpenAI API");
+      return null;
+    }
+  } catch (error) {
+    console.error("Error fetching data from OpenAI API:", error);
+    Alert.alert("Error", "An error occurred while trying to fetch data from OpenAI API.");
+    return null;
+  }
+  
+}
   async getAdviceFromGemini(system_prompt, user_prompt) {
+      // Combine system_prompt and user_prompt
+  const combinedPrompt = `${system_prompt}\n\n${user_prompt}`;
+
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
+      console.log('Request Headers:', {
+        'Content-Type': 'application/json',
+    });
+    // Log the request body
+    console.log('Request Body:', {
+      "contents": [
+        {
+          "role": "user",
+          "parts": [{"text": combinedPrompt}]
+        },
+      ]
+});
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -282,11 +369,12 @@ class GameLogic {
         }),
       });
       const data = await response.json();
-      console.log(`gemini response ${data}`);
+     
       if (data && data.candidates && data.candidates[0] && data.candidates[0].content){      // Extract the content from the response
         let responseText = data.candidates[0].content.parts[0].text; ;
         // Extract the sections from the response
-        const advice = this.extractSectionsFromAdvice(responseText);
+        const advice = this.extractSectionsFromAdvice(responseText); 
+        console.log(`gemini response ${responseText}`);
         return advice;
       } else {
         console.log('No candidates found in Gemini API response.');
@@ -303,7 +391,7 @@ class GameLogic {
     headers: {Authorization: 'Bearer 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', 
                               'Content-Type': 'application/json'},
     body: JSON.stringify({
-      model:"llama-3.1-sonar-large-128k-chat",
+      model:"llama-3.1-sonar-huge-128k-online",
       messages:[
             {role:"system",
               content:system_prompt
@@ -339,6 +427,25 @@ class GameLogic {
   }
   async getAdviceFromClaude(system_prompt, user_prompt) {
     try {
+          // Log the request headers (mask the API key)
+          console.log('Request Headers:', {
+            'Content-Type': 'application/json',
+            'anthropic-version': '2023-06-01',
+            'x-api-key': '***MASKED_API_KEY***' // Masked for security
+        });
+
+        // Log the request body
+        console.log('Request Body:', {
+            model: "claude-3-5-sonnet",
+            max_tokens: 1000,
+            system: system_prompt,
+            messages: [
+                {
+                    role: "user",
+                    content: user_prompt
+                },
+            ]
+        });
         const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
@@ -375,42 +482,46 @@ class GameLogic {
   async getAdviceFromAPI(apiName) {
     const fen = this.chess.fen();
     const moveHistory = this.chess.history().map((move) => move);
-    const system_prompt = `
-      You are a chess tutor specializing in chess analysis.
-      Your task is to analyze positions based on the FEN and move history provided by the user.
-      Use only information from https://www.chess.com to analyze the position.
-      Responses must be concise strings and formatted strictly according to the specified JSON structure.
-      For each recommended move, you should provide possible Black responses.
-      Do not include move numbers in the response.
-      Do not include the opening name in the analysis.
-      Do not use any acronyms.
-    `;
+    const system_prompt =`You are a chess tutor specializing in accurate, move-by-move analysis.
+Instructions:
+- Analyze the given chess position thoroughly.
+- Verify the legality of all moves and ensure they are possible in the current position.
+- Double-check all tactical motifs and threats for accuracy.
 
-    const user_prompt = `Current FEN: ${fen}
-      Move History: ${moveHistory.join(', ')}
+Constraints:
 
-      Analyze this position and respond in the following JSON format:
+- Do not include move numbers, opening names, or acronyms.
+- Provide at least one strong move and one optional move.
+- Responses must strictly follow the specified JSON format.
+- Avoid referring to bishops by square colors
+`;
 
-      {
-        "positionAnalysis": {
-          "immediateTactics": "Description of any immediate threats or tactical motifs",
-          "lastMoveAnalysis": "Brief analysis of the most recent move"
-        },
-        "recommendedNextMoves": [
-          {
-            "move": "Suggested move",
-            "priority": "FORCED|STRONG|OPTIONAL",
-            "reasoning": "Brief tactical/strategic explanation",
-            "blackResponses": [
-              {
-                "move": "Black's response",
-                "threat": "What this response threatens or achieves"
-              }
-            ]
-          }
-        ]
-      }`;
+    const user_prompt = `
+- You are playing Black. I am playing as White, and it's my turn to move.
+- Current FEN: ${fen}
+- Move History: ${moveHistory.join(', ')}
+- Analyze this position and respond in the following JSON format:
 
+{
+  "positionAnalysis": {
+    "immediateTactics": "Description of any immediate threats or tactical motifs.",
+    "lastMoveAnalysis": "Brief analysis of the most recent move."
+  },
+  "recommendedNextMoves": [
+    {
+      "move": "Suggested move",
+      "priority": "STRONG | OPTIONAL",
+      "reasoning": "Brief tactical/strategic explanation.",
+      "blackResponses": [
+        {
+          "move": "Black's response",
+          "threat": "What this response threatens or achieves."
+        }
+      ]
+    }
+  ]
+}
+  `;
     switch (apiName) {
       case 'GPT':
         return await this.getAdviceFromGPT(system_prompt, user_prompt);
@@ -419,7 +530,9 @@ class GameLogic {
       case 'Perplexity':
         return await this.getAdviceFromPerplexity(system_prompt, user_prompt);   
       case 'Claude':
-        return await this.getAdviceFromClaude(system_prompt, user_prompt);       
+        return await this.getAdviceFromClaude(system_prompt, user_prompt);
+      case 'GPTinstruct':
+        return await this.getAdviceFromGPTinstruct(system_prompt, user_prompt);               
       default:
         throw new Error(`Unknown API name: ${apiName}`);
     }
@@ -457,7 +570,7 @@ class GameLogic {
   // }
   extractSectionsFromAdvice(adviceText) {
     try {
-      console.log(`advice text ${adviceText}`);
+      // console.log(`advice text ${adviceText}`);
       const cleanedText = adviceText.replace(/```(?:json)?/g, '').trim();
       const parsedResponse = JSON.parse(cleanedText);
       const { positionAnalysis, recommendedNextMoves } = parsedResponse;

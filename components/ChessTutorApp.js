@@ -36,7 +36,7 @@ const ChessTutorApp = () => {
   const [isLandscape, setIsLandscape] = useState(false);
   const guidelineBaseWidth = 350; // Base width
   const scaleFont = (size) => (windowWidth / guidelineBaseWidth) * size;
-  const [movesLeft, setMovesLeft] = useState(12); // Starting from 12 half-moves
+  const [movesLeft, setMovesLeft] = useState(500); // Starting from 12 half-moves
   const [isThinking, setIsThinking] = useState(false);
   const [popupVisible, setPopupVisible] = useState(false);
   const [popupDescription, setPopupDescription] = useState('');
@@ -217,8 +217,8 @@ const ChessTutorApp = () => {
           paddingVertical: 10, // Adjust as needed
           alignItems: 'center',
           backgroundColor: '#191d24', // Optional
-          borderColor: 'black',
-        },
+          borderWidth: 0,       
+         },
         footerText: {
           fontSize: 16,
           color: '#aec4e8',
@@ -288,7 +288,7 @@ const ChessTutorApp = () => {
     textOpacity.setValue(1);
     thinkingOpacity.setValue(0);
     analysisComplete.current = false;
-    setMovesLeft(12); // Reset moves left
+    setMovesLeft(500); // Reset moves left
   };
   
 
@@ -384,7 +384,7 @@ const ChessTutorApp = () => {
       setBoardState([...gameLogicRef.current.getBoardState()]);
       setDisplayedArrows([]);
       // Fetch advice from the AI
-      const apiName = 'GPT';
+      const apiName = 'Claude';
       let advice = await gameLogicRef.current.getAdviceFromAPI(apiName);
       //console.log("First Move API Response:", advice);
       if (advice && advice.recommendedNextMoves) {
@@ -648,7 +648,7 @@ const ChessTutorApp = () => {
                   </View>
                 )} 
                   <View style={styles.tableFooter}>
-                    <Text style={styles.footerText}>Click a move for analysis</Text>
+                    <Text style={styles.footerText}>Tap a move above for analysis</Text>
                  </View>               
               </View>
             </SafeAreaView>

@@ -217,8 +217,8 @@ const ChessTutorApp = () => {
           paddingVertical: 10, // Adjust as needed
           alignItems: 'center',
           backgroundColor: '#191d24', // Optional
-          borderColor: 'black',
-        },
+          borderWidth: 0,       
+         },
         footerText: {
           fontSize: 16,
           color: '#aec4e8',
@@ -384,7 +384,7 @@ const ChessTutorApp = () => {
       setBoardState([...gameLogicRef.current.getBoardState()]);
       setDisplayedArrows([]);
       // Fetch advice from the AI
-      const apiName = 'Perplexity';
+      const apiName = 'Claude';
       let advice = await gameLogicRef.current.getAdviceFromAPI(apiName);
       //console.log("First Move API Response:", advice);
       if (advice && advice.recommendedNextMoves) {
@@ -648,7 +648,7 @@ const ChessTutorApp = () => {
                   </View>
                 )} 
                   <View style={styles.tableFooter}>
-                    <Text style={styles.footerText}>Click a move for analysis</Text>
+                    <Text style={styles.footerText}>Tap a move above for analysis</Text>
                  </View>               
               </View>
             </SafeAreaView>

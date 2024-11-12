@@ -13,9 +13,14 @@ import {
 import ChessBoard2D from './ChessBoard2D';
 import GameLogic from '../GameLogic';
 import { ActivityIndicator } from 'react-native';
-import SANPopup from './SANPopup.js'; 
+import SANPopup from './SANPopup.js';
+import SplashScreen from 'react-native-splash-screen';
+import EncryptedStorage from 'react-native-encrypted-storage';
 
 const ChessTutorApp = () => {
+  useEffect(() => {
+    SplashScreen.hide();
+  }, []);
   const gameLogicRef = useRef(new GameLogic());
   const [boardState, setBoardState] = useState(gameLogicRef.current.getBoardState());
   const [selectedSquare, setSelectedSquare] = useState(null);
@@ -36,21 +41,21 @@ const ChessTutorApp = () => {
   const [isLandscape, setIsLandscape] = useState(false);
   const guidelineBaseWidth = 350; // Base width
   const scaleFont = (size) => (windowWidth / guidelineBaseWidth) * size;
-  const [movesLeft, setMovesLeft] = useState(500); // Starting from 12 half-moves
+  const [movesLeft, setMovesLeft] = useState(12); // Starting from 12 half-moves
   const [isThinking, setIsThinking] = useState(false);
   const [popupVisible, setPopupVisible] = useState(false);
   const [popupDescription, setPopupDescription] = useState('');
   const [displayedArrows, setDisplayedArrows] = useState([]);
-  // const [retrievedApiKey, setRetrievedApiKey] = useState(null);
-  
-  async function initializeApiKey() {
-    await gameLogicRef.current.storeApiKey('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')
 
-  }
-  useEffect(() => {
-    initializeApiKey();
+
+  async function initializeApiKeys() {
+    await gameLogicRef.current.removeApiKey();
+    await gameLogicRef.current.storeApiKey('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');
+    //await gameLogicRef.current.storeApiKey('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');
+   }
+   useEffect(() => {
+    initializeApiKeys();
   }, []);
-
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -89,14 +94,15 @@ const ChessTutorApp = () => {
         container: {
           flex: 1,
           backgroundColor: '#191d24',
-          alignItems: 'center',
+         // alignItems: 'center',
         },
+        
         chessboardContainer: {
-          marginRight: 20,
           alignItems: 'center',
           justifyContent: 'center',
           width: chessboardSize,
           height: chessboardSize,
+          marginBottom: 30,
         },
         textContainer: {
           flexGrow: 1,
@@ -105,10 +111,8 @@ const ChessTutorApp = () => {
         },
         analysisContainer: {
           alignItems: 'stretch',
-          marginTop: 25,
           paddingHorizontal: 10,
-          width: '90%',
-          marginLeft: 35,
+          width: '100%',
         },
         analysisTitle: {
           fontWeight: 'bold',
@@ -123,13 +127,13 @@ const ChessTutorApp = () => {
           marginBottom: 15,
         },
         tableContainer: {
-          width: '105%',
+          width: '100%',
           borderWidth: 1,
           borderColor: 'white',
           borderRadius: 8,
           overflow: 'hidden',
           alignSelf: 'center',
-          marginBottom: 25,
+          marginBottom: 0,
         },
         tableRow: {
           flexDirection: 'row',
@@ -139,16 +143,14 @@ const ChessTutorApp = () => {
         tableCell: {
           flex: 1,
           padding: 3,
-          fontSize: 18,
+          fontSize: scaleFont(18),
           color: '#aec4e8',
           textAlign: 'center',
-          fontSize:20,
           borderRightWidth: 1,
           borderColor: 'white',
         },
         adviceColumn: {
           width: '40%',
-
         },
         responseColumn: {
           width: '60%',
@@ -175,9 +177,8 @@ const ChessTutorApp = () => {
           color: '#aec4e8',
           marginRight: 5,
           marginBottom: 5,
-          marginLeft:5,
-          fontSize:20,
-          
+          marginLeft: 5,
+          fontSize: scaleFont(18),
         },
         overlay: {
           position: 'absolute',
@@ -191,7 +192,7 @@ const ChessTutorApp = () => {
         },
         overlayText: {
           color: '#ebc634',
-          fontSize: 28,
+          fontSize: scaleFont(28),
           marginTop: 150,
         },
         moveCounterContainer: {
@@ -214,21 +215,19 @@ const ChessTutorApp = () => {
           backgroundColor: '#191d24',
         },
         tableFooter: {
-          paddingVertical: 10, // Adjust as needed
+          paddingVertical: 10,
           alignItems: 'center',
-          backgroundColor: '#191d24', // Optional
-          borderWidth: 0,       
-         },
+          backgroundColor: '#191d24',
+        },
         footerText: {
-          fontSize: 16,
+          fontSize: scaleFont(16),
           color: '#aec4e8',
-          fontStyle: 'italic', // Optional
-          fontWeight: 'bold',  // Optional
+          fontStyle: 'italic',
+          fontWeight: 'bold',
         },
       }),
     [windowWidth]
   );
-
   const handleMovePress = (sanMove, color, reasoning, respondingTo = null) => {
     const description = gameLogicRef.current.convertMoveToDescription(sanMove, color);
     const displayText = respondingTo
@@ -270,8 +269,6 @@ const ChessTutorApp = () => {
       setDisplayedArrows(arrows);
     }
   };
-  
-  
   const handleReload = () => {
     gameLogicRef.current = new GameLogic();
     setBoardState(gameLogicRef.current.getBoardState());
@@ -288,10 +285,8 @@ const ChessTutorApp = () => {
     textOpacity.setValue(1);
     thinkingOpacity.setValue(0);
     analysisComplete.current = false;
-    setMovesLeft(500); // Reset moves left
+    setMovesLeft(12); // Reset moves left
   };
-  
-
   const onSquarePress = (position) => {
     if (isThinking) {
       return;
@@ -326,10 +321,6 @@ const ChessTutorApp = () => {
       }
     }
   };
-
-
-
-
   const onMove = async (fromSquare, toSquare) => {
     try {      // Player (White) makes a move
       const playerMove = gameLogicRef.current.makeMove({ from: fromSquare, to: toSquare });
@@ -543,8 +534,6 @@ const ChessTutorApp = () => {
       };
     });
   }
-  
-  
   const getRecommendedMovesForArrows = () => {
     if (!Array.isArray(recommendedNextMoves) || recommendedNextMoves.length === 0) {
       return [];
@@ -569,12 +558,9 @@ const ChessTutorApp = () => {
       })
       .filter((move) => move !== null);
   };
-  
-
   useEffect(() => {
     setIsLandscape(windowWidth > windowHeight); // Detect if the device is in landscape mode
   }, [windowWidth, windowHeight]);
-
   if (isLandscape) {
     return (
       <View style={styles.warningContainer}>
@@ -582,7 +568,6 @@ const ChessTutorApp = () => {
       </View>
     );
   }
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.topBar}>
@@ -598,81 +583,81 @@ const ChessTutorApp = () => {
       </View>
       {/* Content below the reload button */}
       <View style={styles.container}>
-        {/* Chessboard */}
-        <View style={styles.chessboardContainer}>
-          <ChessBoard2D
-            boardSize={chessboardSize}
-            boardState={boardState}
-            onSquarePress={onSquarePress}
-            selectedSquare={selectedSquare}
-            illegalMoveSquares={illegalMoveSquares}
-            advisedMove={analysisComplete.current ? advisedMove : null}
-            possibleMoves={possibleMoves}
-            isThinking={isThinking}
-            recommendedMoves={displayedArrows}
-          />
-        </View>
-        {/* Analysis texts */}
-        <ScrollView ref={scrollViewRef} contentContainerStyle={styles.textContainer}>
-          <Animated.View style={[styles.analysisContainer, { opacity: textOpacity }]}>
-          {Array.isArray(recommendedNextMoves) && recommendedNextMoves.length > 0 ? (
-            <SafeAreaView style={styles.safeArea}>
-              <View style={styles.tableContainer}>
-                {/* Table Header */}
-                <View style={styles.tableRow}>
-                  <Text style={[styles.tableCell, styles.tableHeader, styles.adviceColumn]}>Advice</Text>
-                  <Text style={[styles.tableCell, styles.tableHeader, styles.responseColumn]}>Likely Responses</Text>
-                </View>
-                {Array.isArray(recommendedNextMoves) && recommendedNextMoves.length > 0 ? (
-                recommendedNextMoves.map((move, index) => (
-                  <View key={index} style={styles.tableRow}>
-                    <View style={[styles.tableCell, styles.adviceColumn]}>
-                      <TouchableOpacity onPress={() => handleMovePress(move.originalMove, 'w', move.reasoning)} >
-                          <Text style={styles.tappableMove}>{move.move}</Text>
-                      </TouchableOpacity>
+       <View style={styles.contentContainer}>
+          {/* Chessboard */}
+          <View style={styles.chessboardContainer}>
+            <ChessBoard2D
+              boardSize={chessboardSize}
+              boardState={boardState}
+              onSquarePress={onSquarePress}
+              selectedSquare={selectedSquare}
+              illegalMoveSquares={illegalMoveSquares}
+              advisedMove={analysisComplete.current ? advisedMove : null}
+              possibleMoves={possibleMoves}
+              isThinking={isThinking}
+              recommendedMoves={displayedArrows}
+            />
+          </View>
+          {/* Analysis texts */}
+          <ScrollView ref={scrollViewRef} contentContainerStyle={styles.textContainer}>
+            <Animated.View style={[styles.analysisContainer, { opacity: textOpacity }]}>
+              {Array.isArray(recommendedNextMoves) && recommendedNextMoves.length > 0 ? (
+                <View>
+                  <View style={styles.tableContainer}>
+                    {/* Table Header */}
+                    <View style={styles.tableRow}>
+                      <Text style={[styles.tableCell, styles.tableHeader, styles.adviceColumn]}>Advice</Text>
+                      <Text style={[styles.tableCell, styles.tableHeader, styles.responseColumn]}>Likely Responses</Text>
                     </View>
-                    <View style={[styles.tableCell, { flexDirection: 'row', flexWrap: 'wrap' }]}>
-                      {move.blackResponses.map((response, idx) => (
-                        <TouchableOpacity key={idx} onPress={() =>
-                          handleMovePress(response.move, 'b', response.threat, move.originalMove)
-                          } >
-                          <Text style={styles.tappableMove}>{response.move}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
+                    {recommendedNextMoves.map((move, index) => (
+                      <View key={index} style={styles.tableRow}>
+                        <View style={[styles.tableCell, styles.adviceColumn]}>
+                          <TouchableOpacity onPress={() => handleMovePress(move.originalMove, 'w', move.reasoning)}>
+                            <Text style={styles.tappableMove}>{move.move}</Text>
+                          </TouchableOpacity>
+                        </View>
+                        <View style={[styles.tableCell, { flexDirection: 'row', flexWrap: 'wrap' }]}>
+                          {move.blackResponses.map((response, idx) => (
+                            <TouchableOpacity
+                              key={idx}
+                              onPress={() =>
+                                handleMovePress(response.move, 'b', response.threat, move.originalMove)
+                              }
+                            >
+                              <Text style={styles.tappableMove}>{response.move}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+                    ))}
                   </View>
-                ))) : (
-                  <View style={styles.tableRow}>
-                    <Text style={styles.tableCell}>No advice available</Text>
-                    <Text style={styles.tableCell}>N/A</Text>
-                  </View>
-                )} 
+                  {/* Moved the footer outside of the tableContainer */}
                   <View style={styles.tableFooter}>
                     <Text style={styles.footerText}>Tap a move above for analysis</Text>
-                 </View>               
-              </View>
-            </SafeAreaView>
-            ) : (
-              <Text style={styles.noDataText}>Make your move.</Text>
-            )}
-            {positionAnalysis.immediateTactics || positionAnalysis.lastMoveAnalysis ? (
-              <View>
-                {positionAnalysis.immediateTactics ? (
-                  <View>
-                    <Text style={styles.analysisTitle}>Immediate Tactics:</Text>
-                    <Text style={styles.analysisText}>{positionAnalysis.immediateTactics}</Text>
                   </View>
-                ) : null}
-                {positionAnalysis.lastMoveAnalysis ? (
-                  <View>
-                    <Text style={styles.analysisTitle}>Last Move Analysis:</Text>
-                    <Text style={styles.analysisText}>{positionAnalysis.lastMoveAnalysis}</Text>
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
-          </Animated.View>
-        </ScrollView>
+                </View>
+              ) : (
+                <Text style={styles.noDataText}>Make your move.</Text>
+              )}
+              {positionAnalysis.immediateTactics || positionAnalysis.lastMoveAnalysis ? (
+                <View>
+                  {positionAnalysis.immediateTactics ? (
+                    <View>
+                      <Text style={styles.analysisTitle}>Immediate Tactics:</Text>
+                      <Text style={styles.analysisText}>{positionAnalysis.immediateTactics}</Text>
+                    </View>
+                  ) : null}
+                  {positionAnalysis.lastMoveAnalysis ? (
+                    <View>
+                      <Text style={styles.analysisTitle}>Last Move Analysis:</Text>
+                      <Text style={styles.analysisText}>{positionAnalysis.lastMoveAnalysis}</Text>
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
+            </Animated.View>
+          </ScrollView>
+        </View>
         {/* Thinking overlay */}
         {isThinking && (
           <View style={styles.overlay} pointerEvents="none">
@@ -681,23 +666,21 @@ const ChessTutorApp = () => {
         )}
       </View>
       <SANPopup
-  visible={popupVisible}
-  description={popupDescription}
-  onClose={() => {
-    setPopupVisible(false);
-    // Restore original advice arrows
-    setDisplayedArrows(
-      recommendedNextMoves.map((move) => ({
-        from: move.from,
-        to: move.to,
-        arrowOpacity: move.arrowOpacity,
-      }))
-    );
-  }}
-/>
-
+        visible={popupVisible}
+        description={popupDescription}
+        onClose={() => {
+          setPopupVisible(false);
+          // Restore original advice arrows
+          setDisplayedArrows(
+            recommendedNextMoves.map((move) => ({
+              from: move.from,
+              to: move.to,
+              arrowOpacity: move.arrowOpacity,
+            }))
+          );
+        }}
+      />
     </SafeAreaView>
-  ); 
+  );
 };
-
 export default ChessTutorApp;

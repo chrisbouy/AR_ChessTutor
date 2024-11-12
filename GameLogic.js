@@ -57,7 +57,7 @@ class GameLogic {
   async getBestMoveFromAI_Black() {
     try {
       const fen = this.chess.fen();
-      const prompt = `You are a chess tutor, analyze the current FEN and respond with only the best move for Black in SAN notation. NO OTHER WORDS. Current FEN: ${fen}`;
+      const prompt = `Analyze the current FEN and respond with only the best move for Black in SAN notation. NO OTHER WORDS. Current FEN: ${fen}`;
 
       // Call your AI API (e.g., OpenAI) to get the best move
       const aiResponse = await this.callAIForMove_Black(prompt);
@@ -79,24 +79,32 @@ class GameLogic {
 
   async callAIForMove_Black(prompt) {
     try {
-      const response = await fetch(`https://api.openai.com/v1/chat/completions`, {
+      const apiKey = this.apiKey || await this.retrieveApiKey(); 
+      //const apiKey = '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';
+      console.log(apiKey);
+      if (!apiKey) {
+        console.error('API key not found');
+        return;
+      }
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer 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`, // Replace with your OpenAI API key
+            'Content-Type': 'application/json',
+            'anthropic-version': '2023-06-01' , // Add this line
+            'x-api-key': apiKey,
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini', 
-          messages: [
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          max_tokens: 100,
-          temperature: 0,
-        }),
-      });
+            model: "claude-3-5-haiku-20241022",
+            max_tokens: 1000,
+            system: 'You are a chess tutor',
+            messages: [
+                {
+                  role: "user",
+                  content: prompt
+              },
+            ]
+        })
+    });
 
       const jsonResponse = await response.json();
       if (jsonResponse.error) {
@@ -104,7 +112,9 @@ class GameLogic {
         return null;
       }
 
-      const aiMove = jsonResponse.choices[0].message.content;
+      if (jsonResponse.content && jsonResponse.content[0]) {
+        return jsonResponse.content[0].text;
+      }
       return aiMove;
     } catch (error) {
       console.log('Error calling AI API:', error);
@@ -198,6 +208,7 @@ class GameLogic {
     try {
       await EncryptedStorage.setItem('apiKey', key);
       this.apiKey = key; // Optionally update the instance variable
+      console.log('API key stored successfully.');
     } catch (error) {
       console.error('Error storing the API key:', error);
     }
@@ -207,13 +218,20 @@ class GameLogic {
   async retrieveApiKey() {
     try {
       const key = await EncryptedStorage.getItem('apiKey');
-      this.apiKey = key; // Optionally store it in the instance variable
-      return key;
+      if (key) {
+        this.apiKey = key; // Store it in the instance variable
+        console.log('API key retrieved:', key); // Be cautious with logging sensitive data
+        return key;
+      } else {
+        console.error('API key not found in storage.');
+        return null;
+      }
     } catch (error) {
       console.error('Error retrieving the API key:', error);
       return null;
     }
   }
+  
 
   // Method to remove API key
   async removeApiKey() {
@@ -245,7 +263,7 @@ class GameLogic {
               content: user_prompt,
             },
           ],
-          max_tokens: 500,
+          max_tokens: 1000,
           temperature: 0,
         });
     
@@ -433,10 +451,9 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
             'anthropic-version': '2023-06-01',
             'x-api-key': '***MASKED_API_KEY***' // Masked for security
         });
-
         // Log the request body
         console.log('Request Body:', {
-            model: "claude-3-5-sonnet",
+            model: "claude-3-5-sonnet-20241022",
             max_tokens: 1000,
             system: system_prompt,
             messages: [
@@ -446,12 +463,21 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
                 },
             ]
         });
+
+
+        const apiKey = this.apiKey || await this.retrieveApiKey(); 
+        //const apiKey = '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';
+        if (!apiKey) {
+          console.error('API key not found');
+          return;
+        }
+        console.log(apiKey);
         const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'anthropic-version': '2023-06-01' , // Add this line
-                'x-api-key': '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'
+                'x-api-key': apiKey
             },
             body: JSON.stringify({
                 model: "claude-3-5-sonnet-20241022",
@@ -468,6 +494,11 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
         });
 
         const data = await response.json();
+        if (data.error) {
+          console.log('AI API Error:', data.error);
+          return null;
+        }
+
         console.log('Claude API Response:', data);
         if (data && data.content && data.content[0] && data.content[0].text) {
             let explanation = data.content[0].text;

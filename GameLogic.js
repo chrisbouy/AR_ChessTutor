@@ -7,7 +7,6 @@ class GameLogic {
     this.chess = new Chess();
     this.latestAdvice = null;
   }
-
   getGameStatus() {
     if (this.chess.isCheckmate()) {
       return 'checkmate';
@@ -17,7 +16,6 @@ class GameLogic {
       return 'ongoing';
     }
   }
-
   getBoardState() {
     const board = this.chess.board(); // Get the board state from chess.js
     const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
@@ -34,7 +32,6 @@ class GameLogic {
       });
     });
   }
-
   makeMove(move) {
     try {
       // Apply the move if it is valid
@@ -44,7 +41,6 @@ class GameLogic {
       return null;
     }
   } 
-
   getPieceAt(position) {
     const rowIndex = 8 - parseInt(position[1]);
     const colIndex = position.charCodeAt(0) - 'a'.charCodeAt(0);
@@ -57,7 +53,7 @@ class GameLogic {
   async getBestMoveFromAI_Black() {
     try {
       const fen = this.chess.fen();
-      const prompt = `You are a chess tutor, analyze the current FEN and respond with only the best move for Black in SAN notation. NO OTHER WORDS. Current FEN: ${fen}`;
+      const prompt = `Analyze the current FEN and respond with only the best move for Black in SAN notation. NO OTHER WORDS. Current FEN: ${fen}`;
 
       // Call your AI API (e.g., OpenAI) to get the best move
       const aiResponse = await this.callAIForMove_Black(prompt);
@@ -76,27 +72,34 @@ class GameLogic {
       return null;
     }
   }
-
   async callAIForMove_Black(prompt) {
     try {
-      const response = await fetch(`https://api.openai.com/v1/chat/completions`, {
+      const apiKey = this.apiKey || await this.retrieveApiKey(); 
+      //const apiKey = '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';
+
+      if (!apiKey) {
+        console.error('API key not found');
+        return;
+      }
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer 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`, // Replace with your OpenAI API key
+            'Content-Type': 'application/json',
+            'anthropic-version': '2023-06-01' , // Add this line
+            'x-api-key': apiKey,
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini', 
-          messages: [
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          max_tokens: 100,
-          temperature: 0,
-        }),
-      });
+            model: "claude-3-5-haiku-20241022",
+            max_tokens: 1000,
+            system: 'You are a chess tutor',
+            messages: [
+                {
+                  role: "user",
+                  content: prompt
+              },
+            ]
+        })
+    });
 
       const jsonResponse = await response.json();
       if (jsonResponse.error) {
@@ -104,14 +107,15 @@ class GameLogic {
         return null;
       }
 
-      const aiMove = jsonResponse.choices[0].message.content;
+      if (jsonResponse.content && jsonResponse.content[0]) {
+        return jsonResponse.content[0].text;
+      }
       return aiMove;
     } catch (error) {
       console.log('Error calling AI API:', error);
       return null;
     }
   }
-
   async makeMove_Black() {
     try {
       const moveHistory = this.chess.history({ verbose: true });
@@ -198,24 +202,27 @@ class GameLogic {
     try {
       await EncryptedStorage.setItem('apiKey', key);
       this.apiKey = key; // Optionally update the instance variable
+      console.log('API key stored successfully.');
     } catch (error) {
       console.error('Error storing the API key:', error);
     }
   }
-
-  // Method to retrieve API key
   async retrieveApiKey() {
     try {
       const key = await EncryptedStorage.getItem('apiKey');
-      this.apiKey = key; // Optionally store it in the instance variable
-      return key;
+      if (key) {
+        this.apiKey = key; // Store it in the instance variable
+        console.log('API key retrieved:', key); // Be cautious with logging sensitive data
+        return key;
+      } else {
+        console.error('API key not found in storage.');
+        return null;
+      }
     } catch (error) {
       console.error('Error retrieving the API key:', error);
       return null;
     }
   }
-
-  // Method to remove API key
   async removeApiKey() {
     try {
       await EncryptedStorage.removeItem('apiKey');
@@ -245,7 +252,7 @@ class GameLogic {
               content: user_prompt,
             },
           ],
-          max_tokens: 500,
+          max_tokens: 1000,
           temperature: 0,
         });
     
@@ -433,10 +440,9 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
             'anthropic-version': '2023-06-01',
             'x-api-key': '***MASKED_API_KEY***' // Masked for security
         });
-
         // Log the request body
         console.log('Request Body:', {
-            model: "claude-3-5-sonnet",
+            model: "claude-3-5-sonnet-20241022",
             max_tokens: 1000,
             system: system_prompt,
             messages: [
@@ -446,12 +452,21 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
                 },
             ]
         });
+
+
+        const apiKey = this.apiKey || await this.retrieveApiKey(); 
+        //const apiKey = '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';
+        if (!apiKey) {
+          console.error('API key not found');
+          return;
+        }
+        console.log(apiKey);
         const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'anthropic-version': '2023-06-01' , // Add this line
-                'x-api-key': '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'
+                'x-api-key': apiKey
             },
             body: JSON.stringify({
                 model: "claude-3-5-sonnet-20241022",
@@ -468,6 +483,11 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
         });
 
         const data = await response.json();
+        if (data.error) {
+          console.log('AI API Error:', data.error);
+          return null;
+        }
+
         console.log('Claude API Response:', data);
         if (data && data.content && data.content[0] && data.content[0].text) {
             let explanation = data.content[0].text;
@@ -479,7 +499,172 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
         return null;
     }
   }
-  async getAdviceFromAPI(apiName) {
+  async getAdviceFromClaude_stream(system_prompt, user_prompt, options = {}) {
+    try {
+      const apiKey = this.apiKey || await this.retrieveApiKey();
+      if (!apiKey) {
+        console.error('API key not found');
+        return;
+      }
+
+      console.log('Making request to Claude API...');
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: 
+        {
+          'Content-Type': 'application/json',
+          'anthropic-version': '2023-06-01',
+          'x-api-key': apiKey,
+          'Accept': 'text/event-stream',
+          // 'Connection': 'keep-alive'
+        },
+        
+        body: JSON.stringify({
+          model: "claude-3-5-sonnet-20241022",
+          max_tokens: 1000,
+          system: system_prompt,
+          stream: true,
+          messages: [{
+            role: "user",
+            content: user_prompt
+          }]
+        })
+      });
+      console.log('Response status:', response.status);
+      // if (!response.ok) {
+      //   const errorText = await response.text();
+      //   console.error('Claude API Error:', errorText);
+      //   throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+      // }
+      // if (!response.body) {
+      //   console.error('Response body is undefined');
+      //   console.log('Fall back to non-streaming response');
+      //   const jsonResponse = await response.json();
+      //   console.log('Fallback response:', jsonResponse);
+      //   if (jsonResponse.content && jsonResponse.content[0]) {
+      //     const advice = this.extractSectionsFromAdvice(jsonResponse.content[0].text);
+      //     return advice;
+      //   }
+      //   throw new Error('Response body is undefined and fallback failed');
+      // }
+
+
+
+     // Get the response as text stream
+     const textStream = await response.text();
+      
+     // Split the stream into lines and process each event
+     const lines = textStream.split('\n');
+     let accumulatedText = '';
+     let positionAnalysisExtracted = false;
+
+     for (const line of lines) {
+       if (!line.trim() || line === 'event: message_stop') continue;
+       
+       if (line.startsWith('data: ')) {
+         try {
+           const jsonData = JSON.parse(line.slice(6));
+           //console.log('Parsed JSON:', jsonData);
+           
+           // Handle content block deltas
+           if (jsonData.type === 'content_block_delta' && 
+               jsonData.delta && 
+               jsonData.delta.type === 'text_delta') {
+             accumulatedText += jsonData.delta.text;
+             //console.log('Updated text:', accumulatedText);
+             
+             if (!positionAnalysisExtracted && options.onPositionAnalysis) {
+               if (accumulatedText.includes('"positionAnalysis"')) {
+                 const positionAnalysis = this.extractPositionAnalysis(accumulatedText);
+                 if (positionAnalysis) {
+                   console.log('position analysis extracted. Updated text:', accumulatedText);
+                   options.onPositionAnalysis(positionAnalysis);
+                   positionAnalysisExtracted = true;
+                 }
+               }
+             }
+           }
+         } catch (e) {
+           console.error('Error parsing stream data:', e, 'Line:', line);
+           continue;
+         }
+       }
+     }
+
+     console.log('Final accumulated text:', accumulatedText);
+     const advice = this.extractSectionsFromAdvice(accumulatedText);
+     return advice;
+   } catch (error) {
+     console.error('Error in streaming from Claude:', error);
+     return null;
+   }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//       const reader = response.body.getReader();
+//       console.log('got reader');
+//       const decoder = new TextDecoder();
+//       let accumulatedText = '';
+//       let positionAnalysisExtracted = false;
+//       try {
+//         while (true) {
+//           const { done, value } = await reader.read();
+//           if (done) break;
+//           const chunk = decoder.decode(value, { stream: true });
+//           console.log('Received chunk:', chunk);
+//           const lines = chunk.split('\n');
+//           for (const line of lines) {
+//             if (!line.trim() || line === 'data: [DONE]') continue;
+//             if (line.startsWith('data: ')) {
+//               try {
+//                 console.log('got data')
+//                 const jsonData = JSON.parse(line.slice(6));
+//                 console.log('Parsed JSON:', jsonData);
+//                 if (jsonData.type === 'message_delta' && jsonData.delta && jsonData.delta.text) {
+//                   accumulatedText += jsonData.delta.text;
+//                   console.log('Updated text:', accumulatedText);
+//                   if (!positionAnalysisExtracted && options.onPositionAnalysis) {
+//                     if (accumulatedText.includes('"positionAnalysis"')) {
+//                       const positionAnalysis = this.extractPositionAnalysis(accumulatedText);
+//                       if (positionAnalysis) {
+//                         options.onPositionAnalysis(positionAnalysis);
+//                         positionAnalysisExtracted = true;
+//                       }
+//                     }
+//                   }
+//                 }
+//               } catch (e) {
+//                 console.error('Error parsing stream data:', e, 'Line:', line);
+//                 continue;
+//               }
+//             }
+//           }
+//         }
+//       } finally {
+//         reader.releaseLock();
+//       }
+//       console.log('Final accumulated text:', accumulatedText);
+//       const advice = this.extractSectionsFromAdvice(accumulatedText);
+//       return advice;
+//     } catch (error) {
+//       console.error('Error in streaming from Claude:', error);
+//       return null;
+//     }
+// }
+async getAdviceFromAPI(apiName, options) {
     const fen = this.chess.fen();
     const moveHistory = this.chess.history().map((move) => move);
     const system_prompt =`You are a chess tutor specializing in accurate, move-by-move analysis.
@@ -487,6 +672,8 @@ Instructions:
 - Analyze the given chess position thoroughly.
 - Verify the legality of all moves and ensure they are possible in the current position.
 - Double-check all tactical motifs and threats for accuracy.
+- First, provide the "positionAnalysis" section.
+- Then, provide the "recommendedNextMoves" section.
 
 Constraints:
 
@@ -494,6 +681,8 @@ Constraints:
 - Provide at least one strong move and one optional move.
 - Responses must strictly follow the specified JSON format.
 - Avoid referring to bishops by square colors
+- Output the JSON object incrementally, starting with "positionAnalysis".
+- Do not include any additional text or explanations outside the JSON.
 `;
 
     const user_prompt = `
@@ -531,44 +720,30 @@ Constraints:
         return await this.getAdviceFromPerplexity(system_prompt, user_prompt);   
       case 'Claude':
         return await this.getAdviceFromClaude(system_prompt, user_prompt);
+        case 'Claude_stream':
+          return await this.getAdviceFromClaude_stream(system_prompt, user_prompt, options); 
       case 'GPTinstruct':
         return await this.getAdviceFromGPTinstruct(system_prompt, user_prompt);               
       default:
         throw new Error(`Unknown API name: ${apiName}`);
     }
   }
-  // convertSANtoUCI(sanMove, fen) {
-  //   const chess = new Chess(fen);
-  //   const moves = chess.moves({ verbose: true });
-  
-  //   const move = moves.find((m) => m.san === sanMove);
-  
-  //   if (move) {
-  //     return move.from + move.to + (move.promotion ? move.promotion : '');
-  //   } else {
-  //     return null; // Move not found
-  //   }
-  // }
-  // convertUCItoSAN(uciMove, fen) {
-  //   const chessInstance = new Chess(fen);
-  //   const moves = chessInstance.moves({ verbose: true });
-  //   const move = moves.find(
-  //     (m) =>
-  //       m.from === uciMove.slice(0, 2) &&
-  //       m.to === uciMove.slice(2, 4) &&
-  //       (uciMove.length > 4 ? m.promotion === uciMove.slice(4) : true)
-  //   );
-  //   return move ? move.san : null;
-  // } 
-  // convertCastlingUCItoSAN(uciMove) {
-  //   if (uciMove === 'e8h8' || uciMove === 'e1h1') {
-  //     return 'O-O'; // Kingside castling
-  //   } else if (uciMove === 'e8a8' || uciMove === 'e1a1') {
-  //     return 'O-O-O'; // Queenside castling
-  //   }
-  //   return null;
-  // }
-  extractSectionsFromAdvice(adviceText) {
+  extractPositionAnalysis(result) {
+    try {
+      const regex = /"positionAnalysis":\s*(\{[^}]*\})/;
+      const match = result.match(regex);
+      if (match) {
+        const positionAnalysisJson = match[1];
+        const positionAnalysis = JSON.parse(positionAnalysisJson);
+        return positionAnalysis;
+      }
+    } catch (e) {
+      // JSON is incomplete, continue accumulating
+      return null;
+    }
+    return null;
+  }
+    extractSectionsFromAdvice(adviceText) {
     try {
       // console.log(`advice text ${adviceText}`);
       const cleanedText = adviceText.replace(/```(?:json)?/g, '').trim();
@@ -584,7 +759,6 @@ Constraints:
     const moves = this.chess.moves({ verbose: true });
     return moves.some((move) => move.san === sanMove);
   }
-
   convertMoveToDescription(sanMove, color) {
     // Get the current FEN
     const originalFEN = this.chess.fen();
@@ -650,8 +824,6 @@ Constraints:
   getLegalMoves(position) {
     return this.chess.moves({ square: position, verbose: true });
   }
-
-  
   getPieceName(pieceSymbol) {
     const pieceNames = {
       p: 'Pawn',
@@ -669,7 +841,5 @@ Constraints:
     const move = moves.find((m) => m.san === sanMove);
     return move || null;
   }
-  
-  
 }
 export default GameLogic;

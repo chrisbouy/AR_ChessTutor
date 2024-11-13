@@ -9,6 +9,12 @@ import ChessTutorApp from './components/ChessTutorApp'; // Your main app compone
 const Stack = createStackNavigator();
 
 export default function App() {
+  // useEffect(() => {
+  //   // Simulate a delay to showcase the splash screen
+  //   setTimeout(() => {
+  //     SplashScreen.hide();
+  //   }, 2000); // 2-second delay
+  // }, []);
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>

@@ -466,19 +466,55 @@ const ChessTutorApp = () => {
         ]);
         return;
       }
-      setBoardState([...gameLogicRef.current.getBoardState()]);      // Update the board state after Black's move
-      setDisplayedArrows([]);      // Clear displayed arrows
-      const apiName = 'Claude_stream';      // Fetch advice from the AI using streaming
-      // Call the AI advice function with callbacks
-      let advice = await gameLogicRef.current.getAdviceFromAPI(apiName, {
-        onPositionAnalysis: (positionAnalysis) => {          // Callback when position analysis is extracted
-          if (!positionAnalysisExtracted.current && positionAnalysis) {
-            setPositionAnalysis(positionAnalysis);            // Update the position analysis state
-            positionAnalysisExtracted.current = true;            // Set the flag to true to prevent multiple updates
-          }
-        },
-      });
-      setIsThinking(false);      // AI is done thinking
+      // Update the board state after Black's move
+      setBoardState([...gameLogicRef.current.getBoardState()]);
+      setDisplayedArrows([]);
+      // Fetch advice from the AI
+      const apiName = 'GPT'; //---------------------------------------------------------------------------------------
+      let advice = await gameLogicRef.current.getAdviceFromAPI(apiName);
+      //console.log("First Move API Response:", advice);
+      if (advice && advice.recommendedNextMoves) {
+        const chess = gameLogicRef.current.chess;
+        const legalMoves = chess.moves({ verbose: true });
+          // Remove duplicates and illegals
+        advice.recommendedNextMoves = advice.recommendedNextMoves.filter((move, index, self) => {
+          const isUnique = index === self.findIndex((m) => m.move === move.move);
+          const isLegal = legalMoves.some((legalMove) => legalMove.san === move.move);
+          //const isPriority = move.priority !== 'OPTIONAL';
+          return isUnique && isLegal ;
+          //return isUnique && isLegal && isPriority;          
+        });
+        // for each move, filter its responses
+        // advice.recommendedNextMoves = advice.recommendedNextMoves.map(moveObj => {
+        //   const newPosition = chess.move(moveObj.move);  
+        //   const blackLegalMoves = chess.moves({ verbose: true });
+        //   chess.undo();  
+        //   // Filter the responses      // Remove duplicates      // Check if the response is legal in the resulting position
+        //   const filteredResponses = moveObj.blackResponses.filter((response, index, self) => {
+        //     const isUnique = index === self.findIndex((r) => r === response);
+        //     const isLegal = blackLegalMoves.some((legalMove) => legalMove.san === response);
+        //     return isUnique && isLegal;
+        //   });
+        //   // Return the move object with filtered responses
+        //   console.log(` ___ ${moveObj.blackResponses}`);
+          
+        //   return {...moveObj, blackResponses: filteredResponses};
+        // });
+
+// Optional: Remove any moves that end up with no legal responses
+// advice.recommendedNextMoves = advice.recommendedNextMoves.filter(
+//   moveObj => moveObj.blackResponses.length > 0
+// );
+
+
+        
+        // Use a deep copy for setting state
+        //  setRecommendedNextMoves(JSON.parse(JSON.stringify(legalMoves)));
+      //   useEffect(() => {
+      //     console.log("Updated Recommended Moves:", recommendedNextMoves);
+      // }, [recommendedNextMoves]);
+      }
+      setIsThinking(false);
       if (!advice) {
         setPositionAnalysis({ immediateTactics: '', lastMoveAnalysis: '' });        // Clear position analysis
         setRecommendedNextMoves([]);        // Clear recommended moves

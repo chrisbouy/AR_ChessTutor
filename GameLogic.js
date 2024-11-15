@@ -234,14 +234,16 @@ class GameLogic {
   async getAdviceFromGPT(system_prompt, user_prompt) {
     try {
       // Log the request headers (mask the API key)
-      console.log('Request Headers:', {
-        'Content-Type': 'application/json',
-        'Authorization': '***MASKED_API_KEY***' // Masked for security
-      });
+      // console.log('Request Headers:', {
+      //   'Content-Type': 'application/json',
+      //   'Authorization': '***MASKED_API_KEY***' // Masked for security
+      // });
   
       // Log the request body
       console.log('Request Body:', {
           model: "gpt-4o",
+                //     model: "'ft:gpt-4o-mini-2024-07-18:personal:second:AThf4LoS",
+
           messages: [
             {
               role: 'system',
@@ -268,6 +270,7 @@ class GameLogic {
           Authorization:`Bearer ${apiKey}`
         },
         body: JSON.stringify({
+          //model: 'ft:gpt-4o-mini-2024-07-18:personal:second:AThf4LoS',
           model: 'gpt-4o',
           messages: [
             {
@@ -279,18 +282,20 @@ class GameLogic {
               content: user_prompt,
             },
           ],
-          max_tokens: 500,
+          max_tokens: 1000,
           temperature: 0,
         }),
       });
 
       const jsonResponse = await response.json();
+         
       if (jsonResponse.error) {
         console.log('API Error:', jsonResponse.error);
         return null;
       }      
-      const responseText = jsonResponse.choices[0].message.content;
-      console.log(responseText);
+      const responseText = jsonResponse.choices[0].message.content;  
+       console.log(responseText);
+
 
       const advice = this.extractSectionsFromAdvice(responseText);
       return advice;
@@ -363,7 +368,7 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
         },
       ]
 });
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -398,7 +403,7 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
     headers: {Authorization: 'Bearer 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', 
                               'Content-Type': 'application/json'},
     body: JSON.stringify({
-      model:"llama-3.1-sonar-huge-128k-online",
+      model:"llama-3.1-sonar-large-128k-chat",
       messages:[
             {role:"system",
               content:system_prompt
@@ -435,12 +440,12 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
   async getAdviceFromClaude(system_prompt, user_prompt) {
     try {
           // Log the request headers (mask the API key)
-          console.log('Request Headers:', {
-            'Content-Type': 'application/json',
-            'anthropic-version': '2023-06-01',
-            'x-api-key': '***MASKED_API_KEY***' // Masked for security
-        });
-        // Log the request body
+        //   console.log('Request Headers:', {
+        //     'Content-Type': 'application/json',
+        //     'anthropic-version': '2023-06-01',
+        //     'x-api-key': '***MASKED_API_KEY***' // Masked for security
+        // });
+        // // Log the request body
         console.log('Request Body:', {
             model: "claude-3-5-sonnet-20241022",
             max_tokens: 1000,
@@ -667,11 +672,55 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
 async getAdviceFromAPI(apiName, options) {
     const fen = this.chess.fen();
     const moveHistory = this.chess.history().map((move) => move);
-    const system_prompt =`You are a chess tutor specializing in accurate, move-by-move analysis.
-Instructions:
-- Analyze the given chess position thoroughly.
-- Verify the legality of all moves and ensure they are possible in the current position.
+    const system_prompt = ` 
+You are a chess tutor specializing in accurate advice and move-by-move analysis.
+
+You are playing Black. I am playing as White, and it's my turn to move.
+
+---
+
+### 🚨 **CRITICAL INSTRUCTIONS**
+
+1. **PIN VERIFICATION**:
+
+   - **Before claiming any piece is pinned**, **always** verify that there are **NO pieces between** the attacking piece, the potentially pinned piece, and the more valuable piece behind it.
+   - **Important:** A knight on **c6** is **NOT pinned** by a bishop on **b5** if there's a pawn on **d7**.
+
+2. **Do NOT say that moving the pawn on the d-file opens lines for the queen and bishop.**
+
+3. **Do NOT refer to bishops by square colors.** For example, do not say 'light-squared bishop' or 'dark-squared bishop'.
+
+---
+
+### **Analysis Guidelines**
+
+- **Accuracy is paramount.**
+- Verify the legality of all moves.
 - Double-check all tactical motifs and threats for accuracy.
+- Use logical reasoning in your analysis.
+
+---
+
+### **Response Format**
+
+- Respond **only** in the **EXACT JSON format** provided.
+- **Do not** add, remove, or change any keys or structure.
+
+---
+
+### **Examples to Avoid**
+
+- **Incorrect**: "This move pins the knight on c6 to the king because there are no pieces blocking the line."
+
+- **Correct**: "This move puts pressure on the knight on c6 but does not pin it due to the pawn on d7 blocking the line to the king."
+
+---
+
+### **Important**
+
+- **Do NOT** make the incorrect assessment that **Bb5** pins the knight on **c6** in this position.
+
+
 - First, provide the "positionAnalysis" section.
 - Then, provide the "recommendedNextMoves" section.
 
@@ -686,15 +735,27 @@ Constraints:
 `;
 
     const user_prompt = `
-- You are playing Black. I am playing as White, and it's my turn to move.
-- Current FEN: ${fen}
-- Move History: ${moveHistory.join(', ')}
-- Analyze this position and respond in the following JSON format:
+- **Current FEN**: ${fen}
+- **Move History**: ${moveHistory.join(', ')}
+
+---
+
+### 🚨 **CRITICAL REMINDERS**
+
+1. **Pin Verification**:
+
+   - **Do NOT** claim a piece is pinned unless there are **no pieces** between the attacking piece, the potentially pinned piece, and the valuable piece behind it.
+   - **Reminder:** In this position, the knight on **c6** is **NOT pinned** by **Bb5** because the pawn on **d7** blocks the line.
+
+---
+
+- **Respond in the EXACT JSON format specified and use the EXACT keys provided. Do not add, remove, or change any keys or structure.**
+
 
 {
   "positionAnalysis": {
-    "immediateTactics": "Description of any immediate threats or tactical motifs.",
-    "lastMoveAnalysis": "Brief analysis of the most recent move."
+          "immediateTactics": "VERIFIED current threats, and IMMEDIATE tactical motifs",
+          "lastMoveAnalysis": "Brief analysis of the most recent move with VERIFIED consequences"
   },
   "recommendedNextMoves": [
     {
@@ -704,7 +765,7 @@ Constraints:
       "blackResponses": [
         {
           "move": "Black's response",
-          "threat": "What this response threatens or achieves."
+          "threat": "Leave this empty"
         }
       ]
     }
@@ -819,7 +880,7 @@ Constraints:
     return this.getLastMoveByColor('w'); // 'w' for White
   }
   getLastBlackMove() {
-    return this.getLastMoveByColor('b'); // 'b' for Black
+    return this.getLastMoveByColor('b'); // 'b' for Black.
   }
   getLegalMoves(position) {
     return this.chess.moves({ square: position, verbose: true });

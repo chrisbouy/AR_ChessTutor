@@ -384,7 +384,7 @@ const ChessTutorApp = () => {
       setBoardState([...gameLogicRef.current.getBoardState()]);
       setDisplayedArrows([]);
       // Fetch advice from the AI
-      const apiName = 'Claude';
+      const apiName = 'GPT'; //---------------------------------------------------------------------------------------
       let advice = await gameLogicRef.current.getAdviceFromAPI(apiName);
       //console.log("First Move API Response:", advice);
       if (advice && advice.recommendedNextMoves) {

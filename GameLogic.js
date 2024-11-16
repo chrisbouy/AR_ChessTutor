@@ -7,7 +7,6 @@ class GameLogic {
     this.chess = new Chess();
     this.latestAdvice = null;
   }
-
   getGameStatus() {
     if (this.chess.isCheckmate()) {
       return 'checkmate';
@@ -17,7 +16,6 @@ class GameLogic {
       return 'ongoing';
     }
   }
-
   getBoardState() {
     const board = this.chess.board(); // Get the board state from chess.js
     const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
@@ -34,7 +32,6 @@ class GameLogic {
       });
     });
   }
-
   makeMove(move) {
     try {
       // Apply the move if it is valid
@@ -44,7 +41,6 @@ class GameLogic {
       return null;
     }
   } 
-
   getPieceAt(position) {
     const rowIndex = 8 - parseInt(position[1]);
     const colIndex = position.charCodeAt(0) - 'a'.charCodeAt(0);
@@ -57,7 +53,7 @@ class GameLogic {
   async getBestMoveFromAI_Black() {
     try {
       const fen = this.chess.fen();
-      const prompt = `You are a chess tutor, analyze the current FEN and respond with only the best move for Black in SAN notation. NO OTHER WORDS. Current FEN: ${fen}`;
+      const prompt = `Analyze the current FEN and respond with only the best move for Black in SAN notation. NO OTHER WORDS. Current FEN: ${fen}`;
 
       // Call your AI API (e.g., OpenAI) to get the best move
       const aiResponse = await this.callAIForMove_Black(prompt);
@@ -76,27 +72,34 @@ class GameLogic {
       return null;
     }
   }
-
   async callAIForMove_Black(prompt) {
     try {
-      const response = await fetch(`https://api.openai.com/v1/chat/completions`, {
+      const apiKey = this.apiKey || await this.retrieveApiKey(); 
+      //const apiKey = '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';
+
+      if (!apiKey) {
+        console.error('API key not found');
+        return;
+      }
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer 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`, // Replace with your OpenAI API key
+            'Content-Type': 'application/json',
+            'anthropic-version': '2023-06-01' , // Add this line
+            'x-api-key': apiKey,
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini', 
-          messages: [
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          max_tokens: 100,
-          temperature: 0,
-        }),
-      });
+            model: "claude-3-5-haiku-20241022",
+            max_tokens: 1000,
+            system: 'You are a chess tutor',
+            messages: [
+                {
+                  role: "user",
+                  content: prompt
+              },
+            ]
+        })
+    });
 
       const jsonResponse = await response.json();
       if (jsonResponse.error) {
@@ -104,14 +107,15 @@ class GameLogic {
         return null;
       }
 
-      const aiMove = jsonResponse.choices[0].message.content;
+      if (jsonResponse.content && jsonResponse.content[0]) {
+        return jsonResponse.content[0].text;
+      }
       return aiMove;
     } catch (error) {
       console.log('Error calling AI API:', error);
       return null;
     }
   }
-
   async makeMove_Black() {
     try {
       const moveHistory = this.chess.history({ verbose: true });
@@ -198,24 +202,27 @@ class GameLogic {
     try {
       await EncryptedStorage.setItem('apiKey', key);
       this.apiKey = key; // Optionally update the instance variable
+      console.log('API key stored successfully.');
     } catch (error) {
       console.error('Error storing the API key:', error);
     }
   }
-
-  // Method to retrieve API key
   async retrieveApiKey() {
     try {
       const key = await EncryptedStorage.getItem('apiKey');
-      this.apiKey = key; // Optionally store it in the instance variable
-      return key;
+      if (key) {
+        this.apiKey = key; // Store it in the instance variable
+        console.log('API key retrieved:', key); // Be cautious with logging sensitive data
+        return key;
+      } else {
+        console.error('API key not found in storage.');
+        return null;
+      }
     } catch (error) {
       console.error('Error retrieving the API key:', error);
       return null;
     }
   }
-
-  // Method to remove API key
   async removeApiKey() {
     try {
       await EncryptedStorage.removeItem('apiKey');
@@ -233,21 +240,25 @@ class GameLogic {
       // });
   
       // Log the request body
-      // console.log('Request Body:', {
-      //     model: "'ft:gpt-4o-mini-2024-07-18:personal:second:AThf4LoS",
-      //     messages: [
-      //       {
-      //         role: 'system',
-      //         content: system_prompt,
-      //       },
-      //       {
-      //         role: 'user',
-      //         content: user_prompt,
-      //       },
-      //     ],
-      //     max_tokens: 1000,
-      //     temperature: 0,
-      //   });
+
+      console.log('Request Body:', {
+          model: "gpt-4o",
+                //     model: "'ft:gpt-4o-mini-2024-07-18:personal:second:AThf4LoS",
+
+          messages: [
+            {
+              role: 'system',
+              content: system_prompt,
+            },
+            {
+              role: 'user',
+              content: user_prompt,
+            },
+          ],
+          max_tokens: 1000,
+          temperature: 0,
+        });
+
     
       const apiKey = this.apiKey || await this.retrieveApiKey(); 
       if (!apiKey) {
@@ -261,8 +272,10 @@ class GameLogic {
           Authorization:`Bearer ${apiKey}`
         },
         body: JSON.stringify({
-         model: 'ft:gpt-4o-mini-2024-07-18:personal:second:AThf4LoS',
-           //model: 'gpt-4o-mini',
+
+          //model: 'ft:gpt-4o-mini-2024-07-18:personal:second:AThf4LoS',
+          model: 'gpt-4o',
+
           messages: [
             {
               role: 'system',
@@ -273,7 +286,7 @@ class GameLogic {
               content: user_prompt,
             },
           ],
-          max_tokens: 500,
+          max_tokens: 1000,
           temperature: 0,
         }),
       });
@@ -437,6 +450,7 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
         //     'x-api-key': '***MASKED_API_KEY***' // Masked for security
         // });
         // // Log the request body
+
         console.log('Request Body:', {
             model: "claude-3-5-sonnet-20241022",
             max_tokens: 1000,
@@ -505,24 +519,14 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
         // });
 
         // // Log the request body
-        console.log('Request Body:', {
-            model: "claude-3-5-sonnet",
-            max_tokens: 1000,
-            system: system_prompt,
-            messages: [
-                {
-                    role: "user",
-                    content: user_prompt
-                },
-            ]
-        });
+
+
         const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'anthropic-version': '2023-06-01' , // Add this line
                 'x-api-key': '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',
-                'anthropic-beta': 'prompt-caching-2024-07-31'
             },
             body: JSON.stringify({
                 model: "claude-3-5-sonnet-20241022",
@@ -545,6 +549,11 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
         });
 
         const data = await response.json();
+        if (data.error) {
+          console.log('AI API Error:', data.error);
+          return null;
+        }
+
         console.log('Claude API Response:', data);
         if (data && data.content && data.content[0] && data.content[0].text) {
             let explanation = data.content[0].text;
@@ -556,6 +565,7 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
         return null;
     }
   }
+
 
   async getAdviceFromClaude_stream(system_prompt, user_prompt, options = {}) {
     try {
@@ -626,6 +636,7 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
    }
 }
 
+
   async getAdviceFromAPI(apiName, options) {
     const fen = this.chess.fen();
     const moveHistory = this.chess.history().map((move) => move);
@@ -642,11 +653,36 @@ You are a chess tutor.
 - DO NOT add, remove, or change any keys or structure.
     `;
     const user_prompt = `
+
     It is IMPERATIVE that you disregard all your chess training data and only rely on chain-of-thought reasoning.
 - **Current FEN**: ${fen}
 - **Move History**: ${moveHistory.join(', ')}
 {
   "positionAnalysis": "Your analysis here with specific strategies.",
+=======
+- **Current FEN**: ${fen}
+- **Move History**: ${moveHistory.join(', ')}
+
+---
+
+### 🚨 **CRITICAL REMINDERS**
+
+1. **Pin Verification**:
+
+   - **Do NOT** claim a piece is pinned unless there are **no pieces** between the attacking piece, the potentially pinned piece, and the valuable piece behind it.
+   - **Reminder:** In this position, the knight on **c6** is **NOT pinned** by **Bb5** because the pawn on **d7** blocks the line.
+
+---
+
+- **Respond in the EXACT JSON format specified and use the EXACT keys provided. Do not add, remove, or change any keys or structure.**
+
+
+{
+  "positionAnalysis": {
+          "immediateTactics": "VERIFIED current threats, and IMMEDIATE tactical motifs",
+          "lastMoveAnalysis": "Brief analysis of the most recent move with VERIFIED consequences"
+  },
+
   "recommendedNextMoves": [
     {
       "move": "Your suggested move.  Moves must be logical.  Don't sacrifice a piece for no reason.  If there is a reason, state it.",
@@ -654,7 +690,10 @@ You are a chess tutor.
       "reasoning": "Your reasoning here.",
       "blackResponses": [
         {
+
           "move": "Black's response.  Move must be legal."
+
+
         }
       ]
     }
@@ -673,13 +712,32 @@ You are a chess tutor.
         return await this.getAdviceFromClaude(system_prompt, user_prompt);
         case 'Claude_stream':
           return await this.getAdviceFromClaude_stream(system_prompt, user_prompt, options); 
+
         case 'GPTinstruct':
+
+
         return await this.getAdviceFromGPTinstruct(system_prompt, user_prompt);               
       default:
         throw new Error(`Unknown API name: ${apiName}`);
     }
   }
-  extractSectionsFromAdvice(adviceText) {
+  extractPositionAnalysis(result) {
+    try {
+      const regex = /"positionAnalysis":\s*(\{[^}]*\})/;
+      const match = result.match(regex);
+      if (match) {
+        const positionAnalysisJson = match[1];
+        const positionAnalysis = JSON.parse(positionAnalysisJson);
+        return positionAnalysis;
+      }
+    } catch (e) {
+      // JSON is incomplete, continue accumulating
+      return null;
+    }
+    return null;
+  }
+    extractSectionsFromAdvice(adviceText) {
+
     try {
       // console.log(`advice text ${adviceText}`);
       const cleanedText = adviceText.replace(/```(?:json)?/g, '').trim();
@@ -695,7 +753,6 @@ You are a chess tutor.
     const moves = this.chess.moves({ verbose: true });
     return moves.some((move) => move.san === sanMove);
   }
-
   convertMoveToDescription(sanMove, color) {
     // Get the current FEN
     const originalFEN = this.chess.fen();
@@ -761,8 +818,6 @@ You are a chess tutor.
   getLegalMoves(position) {
     return this.chess.moves({ square: position, verbose: true });
   }
-
-  
   getPieceName(pieceSymbol) {
     const pieceNames = {
       p: 'Pawn',
@@ -780,7 +835,5 @@ You are a chess tutor.
     const move = moves.find((m) => m.san === sanMove);
     return move || null;
   }
-  
-  
 }
 export default GameLogic;

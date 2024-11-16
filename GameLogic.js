@@ -261,8 +261,8 @@ class GameLogic {
           Authorization:`Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          //model: 'ft:gpt-4o-mini-2024-07-18:personal:second:AThf4LoS',
-          model: 'gpt-4o',
+         model: 'ft:gpt-4o-mini-2024-07-18:personal:second:AThf4LoS',
+           //model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
@@ -273,7 +273,7 @@ class GameLogic {
               content: user_prompt,
             },
           ],
-          max_tokens: 1000,
+          max_tokens: 500,
           temperature: 0,
         }),
       });
@@ -436,6 +436,73 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
         //     'anthropic-version': '2023-06-01',
         //     'x-api-key': '***MASKED_API_KEY***' // Masked for security
         // });
+        // // Log the request body
+        console.log('Request Body:', {
+            model: "claude-3-5-sonnet-20241022",
+            max_tokens: 1000,
+            system: system_prompt,
+            messages: [
+                {
+                    role: "user",
+                    content: user_prompt
+                },
+            ]
+        });
+
+
+        const apiKey = this.apiKey || await this.retrieveApiKey(); 
+        //const apiKey = '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';
+        if (!apiKey) {
+          console.error('API key not found');
+          return;
+        }
+        console.log(apiKey);
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'anthropic-version': '2023-06-01' , // Add this line
+                'x-api-key': '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',
+            },
+            body: JSON.stringify({
+                model: "claude-3-5-haiku-20241022",
+                max_tokens: 1000,
+                system: system_prompt,
+                messages: [
+
+                    {
+                      role: "user",
+                      content: user_prompt
+                  },
+                ]
+            })
+        });
+
+        const data = await response.json();
+        if (data.error) {
+          console.log('AI API Error:', data.error);
+          return null;
+        }
+
+        console.log('Claude API Response:', data);
+        if (data && data.content && data.content[0] && data.content[0].text) {
+            let explanation = data.content[0].text;
+            const advice = this.extractSectionsFromAdvice(explanation);
+            return advice;
+        }
+    } catch (error) {
+        console.log('Error fetching analysis from Claude:', error);
+        return null;
+    }
+  }
+  async getAdviceFromClaude_cache(system_prompt, user_prompt) {
+    try {
+          // Log the request headers (mask the API key)
+        //   console.log('Request Headers:', {
+        //     'Content-Type': 'application/json',
+        //     'anthropic-version': '2023-06-01',
+        //     'x-api-key': '***MASKED_API_KEY***' // Masked for security
+        // });
 
         // // Log the request body
         console.log('Request Body:', {
@@ -454,12 +521,19 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
             headers: {
                 'Content-Type': 'application/json',
                 'anthropic-version': '2023-06-01' , // Add this line
-                'x-api-key': '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'
+                'x-api-key': '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',
+                'anthropic-beta': 'prompt-caching-2024-07-31'
             },
             body: JSON.stringify({
                 model: "claude-3-5-sonnet-20241022",
-                max_tokens: 1000,
-                system: system_prompt,
+                max_tokens: 500,
+                system: [
+                  {
+                      type: "text",
+                      text: system_prompt,
+                      cache_control: {type: "ephemeral"}
+                  },
+                ],
                 messages: [
 
                     {
@@ -482,97 +556,111 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
         return null;
     }
   }
-  async getAdviceFromAPI(apiName) {
+
+  async getAdviceFromClaude_stream(system_prompt, user_prompt, options = {}) {
+    try {
+      const apiKey = this.apiKey || await this.retrieveApiKey();
+      if (!apiKey) {
+        console.error('API key not found');
+        return;
+      }
+      console.log('Making request to Claude API...');
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: 
+        {
+          'Content-Type': 'application/json',
+          'anthropic-version': '2023-06-01',
+          'x-api-key': apiKey,
+          'Accept': 'text/event-stream',
+        },
+        body: JSON.stringify({
+          model: "claude-3-5-sonnet-20241022",
+          max_tokens: 1000,
+          system: system_prompt,
+          stream: true,
+          messages: [{
+            role: "user",
+            content: user_prompt
+          }]
+        })
+      });
+      console.log('Response status:', response.status);
+     const textStream = await response.text();     // Get the response as text stream
+     const lines = textStream.split('\n');     // Split the stream into lines and process each event
+     let accumulatedText = '';
+     let positionAnalysisExtracted = false;
+     for (const line of lines) {
+       if (!line.trim() || line === 'event: message_stop') continue;
+       if (line.startsWith('data: ')) {
+         try {
+           const jsonData = JSON.parse(line.slice(6));
+           // Handle content block deltas
+           if (jsonData.type === 'content_block_delta' && 
+               jsonData.delta && 
+               jsonData.delta.type === 'text_delta') {
+             accumulatedText += jsonData.delta.text;
+             if (!positionAnalysisExtracted && options.onPositionAnalysis) {
+               if (accumulatedText.includes('"positionAnalysis"')) {
+                 const positionAnalysis = this.extractPositionAnalysis(accumulatedText);
+                 if (positionAnalysis) {
+                   console.log('position analysis extracted. Updated text:', accumulatedText);
+                   options.onPositionAnalysis(positionAnalysis);
+                   positionAnalysisExtracted = true;
+                 }
+               }
+             }
+           }
+         } catch (e) {
+           console.error('Error parsing stream data:', e, 'Line:', line);
+           continue;
+         }
+       }
+     }
+     console.log('Final accumulated text:', accumulatedText);
+     const advice = this.extractSectionsFromAdvice(accumulatedText);
+     return advice;
+   } catch (error) {
+     console.error('Error in streaming from Claude:', error);
+     return null;
+   }
+}
+
+  async getAdviceFromAPI(apiName, options) {
     const fen = this.chess.fen();
     const moveHistory = this.chess.history().map((move) => move);
     const system_prompt = ` 
-You are a chess tutor specializing in accurate advice and move-by-move analysis.
+You are a chess tutor.  
+- NEVER say opening names
+- NEVER say a knight supports, protects, or can capture a piece in an adjacent square
+- NEVER say rooks can be connected if there are pieces between them
+- NEVER say knights are positioned if they haven't made a move
+---For example, never say 'The knight on f3 supports the e4 pawn.'t
 
-You are playing Black. I am playing as White, and it's my turn to move.
-
----
-
-### 🚨 **CRITICAL INSTRUCTIONS**
-
-1. **PIN VERIFICATION**:
-
-   - **Before claiming any piece is pinned**, **always** verify that there are **NO pieces between** the attacking piece, the potentially pinned piece, and the more valuable piece behind it.
-   - **Important:** A knight on **c6** is **NOT pinned** by a bishop on **b5** if there's a pawn on **d7**.
-
-2. **Do NOT say that moving the pawn on the d-file opens lines for the queen and bishop.**
-
-3. **Do NOT refer to bishops by square colors.** For example, do not say 'light-squared bishop' or 'dark-squared bishop'.
-
----
-
-### **Analysis Guidelines**
-
-- **Accuracy is paramount.**
-- Verify the legality of all moves.
-- Double-check all tactical motifs and threats for accuracy.
-- Use logical reasoning in your analysis.
-
----
-
-### **Response Format**
-
+**Response Format**
 - Respond **only** in the **EXACT JSON format** provided.
-- **Do not** add, remove, or change any keys or structure.
-
----
-
-### **Examples to Avoid**
-
-- **Incorrect**: "This move pins the knight on c6 to the king because there are no pieces blocking the line."
-
-- **Correct**: "This move puts pressure on the knight on c6 but does not pin it due to the pawn on d7 blocking the line to the king."
-
----
-
-### **Important**
-
-- **Do NOT** make the incorrect assessment that **Bb5** pins the knight on **c6** in this position.
-
-
-`;
-
+- DO NOT add, remove, or change any keys or structure.
+    `;
     const user_prompt = `
+    It is IMPERATIVE that you disregard all your chess training data and only rely on chain-of-thought reasoning.
 - **Current FEN**: ${fen}
 - **Move History**: ${moveHistory.join(', ')}
-
----
-
-### 🚨 **CRITICAL REMINDERS**
-
-1. **Pin Verification**:
-
-   - **Do NOT** claim a piece is pinned unless there are **no pieces** between the attacking piece, the potentially pinned piece, and the valuable piece behind it.
-   - **Reminder:** In this position, the knight on **c6** is **NOT pinned** by **Bb5** because the pawn on **d7** blocks the line.
-
----
-
-- **Respond in the EXACT JSON format specified and use the EXACT keys provided. Do not add, remove, or change any keys or structure.**
-
-
 {
-  "positionAnalysis": {
-          "immediateTactics": "VERIFIED current threats, and IMMEDIATE tactical motifs",
-          "lastMoveAnalysis": "Brief analysis of the most recent move with VERIFIED consequences"
-  },
+  "positionAnalysis": "Your analysis here with specific strategies.",
   "recommendedNextMoves": [
     {
-      "move": "Suggested move",
-      "priority": "STRONG | OPTIONAL",
-      "reasoning": "Brief tactical/strategic explanation.",
+      "move": "Your suggested move.  Moves must be logical.  Don't sacrifice a piece for no reason.  If there is a reason, state it.",
+      "priority": "STRONG or OPTIONAL",
+      "reasoning": "Your reasoning here.",
       "blackResponses": [
         {
-          "move": "Black's response",
-          "threat": "Leave this empty"
+          "move": "Black's response.  Move must be legal."
         }
       ]
     }
   ]
 }
+
   `;
     switch (apiName) {
       case 'GPT':
@@ -583,43 +671,14 @@ You are playing Black. I am playing as White, and it's my turn to move.
         return await this.getAdviceFromPerplexity(system_prompt, user_prompt);   
       case 'Claude':
         return await this.getAdviceFromClaude(system_prompt, user_prompt);
-      case 'GPTinstruct':
+        case 'Claude_stream':
+          return await this.getAdviceFromClaude_stream(system_prompt, user_prompt, options); 
+        case 'GPTinstruct':
         return await this.getAdviceFromGPTinstruct(system_prompt, user_prompt);               
       default:
         throw new Error(`Unknown API name: ${apiName}`);
     }
   }
-  // convertSANtoUCI(sanMove, fen) {
-  //   const chess = new Chess(fen);
-  //   const moves = chess.moves({ verbose: true });
-  
-  //   const move = moves.find((m) => m.san === sanMove);
-  
-  //   if (move) {
-  //     return move.from + move.to + (move.promotion ? move.promotion : '');
-  //   } else {
-  //     return null; // Move not found
-  //   }
-  // }
-  // convertUCItoSAN(uciMove, fen) {
-  //   const chessInstance = new Chess(fen);
-  //   const moves = chessInstance.moves({ verbose: true });
-  //   const move = moves.find(
-  //     (m) =>
-  //       m.from === uciMove.slice(0, 2) &&
-  //       m.to === uciMove.slice(2, 4) &&
-  //       (uciMove.length > 4 ? m.promotion === uciMove.slice(4) : true)
-  //   );
-  //   return move ? move.san : null;
-  // } 
-  // convertCastlingUCItoSAN(uciMove) {
-  //   if (uciMove === 'e8h8' || uciMove === 'e1h1') {
-  //     return 'O-O'; // Kingside castling
-  //   } else if (uciMove === 'e8a8' || uciMove === 'e1a1') {
-  //     return 'O-O-O'; // Queenside castling
-  //   }
-  //   return null;
-  // }
   extractSectionsFromAdvice(adviceText) {
     try {
       // console.log(`advice text ${adviceText}`);

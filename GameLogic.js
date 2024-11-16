@@ -240,6 +240,7 @@ class GameLogic {
       // });
   
       // Log the request body
+
       console.log('Request Body:', {
           model: "gpt-4o",
                 //     model: "'ft:gpt-4o-mini-2024-07-18:personal:second:AThf4LoS",
@@ -257,6 +258,7 @@ class GameLogic {
           max_tokens: 1000,
           temperature: 0,
         });
+
     
       const apiKey = this.apiKey || await this.retrieveApiKey(); 
       if (!apiKey) {
@@ -270,8 +272,10 @@ class GameLogic {
           Authorization:`Bearer ${apiKey}`
         },
         body: JSON.stringify({
+
           //model: 'ft:gpt-4o-mini-2024-07-18:personal:second:AThf4LoS',
           model: 'gpt-4o',
+
           messages: [
             {
               role: 'system',
@@ -446,6 +450,7 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
         //     'x-api-key': '***MASKED_API_KEY***' // Masked for security
         // });
         // // Log the request body
+
         console.log('Request Body:', {
             model: "claude-3-5-sonnet-20241022",
             max_tokens: 1000,
@@ -471,10 +476,10 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
             headers: {
                 'Content-Type': 'application/json',
                 'anthropic-version': '2023-06-01' , // Add this line
-                'x-api-key': apiKey
+                'x-api-key': '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',
             },
             body: JSON.stringify({
-                model: "claude-3-5-sonnet-20241022",
+                model: "claude-3-5-haiku-20241022",
                 max_tokens: 1000,
                 system: system_prompt,
                 messages: [
@@ -504,6 +509,64 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
         return null;
     }
   }
+  async getAdviceFromClaude_cache(system_prompt, user_prompt) {
+    try {
+          // Log the request headers (mask the API key)
+        //   console.log('Request Headers:', {
+        //     'Content-Type': 'application/json',
+        //     'anthropic-version': '2023-06-01',
+        //     'x-api-key': '***MASKED_API_KEY***' // Masked for security
+        // });
+
+        // // Log the request body
+
+
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'anthropic-version': '2023-06-01' , // Add this line
+                'x-api-key': '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',
+            },
+            body: JSON.stringify({
+                model: "claude-3-5-sonnet-20241022",
+                max_tokens: 500,
+                system: [
+                  {
+                      type: "text",
+                      text: system_prompt,
+                      cache_control: {type: "ephemeral"}
+                  },
+                ],
+                messages: [
+
+                    {
+                      role: "user",
+                      content: user_prompt
+                  },
+                ]
+            })
+        });
+
+        const data = await response.json();
+        if (data.error) {
+          console.log('AI API Error:', data.error);
+          return null;
+        }
+
+        console.log('Claude API Response:', data);
+        if (data && data.content && data.content[0] && data.content[0].text) {
+            let explanation = data.content[0].text;
+            const advice = this.extractSectionsFromAdvice(explanation);
+            return advice;
+        }
+    } catch (error) {
+        console.log('Error fetching analysis from Claude:', error);
+        return null;
+    }
+  }
+
+
   async getAdviceFromClaude_stream(system_prompt, user_prompt, options = {}) {
     try {
       const apiKey = this.apiKey || await this.retrieveApiKey();
@@ -511,7 +574,6 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
         console.error('API key not found');
         return;
       }
-
       console.log('Making request to Claude API...');
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -521,9 +583,7 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
           'anthropic-version': '2023-06-01',
           'x-api-key': apiKey,
           'Accept': 'text/event-stream',
-          // 'Connection': 'keep-alive'
         },
-        
         body: JSON.stringify({
           model: "claude-3-5-sonnet-20241022",
           max_tokens: 1000,
@@ -536,48 +596,20 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
         })
       });
       console.log('Response status:', response.status);
-      // if (!response.ok) {
-      //   const errorText = await response.text();
-      //   console.error('Claude API Error:', errorText);
-      //   throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
-      // }
-      // if (!response.body) {
-      //   console.error('Response body is undefined');
-      //   console.log('Fall back to non-streaming response');
-      //   const jsonResponse = await response.json();
-      //   console.log('Fallback response:', jsonResponse);
-      //   if (jsonResponse.content && jsonResponse.content[0]) {
-      //     const advice = this.extractSectionsFromAdvice(jsonResponse.content[0].text);
-      //     return advice;
-      //   }
-      //   throw new Error('Response body is undefined and fallback failed');
-      // }
-
-
-
-     // Get the response as text stream
-     const textStream = await response.text();
-      
-     // Split the stream into lines and process each event
-     const lines = textStream.split('\n');
+     const textStream = await response.text();     // Get the response as text stream
+     const lines = textStream.split('\n');     // Split the stream into lines and process each event
      let accumulatedText = '';
      let positionAnalysisExtracted = false;
-
      for (const line of lines) {
        if (!line.trim() || line === 'event: message_stop') continue;
-       
        if (line.startsWith('data: ')) {
          try {
            const jsonData = JSON.parse(line.slice(6));
-           //console.log('Parsed JSON:', jsonData);
-           
            // Handle content block deltas
            if (jsonData.type === 'content_block_delta' && 
                jsonData.delta && 
                jsonData.delta.type === 'text_delta') {
              accumulatedText += jsonData.delta.text;
-             //console.log('Updated text:', accumulatedText);
-             
              if (!positionAnalysisExtracted && options.onPositionAnalysis) {
                if (accumulatedText.includes('"positionAnalysis"')) {
                  const positionAnalysis = this.extractPositionAnalysis(accumulatedText);
@@ -595,7 +627,6 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
          }
        }
      }
-
      console.log('Final accumulated text:', accumulatedText);
      const advice = this.extractSectionsFromAdvice(accumulatedText);
      return advice;
@@ -606,135 +637,29 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-//       const reader = response.body.getReader();
-//       console.log('got reader');
-//       const decoder = new TextDecoder();
-//       let accumulatedText = '';
-//       let positionAnalysisExtracted = false;
-//       try {
-//         while (true) {
-//           const { done, value } = await reader.read();
-//           if (done) break;
-//           const chunk = decoder.decode(value, { stream: true });
-//           console.log('Received chunk:', chunk);
-//           const lines = chunk.split('\n');
-//           for (const line of lines) {
-//             if (!line.trim() || line === 'data: [DONE]') continue;
-//             if (line.startsWith('data: ')) {
-//               try {
-//                 console.log('got data')
-//                 const jsonData = JSON.parse(line.slice(6));
-//                 console.log('Parsed JSON:', jsonData);
-//                 if (jsonData.type === 'message_delta' && jsonData.delta && jsonData.delta.text) {
-//                   accumulatedText += jsonData.delta.text;
-//                   console.log('Updated text:', accumulatedText);
-//                   if (!positionAnalysisExtracted && options.onPositionAnalysis) {
-//                     if (accumulatedText.includes('"positionAnalysis"')) {
-//                       const positionAnalysis = this.extractPositionAnalysis(accumulatedText);
-//                       if (positionAnalysis) {
-//                         options.onPositionAnalysis(positionAnalysis);
-//                         positionAnalysisExtracted = true;
-//                       }
-//                     }
-//                   }
-//                 }
-//               } catch (e) {
-//                 console.error('Error parsing stream data:', e, 'Line:', line);
-//                 continue;
-//               }
-//             }
-//           }
-//         }
-//       } finally {
-//         reader.releaseLock();
-//       }
-//       console.log('Final accumulated text:', accumulatedText);
-//       const advice = this.extractSectionsFromAdvice(accumulatedText);
-//       return advice;
-//     } catch (error) {
-//       console.error('Error in streaming from Claude:', error);
-//       return null;
-//     }
-// }
-async getAdviceFromAPI(apiName, options) {
+  async getAdviceFromAPI(apiName, options) {
     const fen = this.chess.fen();
     const moveHistory = this.chess.history().map((move) => move);
     const system_prompt = ` 
-You are a chess tutor specializing in accurate advice and move-by-move analysis.
+You are a chess tutor.  
+- NEVER say opening names
+- NEVER say a knight supports, protects, or can capture a piece in an adjacent square
+- NEVER say rooks can be connected if there are pieces between them
+- NEVER say knights are positioned if they haven't made a move
+---For example, never say 'The knight on f3 supports the e4 pawn.'t
 
-You are playing Black. I am playing as White, and it's my turn to move.
-
----
-
-### 🚨 **CRITICAL INSTRUCTIONS**
-
-1. **PIN VERIFICATION**:
-
-   - **Before claiming any piece is pinned**, **always** verify that there are **NO pieces between** the attacking piece, the potentially pinned piece, and the more valuable piece behind it.
-   - **Important:** A knight on **c6** is **NOT pinned** by a bishop on **b5** if there's a pawn on **d7**.
-
-2. **Do NOT say that moving the pawn on the d-file opens lines for the queen and bishop.**
-
-3. **Do NOT refer to bishops by square colors.** For example, do not say 'light-squared bishop' or 'dark-squared bishop'.
-
----
-
-### **Analysis Guidelines**
-
-- **Accuracy is paramount.**
-- Verify the legality of all moves.
-- Double-check all tactical motifs and threats for accuracy.
-- Use logical reasoning in your analysis.
-
----
-
-### **Response Format**
-
+**Response Format**
 - Respond **only** in the **EXACT JSON format** provided.
-- **Do not** add, remove, or change any keys or structure.
-
----
-
-### **Examples to Avoid**
-
-- **Incorrect**: "This move pins the knight on c6 to the king because there are no pieces blocking the line."
-
-- **Correct**: "This move puts pressure on the knight on c6 but does not pin it due to the pawn on d7 blocking the line to the king."
-
----
-
-### **Important**
-
-- **Do NOT** make the incorrect assessment that **Bb5** pins the knight on **c6** in this position.
-
-
-- First, provide the "positionAnalysis" section.
-- Then, provide the "recommendedNextMoves" section.
-
-Constraints:
-
-- Do not include move numbers, opening names, or acronyms.
-- Provide at least one strong move and one optional move.
-- Responses must strictly follow the specified JSON format.
-- Avoid referring to bishops by square colors
-- Output the JSON object incrementally, starting with "positionAnalysis".
-- Do not include any additional text or explanations outside the JSON.
-`;
-
+- DO NOT add, remove, or change any keys or structure.
+    `;
     const user_prompt = `
+
+    It is IMPERATIVE that you disregard all your chess training data and only rely on chain-of-thought reasoning.
+- **Current FEN**: ${fen}
+- **Move History**: ${moveHistory.join(', ')}
+{
+  "positionAnalysis": "Your analysis here with specific strategies.",
+=======
 - **Current FEN**: ${fen}
 - **Move History**: ${moveHistory.join(', ')}
 
@@ -757,20 +682,24 @@ Constraints:
           "immediateTactics": "VERIFIED current threats, and IMMEDIATE tactical motifs",
           "lastMoveAnalysis": "Brief analysis of the most recent move with VERIFIED consequences"
   },
+
   "recommendedNextMoves": [
     {
-      "move": "Suggested move",
-      "priority": "STRONG | OPTIONAL",
-      "reasoning": "Brief tactical/strategic explanation.",
+      "move": "Your suggested move.  Moves must be logical.  Don't sacrifice a piece for no reason.  If there is a reason, state it.",
+      "priority": "STRONG or OPTIONAL",
+      "reasoning": "Your reasoning here.",
       "blackResponses": [
         {
-          "move": "Black's response",
-          "threat": "Leave this empty"
+
+          "move": "Black's response.  Move must be legal."
+
+
         }
       ]
     }
   ]
 }
+
   `;
     switch (apiName) {
       case 'GPT':
@@ -783,7 +712,10 @@ Constraints:
         return await this.getAdviceFromClaude(system_prompt, user_prompt);
         case 'Claude_stream':
           return await this.getAdviceFromClaude_stream(system_prompt, user_prompt, options); 
-      case 'GPTinstruct':
+
+        case 'GPTinstruct':
+
+
         return await this.getAdviceFromGPTinstruct(system_prompt, user_prompt);               
       default:
         throw new Error(`Unknown API name: ${apiName}`);
@@ -805,6 +737,7 @@ Constraints:
     return null;
   }
     extractSectionsFromAdvice(adviceText) {
+
     try {
       // console.log(`advice text ${adviceText}`);
       const cleanedText = adviceText.replace(/```(?:json)?/g, '').trim();

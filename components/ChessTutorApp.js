@@ -42,13 +42,9 @@ const ChessTutorApp = () => {
   // State for the currently selected square
 
   const [recommendedNextMoves, setRecommendedNextMoves] = useState([]);
-  // State for the recommended next moves from the AI
 
-  const [positionAnalysis, setPositionAnalysis] = useState({
-    immediateTactics: '',
-    lastMoveAnalysis: '',
-  });
-  // State for the position analysis (immediate tactics and last move analysis)
+  const [positionAnalysis, setPositionAnalysis] = useState('');
+
 
   const [illegalMoveSquares, setIllegalMoveSquares] = useState(null);
   // State for illegal moves (to highlight them)
@@ -361,24 +357,24 @@ const ChessTutorApp = () => {
     }
   };
 
-  const handleReload = () => {    // Function to handle the reload action
-    gameLogicRef.current = new GameLogic();    // Reset the GameLogic instance
-    setBoardState(gameLogicRef.current.getBoardState());    // Reset the board state
-    setSelectedSquare(null);    // Deselect any selected square
-    setIllegalMoveSquares(null);    // Clear illegal move highlights
-    setAdvisedMove(null);    // Clear advised move
-    setPositionAnalysis({    // Reset position analysis
-      immediateTactics: '',
-      lastMoveAnalysis: '',
-    });
-    setRecommendedNextMoves([]);    // Clear recommended next moves
-    setDisplayedArrows([]);    // Clear displayed arrows
-    setPossibleMoves([]);    // Clear possible moves
-    textOpacity.setValue(1);    // Reset text opacity
-    thinkingOpacity.setValue(0);    // Reset thinking overlay opacity
-    analysisComplete.current = false;    // Set analysis as incomplete
-    positionAnalysisExtracted.current = false;    // Set position analysis as not extracted
-    setMovesLeft(12);    // Reset moves left
+  
+  
+  const handleReload = () => {
+    gameLogicRef.current = new GameLogic();
+    setBoardState(gameLogicRef.current.getBoardState());
+    setSelectedSquare(null);
+    setIllegalMoveSquares(null);
+    setAdvisedMove(null);
+    setPositionAnalysis('');
+    setRecommendedNextMoves([]);
+    setDisplayedArrows([]); // Clear arrows
+    setPossibleMoves([]);    // Clear green dots (legal move indicators)
+    textOpacity.setValue(1);
+    thinkingOpacity.setValue(0);
+    analysisComplete.current = false;
+    setMovesLeft(500); // Reset moves left
+
+
   };
 
   const onSquarePress = (position) => {    // Function to handle when a square is pressed
@@ -470,7 +466,10 @@ const ChessTutorApp = () => {
       setBoardState([...gameLogicRef.current.getBoardState()]);
       setDisplayedArrows([]);
       // Fetch advice from the AI
-      const apiName = 'GPT'; //---------------------------------------------------------------------------------------
+
+      const apiName = 'Claude'; //---------------------------------------------------------------------------------------
+
+ 
       let advice = await gameLogicRef.current.getAdviceFromAPI(apiName);
       //console.log("First Move API Response:", advice);
       if (advice && advice.recommendedNextMoves) {
@@ -480,49 +479,22 @@ const ChessTutorApp = () => {
         advice.recommendedNextMoves = advice.recommendedNextMoves.filter((move, index, self) => {
           const isUnique = index === self.findIndex((m) => m.move === move.move);
           const isLegal = legalMoves.some((legalMove) => legalMove.san === move.move);
-          //const isPriority = move.priority !== 'OPTIONAL';
           return isUnique && isLegal ;
-          //return isUnique && isLegal && isPriority;          
         });
-        // for each move, filter its responses
-        // advice.recommendedNextMoves = advice.recommendedNextMoves.map(moveObj => {
-        //   const newPosition = chess.move(moveObj.move);  
-        //   const blackLegalMoves = chess.moves({ verbose: true });
-        //   chess.undo();  
-        //   // Filter the responses      // Remove duplicates      // Check if the response is legal in the resulting position
-        //   const filteredResponses = moveObj.blackResponses.filter((response, index, self) => {
-        //     const isUnique = index === self.findIndex((r) => r === response);
-        //     const isLegal = blackLegalMoves.some((legalMove) => legalMove.san === response);
-        //     return isUnique && isLegal;
-        //   });
-        //   // Return the move object with filtered responses
-        //   console.log(` ___ ${moveObj.blackResponses}`);
-          
-        //   return {...moveObj, blackResponses: filteredResponses};
-        // });
-
-// Optional: Remove any moves that end up with no legal responses
-// advice.recommendedNextMoves = advice.recommendedNextMoves.filter(
-//   moveObj => moveObj.blackResponses.length > 0
-// );
-
-
-        
-        // Use a deep copy for setting state
-        //  setRecommendedNextMoves(JSON.parse(JSON.stringify(legalMoves)));
-      //   useEffect(() => {
-      //     console.log("Updated Recommended Moves:", recommendedNextMoves);
-      // }, [recommendedNextMoves]);
       }
       setIsThinking(false);
       if (!advice) {
-        setPositionAnalysis({ immediateTactics: '', lastMoveAnalysis: '' });        // Clear position analysis
+
+        setPositionAnalysis('');
+        setRecommendedNextMoves([]);
+
         setRecommendedNextMoves([]);        // Clear recommended moves
         Animated.timing(thinkingOpacity, {          // Fade out the thinking overlay
           toValue: 0,
           duration: 500,
           useNativeDriver: true,
         }).start();
+
         return;
       }
       gameLogicRef.current.latestAdvice = advice;      // Store the latest advice in GameLogic
@@ -702,30 +674,25 @@ const ChessTutorApp = () => {
                   {/* Footer below the table */}
                   <View style={styles.tableFooter}>
                     <Text style={styles.footerText}>Tap a move above for analysis</Text>
+
+                 </View>               
+              </View>
+            </SafeAreaView>
+            ) : (
+              <Text style={styles.noDataText}>Make your move.</Text>
+            )}
+              <View>
+                {positionAnalysis ? (
+                  <View>
+                    <Text style={styles.analysisText}>{positionAnalysis}</Text>
                   </View>
-                </View>
-              ) : (
-                <Text style={styles.noDataText}>Make your move.</Text>
-              )}
-              {positionAnalysis.immediateTactics || positionAnalysis.lastMoveAnalysis ? (
-                <View>
-                  {positionAnalysis.immediateTactics ? (
-                    <View>
-                      <Text style={styles.analysisTitle}>Immediate Tactics:</Text>
-                      <Text style={styles.analysisText}>{positionAnalysis.immediateTactics}</Text>
-                    </View>
-                  ) : null}
-                  {positionAnalysis.lastMoveAnalysis ? (
-                    <View>
-                      <Text style={styles.analysisTitle}>Last Move Analysis:</Text>
-                      <Text style={styles.analysisText}>{positionAnalysis.lastMoveAnalysis}</Text>
-                    </View>
-                  ) : null}
-                </View>
-              ) : null}
-            </Animated.View>
-          </ScrollView>
-        </View>
+                ) : null}
+              </View>
+          </Animated.View>
+        </ScrollView>
+        {/* Thinking overlay */}
+
+
         {isThinking && (
           <View style={styles.overlay} pointerEvents="none">
             <Text style={styles.overlayText}>Thinking...</Text>

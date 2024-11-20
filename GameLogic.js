@@ -234,14 +234,17 @@ class GameLogic {
   async getAdviceFromGPT(system_prompt, user_prompt) {
     try {
       // Log the request headers (mask the API key)
-      console.log('Request Headers:', {
-        'Content-Type': 'application/json',
-        'Authorization': '***MASKED_API_KEY***' // Masked for security
-      });
+      // console.log('Request Headers:', {
+      //   'Content-Type': 'application/json',
+      //   'Authorization': '***MASKED_API_KEY***' // Masked for security
+      // });
   
       // Log the request body
+
       console.log('Request Body:', {
           model: "gpt-4o",
+                //     model: "'ft:gpt-4o-mini-2024-07-18:personal:second:AThf4LoS",
+
           messages: [
             {
               role: 'system',
@@ -255,6 +258,7 @@ class GameLogic {
           max_tokens: 1000,
           temperature: 0,
         });
+
     
       const apiKey = this.apiKey || await this.retrieveApiKey(); 
       if (!apiKey) {
@@ -268,8 +272,10 @@ class GameLogic {
           Authorization:`Bearer ${'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'}`
         },
         body: JSON.stringify({
+
          // model: 'gpt-4o-mini',
           model: 'ft:gpt-4o-mini-2024-07-18:personal:second:AThf4LoS',
+
           messages: [
             {
               role: 'system',
@@ -280,18 +286,20 @@ class GameLogic {
               content: user_prompt,
             },
           ],
-          max_tokens: 500,
+          max_tokens: 1000,
           temperature: 0,
         }),
       });
 
       const jsonResponse = await response.json();
+         
       if (jsonResponse.error) {
         console.log('API Error:', jsonResponse.error);
         return null;
       }      
-      const responseText = jsonResponse.choices[0].message.content;
-      console.log(responseText);
+      const responseText = jsonResponse.choices[0].message.content;  
+       console.log(responseText);
+
 
       const advice = this.extractSectionsFromAdvice(responseText);
       return advice;
@@ -364,7 +372,7 @@ class GameLogic {
         },
       ]
 });
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -399,7 +407,7 @@ class GameLogic {
     headers: {Authorization: 'Bearer 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', 
                               'Content-Type': 'application/json'},
     body: JSON.stringify({
-      model:"llama-3.1-sonar-huge-128k-online",
+      model:"llama-3.1-sonar-large-128k-chat",
       messages:[
             {role:"system",
               content:system_prompt
@@ -436,12 +444,13 @@ class GameLogic {
   async getAdviceFromClaude(system_prompt, user_prompt) {
     try {
           // Log the request headers (mask the API key)
-          console.log('Request Headers:', {
-            'Content-Type': 'application/json',
-            'anthropic-version': '2023-06-01',
-            'x-api-key': '***MASKED_API_KEY***' // Masked for security
-        });
-        // Log the request body
+        //   console.log('Request Headers:', {
+        //     'Content-Type': 'application/json',
+        //     'anthropic-version': '2023-06-01',
+        //     'x-api-key': '***MASKED_API_KEY***' // Masked for security
+        // });
+        // // Log the request body
+
         console.log('Request Body:', {
             model: "claude-3-5-sonnet-20241022",
             max_tokens: 1000,
@@ -467,10 +476,10 @@ class GameLogic {
             headers: {
                 'Content-Type': 'application/json',
                 'anthropic-version': '2023-06-01' , // Add this line
-                'x-api-key': apiKey
+                'x-api-key': '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',
             },
             body: JSON.stringify({
-                model: "claude-3-5-sonnet-20241022",
+                model: "claude-3-5-haiku-20241022",
                 max_tokens: 1000,
                 system: system_prompt,
                 messages: [
@@ -504,6 +513,64 @@ class GameLogic {
         return null;
     }
   }
+  async getAdviceFromClaude_cache(system_prompt, user_prompt) {
+    try {
+          // Log the request headers (mask the API key)
+        //   console.log('Request Headers:', {
+        //     'Content-Type': 'application/json',
+        //     'anthropic-version': '2023-06-01',
+        //     'x-api-key': '***MASKED_API_KEY***' // Masked for security
+        // });
+
+        // // Log the request body
+
+
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'anthropic-version': '2023-06-01' , // Add this line
+                'x-api-key': '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',
+            },
+            body: JSON.stringify({
+                model: "claude-3-5-sonnet-20241022",
+                max_tokens: 500,
+                system: [
+                  {
+                      type: "text",
+                      text: system_prompt,
+                      cache_control: {type: "ephemeral"}
+                  },
+                ],
+                messages: [
+
+                    {
+                      role: "user",
+                      content: user_prompt
+                  },
+                ]
+            })
+        });
+
+        const data = await response.json();
+        if (data.error) {
+          console.log('AI API Error:', data.error);
+          return null;
+        }
+
+        console.log('Claude API Response:', data);
+        if (data && data.content && data.content[0] && data.content[0].text) {
+            let explanation = data.content[0].text;
+            const advice = this.extractSectionsFromAdvice(explanation);
+            return advice;
+        }
+    } catch (error) {
+        console.log('Error fetching analysis from Claude:', error);
+        return null;
+    }
+  }
+
+
   async getAdviceFromClaude_stream(system_prompt, user_prompt, options = {}) {
     try {
       const apiKey = this.apiKey || await this.retrieveApiKey();
@@ -511,7 +578,6 @@ class GameLogic {
         console.error('API key not found');
         return;
       }
-
       console.log('Making request to Claude API...');
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -521,10 +587,11 @@ class GameLogic {
           'anthropic-version': '2023-06-01',
           'x-api-key': apiKey,
           'Accept': 'text/event-stream',
+
           'anthropic-beta': 'prompt-caching-2024-07-31',
           // 'Connection': 'keep-alive'
+
         },
-        
         body: JSON.stringify({
           model: "claude-3-5-sonnet-20241022",
           max_tokens: 1000,
@@ -543,29 +610,22 @@ class GameLogic {
         })
       });
       console.log('Response status:', response.status);
-   
-     const textStream = await response.text();
-      
-     // Split the stream into lines and process each event
-     const lines = textStream.split('\n');
+
+     const textStream = await response.text();     // Get the response as text stream
+     const lines = textStream.split('\n');     // Split the stream into lines and process each event
+
      let accumulatedText = '';
      let positionAnalysisExtracted = false;
-
      for (const line of lines) {
        if (!line.trim() || line === 'event: message_stop') continue;
-       
        if (line.startsWith('data: ')) {
          try {
            const jsonData = JSON.parse(line.slice(6));
-           //console.log('Parsed JSON:', jsonData);
-           
            // Handle content block deltas
            if (jsonData.type === 'content_block_delta' && 
                jsonData.delta && 
                jsonData.delta.type === 'text_delta') {
              accumulatedText += jsonData.delta.text;
-             //console.log('Updated text:', accumulatedText);
-             
              if (!positionAnalysisExtracted && options.onPositionAnalysis) {
                if (accumulatedText.includes('"positionAnalysis"')) {
                  const positionAnalysis = this.extractPositionAnalysis(accumulatedText);
@@ -583,7 +643,6 @@ class GameLogic {
          }
        }
      }
-
      console.log('Final accumulated text:', accumulatedText);
      const advice = this.extractSectionsFromAdvice(accumulatedText);
      return advice;
@@ -622,20 +681,48 @@ Constraints:
 
 {
   "positionAnalysis": "Brief analysis of the game.",
+
+- **Current FEN**: ${fen}
+- **Move History**: ${moveHistory.join(', ')}
+
+---
+
+### 🚨 **CRITICAL REMINDERS**
+
+1. **Pin Verification**:
+
+   - **Do NOT** claim a piece is pinned unless there are **no pieces** between the attacking piece, the potentially pinned piece, and the valuable piece behind it.
+   - **Reminder:** In this position, the knight on **c6** is **NOT pinned** by **Bb5** because the pawn on **d7** blocks the line.
+
+---
+
+- **Respond in the EXACT JSON format specified and use the EXACT keys provided. Do not add, remove, or change any keys or structure.**
+
+
+{
+  "positionAnalysis": {
+          "immediateTactics": "VERIFIED current threats, and IMMEDIATE tactical motifs",
+          "lastMoveAnalysis": "Brief analysis of the most recent move with VERIFIED consequences"
+  },
+
+
   "recommendedNextMoves": [
     {
-      "move": "Suggested move",
-      "priority": "STRONG | OPTIONAL",
-      "reasoning": "Brief tactical/strategic explanation.",
+      "move": "Your suggested move.  Moves must be logical.  Don't sacrifice a piece for no reason.  If there is a reason, state it.",
+      "priority": "STRONG or OPTIONAL",
+      "reasoning": "Your reasoning here.",
       "blackResponses": [
         {
-          "move": "Black's response",
+
+
+          "move": "Black's response.  Move must be legal."
 
         }
       ]
     }
   ]
 }
+
   `;
     switch (apiName) {
       case 'GPT':
@@ -648,7 +735,10 @@ Constraints:
         return await this.getAdviceFromClaude(system_prompt, user_prompt);
         case 'Claude_stream':
           return await this.getAdviceFromClaude_stream(system_prompt, user_prompt, options); 
-      case 'GPTinstruct':
+
+        case 'GPTinstruct':
+
+
         return await this.getAdviceFromGPTinstruct(system_prompt, user_prompt);               
       default:
         throw new Error(`Unknown API name: ${apiName}`);
@@ -670,6 +760,7 @@ Constraints:
     return null;
   }
     extractSectionsFromAdvice(adviceText) {
+
     try {
        console.log(` raw advice text ${adviceText}`);
       const cleanedText = adviceText.replace(/```(?:json)?/g, '').trim();
@@ -746,7 +837,7 @@ Constraints:
     return this.getLastMoveByColor('w'); // 'w' for White
   }
   getLastBlackMove() {
-    return this.getLastMoveByColor('b'); // 'b' for Black
+    return this.getLastMoveByColor('b'); // 'b' for Black.
   }
   getLegalMoves(position) {
     return this.chess.moves({ square: position, verbose: true });

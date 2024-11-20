@@ -42,9 +42,9 @@ const ChessTutorApp = () => {
   // State for the currently selected square
 
   const [recommendedNextMoves, setRecommendedNextMoves] = useState([]);
-  // State for the recommended next moves from the AI
 
   const [positionAnalysis, setPositionAnalysis] = useState('');
+
 
   const [illegalMoveSquares, setIllegalMoveSquares] = useState(null);
   // State for illegal moves (to highlight them)
@@ -357,6 +357,7 @@ const ChessTutorApp = () => {
     }
   };
 
+
   const handleReload = () => {    // Function to handle the reload action
     gameLogicRef.current = new GameLogic();    // Reset the GameLogic instance
     setBoardState(gameLogicRef.current.getBoardState());    // Reset the board state
@@ -372,6 +373,7 @@ const ChessTutorApp = () => {
     analysisComplete.current = false;    // Set analysis as incomplete
     positionAnalysisExtracted.current = false;    // Set position analysis as not extracted
     setMovesLeft(12);    // Reset moves left
+
   };
 
   const onSquarePress = (position) => {    // Function to handle when a square is pressed
@@ -435,10 +437,77 @@ const ChessTutorApp = () => {
           return;
         }
       }
+
       setTimeout(() => {
         setBoardState([...gameLogicRef.current.getBoardState()]);
         fetchAdviceAfterBlackMove();
       }, 500); // Delay of 500 ms
+
+      if (gameLogicRef.current.chess.isCheckmate()) {        // If it's checkmate after Black's move, alert the user and reload
+        Alert.alert('Game Over', 'Checkmate! The game has ended.', [
+          { text: 'OK', onPress: () => handleReload() },
+        ]);
+        return;
+      }
+      // Update the board state after Black's move
+      setBoardState([...gameLogicRef.current.getBoardState()]);
+      setDisplayedArrows([]);
+      // Fetch advice from the AI
+
+      const apiName = 'Claude'; //---------------------------------------------------------------------------------------
+
+ 
+      let advice = await gameLogicRef.current.getAdviceFromAPI(apiName);
+      //console.log("First Move API Response:", advice);
+      if (advice && advice.recommendedNextMoves) {
+        const chess = gameLogicRef.current.chess;
+        const legalMoves = chess.moves({ verbose: true });
+          // Remove duplicates and illegals
+        advice.recommendedNextMoves = advice.recommendedNextMoves.filter((move, index, self) => {
+          const isUnique = index === self.findIndex((m) => m.move === move.move);
+          const isLegal = legalMoves.some((legalMove) => legalMove.san === move.move);
+          return isUnique && isLegal ;
+        });
+      }
+      setIsThinking(false);
+      if (!advice) {
+
+        setPositionAnalysis('');
+        setRecommendedNextMoves([]);
+
+        setRecommendedNextMoves([]);        // Clear recommended moves
+        Animated.timing(thinkingOpacity, {          // Fade out the thinking overlay
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+
+        return;
+      }
+      gameLogicRef.current.latestAdvice = advice;      // Store the latest advice in GameLogic
+      Animated.timing(thinkingOpacity, {        // Fade out the thinking overlay
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }).start(() => {        // Process the advice to adjust move labels and arrow opacity
+        const processedAdvice = renderMoveAdvice(advice);
+        setRecommendedNextMoves(processedAdvice);        // Set the recommended next moves
+        setDisplayedArrows(        // Set displayed arrows to show the default advice arrows
+          processedAdvice.map((move) => ({
+            from: move.from,
+            to: move.to,
+            arrowOpacity: move.arrowOpacity,
+          }))
+        );
+        Animated.timing(textOpacity, {          // Fade in the text
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start(() => {
+          analysisComplete.current = true;          // Set analysis as complete
+        });
+      });
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });      // Scroll to the top of the ScrollView
     } catch (error) {
       console.log('Error during move:', error);
       Alert.alert('Error', 'Error processing move, please try again.', [{ text: 'OK' }]);
@@ -631,7 +700,19 @@ const ChessTutorApp = () => {
                   {/* Footer below the table */}
                   <View style={styles.tableFooter}>
                     <Text style={styles.footerText}>Tap a move above for analysis</Text>
+
+                 </View>               
+              </View>
+            </SafeAreaView>
+            ) : (
+              <Text style={styles.noDataText}>Make your move.</Text>
+            )}
+              <View>
+                {positionAnalysis ? (
+                  <View>
+                    <Text style={styles.analysisText}>{positionAnalysis}</Text>
                   </View>
+
                 </View>
               ) : (
                 <Text style={styles.noDataText}>Make your move.</Text>
@@ -647,7 +728,7 @@ const ChessTutorApp = () => {
             </Animated.View>
           </ScrollView>
         </View>
-        {isThinking && (
+       {isThinking && (
           <View style={styles.overlay} pointerEvents="none">
             <Text style={styles.overlayText}>Thinking...</Text>
           </View>

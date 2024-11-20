@@ -265,10 +265,11 @@ class GameLogic {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization:`Bearer ${apiKey}`
+          Authorization:`Bearer ${'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'}`
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+         // model: 'gpt-4o-mini',
+          model: 'ft:gpt-4o-mini-2024-07-18:personal:second:AThf4LoS',
           messages: [
             {
               role: 'system',
@@ -299,53 +300,53 @@ class GameLogic {
       return null;
     }
   }
-async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
+  async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
 
-        // Combine system_prompt and user_prompt
-        const combinedPrompt = `${system_prompt}\n\n${user_prompt}`;
+          // Combine system_prompt and user_prompt
+          const combinedPrompt = `${system_prompt}\n\n${user_prompt}`;
 
-  const apiKey = this.apiKey || await this.retrieveApiKey(); 
-  if (!apiKey) {
-    console.error('API key not found');
-    return;
-  }
-  const url = "https://api.openai.com/v1/completions";
-  const headers = {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${apiKey}`,
-  };
-  const data = {
-    model: 'gpt-3.5-turbo-instruct',
-    prompt: combinedPrompt,
-    temperature: 0.1,
-    max_tokens: 750,
-  };
+    const apiKey = this.apiKey || await this.retrieveApiKey(); 
+    if (!apiKey) {
+      console.error('API key not found');
+      return;
+    }
+    const url = "https://api.openai.com/v1/completions";
+    const headers = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    };
+    const data = {
+      model: 'gpt-3.5-turbo-instruct',
+      prompt: combinedPrompt,
+      temperature: 0.1,
+      max_tokens: 750,
+    };
 
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: headers,
-      body: JSON.stringify(data),
-    });
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(data),
+      });
 
-    const result = await response.json();
-    console.log(result);
-    if (response.ok) {
-      const gptResponseText = result.choices[0].text;
-      const gptResponse = JSON.parse(gptResponseText);
-      return gptResponse;
-    } else {
-      console.error("Error:", result);
-      Alert.alert("Error", "Failed to fetch data from OpenAI API");
+      const result = await response.json();
+      console.log(result);
+      if (response.ok) {
+        const gptResponseText = result.choices[0].text;
+        const gptResponse = JSON.parse(gptResponseText);
+        return gptResponse;
+      } else {
+        console.error("Error:", result);
+        Alert.alert("Error", "Failed to fetch data from OpenAI API");
+        return null;
+      }
+    } catch (error) {
+      console.error("Error fetching data from OpenAI API:", error);
+      Alert.alert("Error", "An error occurred while trying to fetch data from OpenAI API.");
       return null;
     }
-  } catch (error) {
-    console.error("Error fetching data from OpenAI API:", error);
-    Alert.alert("Error", "An error occurred while trying to fetch data from OpenAI API.");
-    return null;
+    
   }
-  
-}
   async getAdviceFromGemini(system_prompt, user_prompt) {
       // Combine system_prompt and user_prompt
   const combinedPrompt = `${system_prompt}\n\n${user_prompt}`;
@@ -492,6 +493,10 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
         if (data && data.content && data.content[0] && data.content[0].text) {
             let explanation = data.content[0].text;
             const advice = this.extractSectionsFromAdvice(explanation);
+            console.log(`after extracton ${advice}`)
+            console.log(`after extracton ${advice.recommendedNextMoves}`)
+
+            console.log(`after extracton ${advice.positionAnalysis}`)
             return advice;
         }
     } catch (error) {
@@ -516,13 +521,20 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
           'anthropic-version': '2023-06-01',
           'x-api-key': apiKey,
           'Accept': 'text/event-stream',
+          'anthropic-beta': 'prompt-caching-2024-07-31',
           // 'Connection': 'keep-alive'
         },
         
         body: JSON.stringify({
           model: "claude-3-5-sonnet-20241022",
           max_tokens: 1000,
-          system: system_prompt,
+          system:  [
+            {
+              "type": "text",
+              "text": system_prompt,
+              "cache_control": {"type": "ephemeral"}
+            }
+          ],
           stream: true,
           messages: [{
             role: "user",
@@ -531,26 +543,7 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
         })
       });
       console.log('Response status:', response.status);
-      // if (!response.ok) {
-      //   const errorText = await response.text();
-      //   console.error('Claude API Error:', errorText);
-      //   throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
-      // }
-      // if (!response.body) {
-      //   console.error('Response body is undefined');
-      //   console.log('Fall back to non-streaming response');
-      //   const jsonResponse = await response.json();
-      //   console.log('Fallback response:', jsonResponse);
-      //   if (jsonResponse.content && jsonResponse.content[0]) {
-      //     const advice = this.extractSectionsFromAdvice(jsonResponse.content[0].text);
-      //     return advice;
-      //   }
-      //   throw new Error('Response body is undefined and fallback failed');
-      // }
-
-
-
-     // Get the response as text stream
+   
      const textStream = await response.text();
       
      // Split the stream into lines and process each event
@@ -600,70 +593,6 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
    }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//       const reader = response.body.getReader();
-//       console.log('got reader');
-//       const decoder = new TextDecoder();
-//       let accumulatedText = '';
-//       let positionAnalysisExtracted = false;
-//       try {
-//         while (true) {
-//           const { done, value } = await reader.read();
-//           if (done) break;
-//           const chunk = decoder.decode(value, { stream: true });
-//           console.log('Received chunk:', chunk);
-//           const lines = chunk.split('\n');
-//           for (const line of lines) {
-//             if (!line.trim() || line === 'data: [DONE]') continue;
-//             if (line.startsWith('data: ')) {
-//               try {
-//                 console.log('got data')
-//                 const jsonData = JSON.parse(line.slice(6));
-//                 console.log('Parsed JSON:', jsonData);
-//                 if (jsonData.type === 'message_delta' && jsonData.delta && jsonData.delta.text) {
-//                   accumulatedText += jsonData.delta.text;
-//                   console.log('Updated text:', accumulatedText);
-//                   if (!positionAnalysisExtracted && options.onPositionAnalysis) {
-//                     if (accumulatedText.includes('"positionAnalysis"')) {
-//                       const positionAnalysis = this.extractPositionAnalysis(accumulatedText);
-//                       if (positionAnalysis) {
-//                         options.onPositionAnalysis(positionAnalysis);
-//                         positionAnalysisExtracted = true;
-//                       }
-//                     }
-//                   }
-//                 }
-//               } catch (e) {
-//                 console.error('Error parsing stream data:', e, 'Line:', line);
-//                 continue;
-//               }
-//             }
-//           }
-//         }
-//       } finally {
-//         reader.releaseLock();
-//       }
-//       console.log('Final accumulated text:', accumulatedText);
-//       const advice = this.extractSectionsFromAdvice(accumulatedText);
-//       return advice;
-//     } catch (error) {
-//       console.error('Error in streaming from Claude:', error);
-//       return null;
-//     }
-// }
 async getAdviceFromAPI(apiName, options) {
     const fen = this.chess.fen();
     const moveHistory = this.chess.history().map((move) => move);
@@ -692,10 +621,7 @@ Constraints:
 - Analyze this position and respond in the following JSON format:
 
 {
-  "positionAnalysis": {
-    "immediateTactics": "Description of any immediate threats or tactical motifs.",
-    "lastMoveAnalysis": "Brief analysis of the most recent move."
-  },
+  "positionAnalysis": "Brief analysis of the game.",
   "recommendedNextMoves": [
     {
       "move": "Suggested move",
@@ -704,7 +630,7 @@ Constraints:
       "blackResponses": [
         {
           "move": "Black's response",
-          "threat": "What this response threatens or achieves."
+
         }
       ]
     }
@@ -745,9 +671,10 @@ Constraints:
   }
     extractSectionsFromAdvice(adviceText) {
     try {
-      // console.log(`advice text ${adviceText}`);
+       console.log(` raw advice text ${adviceText}`);
       const cleanedText = adviceText.replace(/```(?:json)?/g, '').trim();
       const parsedResponse = JSON.parse(cleanedText);
+      console.log('Parsed response:', parsedResponse);
       const { positionAnalysis, recommendedNextMoves } = parsedResponse;
       return { positionAnalysis, recommendedNextMoves };
     } catch (e) {

@@ -357,23 +357,22 @@ const ChessTutorApp = () => {
     }
   };
 
-  
-  
-  const handleReload = () => {
-    gameLogicRef.current = new GameLogic();
-    setBoardState(gameLogicRef.current.getBoardState());
-    setSelectedSquare(null);
-    setIllegalMoveSquares(null);
-    setAdvisedMove(null);
-    setPositionAnalysis('');
-    setRecommendedNextMoves([]);
-    setDisplayedArrows([]); // Clear arrows
-    setPossibleMoves([]);    // Clear green dots (legal move indicators)
-    textOpacity.setValue(1);
-    thinkingOpacity.setValue(0);
-    analysisComplete.current = false;
-    setMovesLeft(500); // Reset moves left
 
+  const handleReload = () => {    // Function to handle the reload action
+    gameLogicRef.current = new GameLogic();    // Reset the GameLogic instance
+    setBoardState(gameLogicRef.current.getBoardState());    // Reset the board state
+    setSelectedSquare(null);    // Deselect any selected square
+    setIllegalMoveSquares(null);    // Clear illegal move highlights
+    setAdvisedMove(null);    // Clear advised move
+    setPositionAnalysis('');
+    setRecommendedNextMoves([]);    // Clear recommended next moves
+    setDisplayedArrows([]);    // Clear displayed arrows
+    setPossibleMoves([]);    // Clear possible moves
+    textOpacity.setValue(1);    // Reset text opacity
+    thinkingOpacity.setValue(0);    // Reset thinking overlay opacity
+    analysisComplete.current = false;    // Set analysis as incomplete
+    positionAnalysisExtracted.current = false;    // Set position analysis as not extracted
+    setMovesLeft(12);    // Reset moves left
 
   };
 
@@ -406,48 +405,30 @@ const ChessTutorApp = () => {
     }
   };
 
-  const onMove = async (fromSquare, toSquare) => {    // Function to handle making a move
-    try {      // Try making the move
-      const playerMove = gameLogicRef.current.makeMove({ from: fromSquare, to: toSquare });      // Attempt to make the player's move
+  const onMove = async (fromSquare, toSquare) => {
+    try {
+      // Make the player's move
+      const playerMove = gameLogicRef.current.makeMove({ from: fromSquare, to: toSquare });
       if (!playerMove) {
-        setIllegalMoveSquares({ from: fromSquare, to: toSquare });        // Highlight the illegal move
+        setIllegalMoveSquares({ from: fromSquare, to: toSquare });
         return;
       }
-      if (gameLogicRef.current.chess.isCheckmate()) {        // If it's checkmate, alert the user and reload
-        Alert.alert('Game Over', 'Checkmate! The game has ended.', [
-          { text: 'OK', onPress: () => handleReload() },
-        ]);
+  
+      // Update the board state to reflect the player's move
+      setBoardState([...gameLogicRef.current.getBoardState()]);
+      setMovesLeft((prevMoves) => prevMoves - 1);
+  
+      // Check for game end conditions
+      if (gameLogicRef.current.chess.isCheckmate()) {
+        Alert.alert('Game Over', 'Checkmate! The game has ended.', [{ text: 'OK', onPress: () => handleReload() }]);
         return;
       }
-      setBoardState([...gameLogicRef.current.getBoardState()]);      // Update the board state
-      setRecommendedNextMoves([]);      // Clear recommended next moves
-      setIllegalMoveSquares(null);      // Clear illegal move highlights
-      setMovesLeft((prevMoves) => prevMoves - 1);      // Decrease moves left
-      if (movesLeft - 1 <= 0) {
-        Alert.alert(        // If moves are exhausted, alert the user and reload
-          'Opening Phase Complete',
-          'You have completed the opening phase. Great job practicing your openings!',
-          [{ text: 'OK', onPress: () => handleReload() }]
-        );
-        setSelectedSquare(null);        // Deselect the square
-        setPossibleMoves([]);        // Clear possible moves
-        return;
-      }
-      setIsThinking(true);      // Set AI thinking state to true
-      positionAnalysisExtracted.current = false;      // Reset position analysis extraction flag
-      Animated.timing(textOpacity, {        // Animate text opacity to fade out
-        toValue: 0,
-        duration: 500,
-        useNativeDriver: true,
-      }).start(() => {
-        Animated.timing(thinkingOpacity, {          // Animate thinking overlay to fade in
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }).start();
-      });
-      let blackMoveResult = await gameLogicRef.current.makeMove_Black();      // Make AI (Black) move
+      setDisplayedArrows([]);
+      // Generate Black's move (this might take time)
+      const blackMoveResult = await gameLogicRef.current.makeMove_Black();
+  
       if (!blackMoveResult || !blackMoveResult.move) {
+        // Handle error or make a random move
         console.log('AI failed to make a move for Black, making random move.');
         const randomMove = gameLogicRef.current.selectRandomMove();
         blackMoveResult = gameLogicRef.current.makeMove_Black(randomMove);
@@ -456,6 +437,12 @@ const ChessTutorApp = () => {
           return;
         }
       }
+
+      setTimeout(() => {
+        setBoardState([...gameLogicRef.current.getBoardState()]);
+        fetchAdviceAfterBlackMove();
+      }, 500); // Delay of 500 ms
+
       if (gameLogicRef.current.chess.isCheckmate()) {        // If it's checkmate after Black's move, alert the user and reload
         Alert.alert('Game Over', 'Checkmate! The game has ended.', [
           { text: 'OK', onPress: () => handleReload() },
@@ -525,10 +512,49 @@ const ChessTutorApp = () => {
       console.log('Error during move:', error);
       Alert.alert('Error', 'Error processing move, please try again.', [{ text: 'OK' }]);
       setIllegalMoveSquares({ from: fromSquare, to: toSquare });
-      setIsThinking(false);
     }
   };
+  
+  const fetchAdviceAfterBlackMove = async () => {
+        setTimeout(() => {setIsThinking(true);}, 500);
+    // Display the 'thinking' animation
+    
+  
+    // Fetch advice from the AI
+    const apiName = 'Claude_stream';
+    const advice = await gameLogicRef.current.getAdviceFromAPI(apiName);
+  
+    setIsThinking(false);
+  
+    if (!advice) {
+      setPositionAnalysis('');
+      setRecommendedNextMoves([]);
+      return;
+    }
+  
+    gameLogicRef.current.latestAdvice = advice;
+  
+    // Process the advice
+    const processedAdvice = renderMoveAdvice(advice);
+    setRecommendedNextMoves(processedAdvice);
+    setDisplayedArrows(
+      processedAdvice.map((move) => ({
+        from: move.from,
+        to: move.to,
+        arrowOpacity: move.arrowOpacity,
+      }))
+    );
+    setPositionAnalysis(advice.positionAnalysis);
+  
+    // Update analysis complete flag
+    analysisComplete.current = true;
+  
+    // Scroll to the top of the ScrollView
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  };
+  
 
+  
   function renderMoveAdvice(advice) {
     return advice.recommendedNextMoves.map((move) => {
       let arrowOpacity = 1.0;
@@ -686,14 +712,23 @@ const ChessTutorApp = () => {
                   <View>
                     <Text style={styles.analysisText}>{positionAnalysis}</Text>
                   </View>
-                ) : null}
-              </View>
-          </Animated.View>
-        </ScrollView>
-        {/* Thinking overlay */}
 
-
-        {isThinking && (
+                </View>
+              ) : (
+                <Text style={styles.noDataText}>Make your move.</Text>
+              )}
+              {positionAnalysis ? (
+                <View>
+                    <View>
+                      <Text style={styles.analysisTitle}>Game Analysis:</Text>
+                      <Text style={styles.analysisText}>{positionAnalysis}</Text>
+                    </View>
+                </View>
+              ) : null}
+            </Animated.View>
+          </ScrollView>
+        </View>
+       {isThinking && (
           <View style={styles.overlay} pointerEvents="none">
             <Text style={styles.overlayText}>Thinking...</Text>
           </View>

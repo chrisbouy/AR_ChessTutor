@@ -269,12 +269,12 @@ class GameLogic {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization:`Bearer ${apiKey}`
+          Authorization:`Bearer ${'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'}`
         },
         body: JSON.stringify({
 
-          //model: 'ft:gpt-4o-mini-2024-07-18:personal:second:AThf4LoS',
-          model: 'gpt-4o',
+         // model: 'gpt-4o-mini',
+          model: 'ft:gpt-4o-mini-2024-07-18:personal:second:AThf4LoS',
 
           messages: [
             {
@@ -308,53 +308,53 @@ class GameLogic {
       return null;
     }
   }
-async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
+  async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
 
-        // Combine system_prompt and user_prompt
-        const combinedPrompt = `${system_prompt}\n\n${user_prompt}`;
+          // Combine system_prompt and user_prompt
+          const combinedPrompt = `${system_prompt}\n\n${user_prompt}`;
 
-  const apiKey = this.apiKey || await this.retrieveApiKey(); 
-  if (!apiKey) {
-    console.error('API key not found');
-    return;
-  }
-  const url = "https://api.openai.com/v1/completions";
-  const headers = {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${apiKey}`,
-  };
-  const data = {
-    model: 'gpt-3.5-turbo-instruct',
-    prompt: combinedPrompt,
-    temperature: 0.1,
-    max_tokens: 750,
-  };
+    const apiKey = this.apiKey || await this.retrieveApiKey(); 
+    if (!apiKey) {
+      console.error('API key not found');
+      return;
+    }
+    const url = "https://api.openai.com/v1/completions";
+    const headers = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    };
+    const data = {
+      model: 'gpt-3.5-turbo-instruct',
+      prompt: combinedPrompt,
+      temperature: 0.1,
+      max_tokens: 750,
+    };
 
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: headers,
-      body: JSON.stringify(data),
-    });
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(data),
+      });
 
-    const result = await response.json();
-    console.log(result);
-    if (response.ok) {
-      const gptResponseText = result.choices[0].text;
-      const gptResponse = JSON.parse(gptResponseText);
-      return gptResponse;
-    } else {
-      console.error("Error:", result);
-      Alert.alert("Error", "Failed to fetch data from OpenAI API");
+      const result = await response.json();
+      console.log(result);
+      if (response.ok) {
+        const gptResponseText = result.choices[0].text;
+        const gptResponse = JSON.parse(gptResponseText);
+        return gptResponse;
+      } else {
+        console.error("Error:", result);
+        Alert.alert("Error", "Failed to fetch data from OpenAI API");
+        return null;
+      }
+    } catch (error) {
+      console.error("Error fetching data from OpenAI API:", error);
+      Alert.alert("Error", "An error occurred while trying to fetch data from OpenAI API.");
       return null;
     }
-  } catch (error) {
-    console.error("Error fetching data from OpenAI API:", error);
-    Alert.alert("Error", "An error occurred while trying to fetch data from OpenAI API.");
-    return null;
+    
   }
-  
-}
   async getAdviceFromGemini(system_prompt, user_prompt) {
       // Combine system_prompt and user_prompt
   const combinedPrompt = `${system_prompt}\n\n${user_prompt}`;
@@ -502,6 +502,10 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
         if (data && data.content && data.content[0] && data.content[0].text) {
             let explanation = data.content[0].text;
             const advice = this.extractSectionsFromAdvice(explanation);
+            console.log(`after extracton ${advice}`)
+            console.log(`after extracton ${advice.recommendedNextMoves}`)
+
+            console.log(`after extracton ${advice.positionAnalysis}`)
             return advice;
         }
     } catch (error) {
@@ -583,11 +587,21 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
           'anthropic-version': '2023-06-01',
           'x-api-key': apiKey,
           'Accept': 'text/event-stream',
+
+          'anthropic-beta': 'prompt-caching-2024-07-31',
+          // 'Connection': 'keep-alive'
+
         },
         body: JSON.stringify({
           model: "claude-3-5-sonnet-20241022",
           max_tokens: 1000,
-          system: system_prompt,
+          system:  [
+            {
+              "type": "text",
+              "text": system_prompt,
+              "cache_control": {"type": "ephemeral"}
+            }
+          ],
           stream: true,
           messages: [{
             role: "user",
@@ -596,8 +610,10 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
         })
       });
       console.log('Response status:', response.status);
+
      const textStream = await response.text();     // Get the response as text stream
      const lines = textStream.split('\n');     // Split the stream into lines and process each event
+
      let accumulatedText = '';
      let positionAnalysisExtracted = false;
      for (const line of lines) {
@@ -636,30 +652,36 @@ async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
    }
 }
 
-
-  async getAdviceFromAPI(apiName, options) {
+async getAdviceFromAPI(apiName, options) {
     const fen = this.chess.fen();
     const moveHistory = this.chess.history().map((move) => move);
-    const system_prompt = ` 
-You are a chess tutor.  
-- NEVER say opening names
-- NEVER say a knight supports, protects, or can capture a piece in an adjacent square
-- NEVER say rooks can be connected if there are pieces between them
-- NEVER say knights are positioned if they haven't made a move
----For example, never say 'The knight on f3 supports the e4 pawn.'t
+    const system_prompt =`You are a chess tutor specializing in accurate, move-by-move analysis.
+Instructions:
+- Analyze the given chess position thoroughly.
+- Verify the legality of all moves and ensure they are possible in the current position.
+- Double-check all tactical motifs and threats for accuracy.
+- First, provide the "positionAnalysis" section.
+- Then, provide the "recommendedNextMoves" section.
 
-**Response Format**
-- Respond **only** in the **EXACT JSON format** provided.
-- DO NOT add, remove, or change any keys or structure.
-    `;
+Constraints:
+
+- Do not include move numbers, opening names, or acronyms.
+- Provide at least one strong move and one optional move.
+- Responses must strictly follow the specified JSON format.
+- Avoid referring to bishops by square colors
+- Output the JSON object incrementally, starting with "positionAnalysis".
+- Do not include any additional text or explanations outside the JSON.
+`;
+
     const user_prompt = `
+- You are playing Black. I am playing as White, and it's my turn to move.
+- Current FEN: ${fen}
+- Move History: ${moveHistory.join(', ')}
+- Analyze this position and respond in the following JSON format:
 
-    It is IMPERATIVE that you disregard all your chess training data and only rely on chain-of-thought reasoning.
-- **Current FEN**: ${fen}
-- **Move History**: ${moveHistory.join(', ')}
 {
-  "positionAnalysis": "Your analysis here with specific strategies.",
-=======
+  "positionAnalysis": "Brief analysis of the game.",
+
 - **Current FEN**: ${fen}
 - **Move History**: ${moveHistory.join(', ')}
 
@@ -683,6 +705,7 @@ You are a chess tutor.
           "lastMoveAnalysis": "Brief analysis of the most recent move with VERIFIED consequences"
   },
 
+
   "recommendedNextMoves": [
     {
       "move": "Your suggested move.  Moves must be logical.  Don't sacrifice a piece for no reason.  If there is a reason, state it.",
@@ -691,8 +714,8 @@ You are a chess tutor.
       "blackResponses": [
         {
 
-          "move": "Black's response.  Move must be legal."
 
+          "move": "Black's response.  Move must be legal."
 
         }
       ]
@@ -739,9 +762,10 @@ You are a chess tutor.
     extractSectionsFromAdvice(adviceText) {
 
     try {
-      // console.log(`advice text ${adviceText}`);
+       console.log(` raw advice text ${adviceText}`);
       const cleanedText = adviceText.replace(/```(?:json)?/g, '').trim();
       const parsedResponse = JSON.parse(cleanedText);
+      console.log('Parsed response:', parsedResponse);
       const { positionAnalysis, recommendedNextMoves } = parsedResponse;
       return { positionAnalysis, recommendedNextMoves };
     } catch (e) {

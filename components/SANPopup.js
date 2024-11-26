@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
     popupContainer: {
         backgroundColor: '#333',
         padding: 15,
-        borderRadius: 10,
+        borderRadius: 20,
         marginHorizontal: 20,
     },
     descriptionText: {

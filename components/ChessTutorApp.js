@@ -1,6 +1,4 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-// Import React and necessary hooks
-
 import {
   View,
   useWindowDimensions,
@@ -12,108 +10,46 @@ import {
   SafeAreaView,
   Alert,
 } from 'react-native';
-// Import React Native components
-
 import ChessBoard2D from './ChessBoard2D';
-// Import custom ChessBoard2D component
-
 import GameLogic from '../GameLogic';
-// Import GameLogic class
-
 import SANPopup from './SANPopup.js';
-// Import SANPopup component for displaying move descriptions
-
 import SplashScreen from 'react-native-splash-screen';
-// Import SplashScreen to hide the splash screen once the app is ready
 
 const ChessTutorApp = () => {
   useEffect(() => {
     SplashScreen.hide();
   }, []);
-  // Hide the splash screen when the component mounts
 
   const gameLogicRef = useRef(new GameLogic());
-  // Use a ref to hold the GameLogic instance
 
   const [boardState, setBoardState] = useState(gameLogicRef.current.getBoardState());
-  // State for the current board state
-
   const [selectedSquare, setSelectedSquare] = useState(null);
-  // State for the currently selected square
-
   const [recommendedNextMoves, setRecommendedNextMoves] = useState([]);
-  // State for the recommended next moves from the AI
-
   const [positionAnalysis, setPositionAnalysis] = useState('');
-
   const [illegalMoveSquares, setIllegalMoveSquares] = useState(null);
-  // State for illegal moves (to highlight them)
-
   const [advisedMove, setAdvisedMove] = useState(null);
-  // State for the advised move
-
   const scrollViewRef = useRef(null);
-  // Ref for the ScrollView to allow scrolling to the top
-
   const textOpacity = useRef(new Animated.Value(1)).current;
-  // Animated value for text opacity
-
   const thinkingOpacity = useRef(new Animated.Value(0)).current;
-  // Animated value for thinking overlay opacity
-
   const analysisComplete = useRef(false);
-  // Ref to indicate whether the analysis is complete
-
-  const positionAnalysisExtracted = useRef(false);
-  // Ref to indicate whether the position analysis has been extracted
-
   const [possibleMoves, setPossibleMoves] = useState([]);
-  // State for possible moves (legal moves for the selected piece)
-
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  // Get window dimensions for responsive design
-
   const chessboardSize = Math.min(windowWidth, windowHeight) * 0.9;
-  // Calculate chessboard size based on window dimensions
-
   const [isLandscape, setIsLandscape] = useState(false);
-  // State to detect if the device is in landscape mode
-
-  const guidelineBaseWidth = 350; // Base width for scaling fonts
-
+  const guidelineBaseWidth = 350;
   const scaleFont = (size) => (windowWidth / guidelineBaseWidth) * size;
-  // Function to scale fonts based on window width
-
   const [movesLeft, setMovesLeft] = useState(12);
-  // State for the number of moves left (starting from 12 half-moves)
-
   const [isThinking, setIsThinking] = useState(false);
-  // State to indicate if the AI is thinking
-
   const [popupVisible, setPopupVisible] = useState(false);
-  // State to control the visibility of the SANPopup
-
   const [popupDescription, setPopupDescription] = useState('');
-  // State for the description text in the SANPopup
-
   const [displayedArrows, setDisplayedArrows] = useState([]);
-  // State for the arrows displayed on the chessboard
 
-  // Function to initialize API keys securely
-  async function initializeApiKeys() {
-    await gameLogicRef.current.removeApiKey();
-    // Remove any existing API key
-
-    await gameLogicRef.current.storeApiKey('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');
-    // Store your actual API key securely (replace 'YOUR_API_KEY_HERE' with your actual API key)
-  }
-
+  // Initialize the engine when the component mounts
   useEffect(() => {
-    initializeApiKeys();
+    gameLogicRef.current.initializeEngine();
+    fetchAdviceAfterBlackMove();
   }, []);
-  // Initialize API keys when the component mounts
 
-  // Memoized styles for performance optimization
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -192,7 +128,7 @@ const ChessTutorApp = () => {
           borderRadius: 8,
           overflow: 'hidden',
           alignSelf: 'center',
-          marginBottom: 25,
+          marginBottom: 5,
         },
         tableRow: {
           flexDirection: 'row',
@@ -205,13 +141,12 @@ const ChessTutorApp = () => {
           fontSize: 18,
           color: '#aec4e8',
           textAlign: 'center',
-          fontSize:20,
+          fontSize: 20,
           borderRightWidth: 1,
           borderColor: 'white',
         },
         adviceColumn: {
           width: '40%',
-
         },
         responseColumn: {
           width: '60%',
@@ -238,9 +173,8 @@ const ChessTutorApp = () => {
           color: '#aec4e8',
           marginRight: 5,
           marginBottom: 5,
-          marginLeft:5,
-          fontSize:20,
-          
+          marginLeft: 5,
+          fontSize: 20,
         },
         overlay: {
           position: 'absolute',
@@ -277,44 +211,32 @@ const ChessTutorApp = () => {
           backgroundColor: '#191d24',
         },
         tableFooter: {
-          paddingVertical: 10, // Adjust as needed
+          paddingVertical: 10,
           alignItems: 'center',
-          backgroundColor: '#191d24', // Optional
-          borderWidth: 0,       
-         },
+          backgroundColor: '#191d24',
+          borderWidth: 0,
+        },
         footerText: {
           fontSize: 16,
           color: '#aec4e8',
-          fontStyle: 'italic', // Optional
-          fontWeight: 'bold',  // Optional
+          fontStyle: 'italic',
+          fontWeight: 'bold',
         },
       }),
     [windowWidth]
   );
-  // Styles depend on windowWidth and are recalculated when it changes
 
   const handleMovePress = (sanMove, color, reasoning, respondingTo = null) => {
-    // Function to handle when a move in the advice table is pressed
-
     const description = gameLogicRef.current.convertMoveToDescription(sanMove, color);
-    // Convert the SAN move to a human-readable description
-
     const displayText = respondingTo
-      ? `Response to White's ${respondingTo}:\n\n${description}\n\n${reasoning}`
+      ? `Response to White's ${respondingTo}:\n\n${description}`
       : `${description}\n\n${reasoning}`;
-    // Prepare the text to display in the popup
 
     setPopupDescription(displayText);
-    // Set the popup description
-
     setPopupVisible(true);
-    // Show the popup
 
     if (color === 'w') {
-      // If the move is by White
-
-      const moveObj = recommendedNextMoves.find((move) => move.originalMove === sanMove);
-      // Find the move object in recommendedNextMoves
+      const moveObj = recommendedNextMoves.find((move) => move.move === sanMove);
 
       if (moveObj && moveObj.from && moveObj.to) {
         setDisplayedArrows([
@@ -324,148 +246,109 @@ const ChessTutorApp = () => {
             arrowOpacity: moveObj.arrowOpacity,
           },
         ]);
-        // Set the arrow to display the move
       }
-    } else if (color === 'b') {
-      // If the move is by Black
-
-      const advisedMoveObj = recommendedNextMoves.find((move) => move.originalMove === respondingTo);
-      // Find the advised move object
-
-      const responseMoveObj = advisedMoveObj.blackResponses.find((response) => response.move === sanMove);
-      // Find the black response move object
-
-      let arrows = [];
-      if (advisedMoveObj && advisedMoveObj.from && advisedMoveObj.to) {
-        arrows.push({
-          from: advisedMoveObj.from,
-          to: advisedMoveObj.to,
-          arrowOpacity: advisedMoveObj.arrowOpacity,
-        });
-        // Add the advised move arrow
-      }
-      if (responseMoveObj && responseMoveObj.from && responseMoveObj.to) {
-        arrows.push({
-          from: responseMoveObj.from,
-          to: responseMoveObj.to,
-          arrowOpacity: 1.0, // Full opacity for Black's move
-        });
-        // Add the black response arrow
-      }
-      setDisplayedArrows(arrows);
-      // Set the arrows to display
     }
   };
 
-  const handleReload = () => {    // Function to handle the reload action
-    gameLogicRef.current = new GameLogic();    // Reset the GameLogic instance
-    setBoardState(gameLogicRef.current.getBoardState());    // Reset the board state
-    setSelectedSquare(null);    // Deselect any selected square
-    setIllegalMoveSquares(null);    // Clear illegal move highlights
-    setAdvisedMove(null);    // Clear advised move
+  const handleReload = () => {
+    gameLogicRef.current = new GameLogic();
+    gameLogicRef.current.initializeEngine();
+    setBoardState(gameLogicRef.current.getBoardState());
+    setSelectedSquare(null);
+    setIllegalMoveSquares(null);
+    setAdvisedMove(null);
     setPositionAnalysis('');
-    setRecommendedNextMoves([]);    // Clear recommended next moves
-    setDisplayedArrows([]);    // Clear displayed arrows
-    setPossibleMoves([]);    // Clear possible moves
-    textOpacity.setValue(1);    // Reset text opacity
-    thinkingOpacity.setValue(0);    // Reset thinking overlay opacity
-    analysisComplete.current = false;    // Set analysis as incomplete
-    positionAnalysisExtracted.current = false;    // Set position analysis as not extracted
-    setMovesLeft(12);    // Reset moves left
+    setRecommendedNextMoves([]);
+    setDisplayedArrows([]);
+    setPossibleMoves([]);
+    textOpacity.setValue(1);
+    thinkingOpacity.setValue(0);
+    analysisComplete.current = false;
+    setMovesLeft(12);
+    fetchAdviceAfterBlackMove();
   };
 
-  const onSquarePress = (position) => {    // Function to handle when a square is pressed
-    if (isThinking) {      // Do nothing if AI is thinking
+  const onSquarePress = (position) => {
+    if (isThinking) {
       return;
     }
-    const selectedPiece = gameLogicRef.current.getPieceAt(position);    // Get the piece at the pressed position
-    if (!selectedSquare) {      // No piece is currently selected
-      if (selectedPiece && selectedPiece.color === 'w') {        // If the selected square has a white piece
-        setSelectedSquare(position);        // Set the selected square
-        const legalMoves = gameLogicRef.current.getLegalMoves(position);        // Get legal moves for the selected piece
-        const targetSquares = legalMoves.map((move) => move.to);        // Extract target squares
-        setPossibleMoves(targetSquares);        // Highlight possible moves
+    const selectedPiece = gameLogicRef.current.getPieceAt(position);
+    if (!selectedSquare) {
+      if (selectedPiece && selectedPiece.color === 'w') {
+        setSelectedSquare(position);
+        const legalMoves = gameLogicRef.current.getLegalMoves(position);
+        const targetSquares = legalMoves.map((move) => move.to);
+        setPossibleMoves(targetSquares);
       }
-    } else {      // A piece is already selected
-      if (selectedSquare === position) {        // User tapped the same square again
-        setSelectedSquare(null);        // Deselect the square
-        setPossibleMoves([]);        // Clear possible moves
-      } else if (selectedPiece && selectedPiece.color === 'w') {        // User selected a different white piece
-        setSelectedSquare(position);        // Update the selected square
-        const legalMoves = gameLogicRef.current.getLegalMoves(position);        // Get legal moves for the new piece
-        const targetSquares = legalMoves.map((move) => move.to);        // Extract target squares
-        setPossibleMoves(targetSquares);        // Highlight possible moves
-      } else {        // Attempt to make a move
-        onMove(selectedSquare, position);        // Call onMove with from and to squares
-        setSelectedSquare(null);        // Deselect the square
-        setPossibleMoves([]);        // Clear possible moves
+    } else {
+      if (selectedSquare === position) {
+        setSelectedSquare(null);
+        setPossibleMoves([]);
+      } else if (selectedPiece && selectedPiece.color === 'w') {
+        setSelectedSquare(position);
+        const legalMoves = gameLogicRef.current.getLegalMoves(position);
+        const targetSquares = legalMoves.map((move) => move.to);
+        setPossibleMoves(targetSquares);
+      } else {
+        onMove(selectedSquare, position);
+        setSelectedSquare(null);
+        setPossibleMoves([]);
       }
     }
   };
 
   const onMove = async (fromSquare, toSquare) => {
     try {
-      // Make the player's move
       const playerMove = gameLogicRef.current.makeMove({ from: fromSquare, to: toSquare });
       if (!playerMove) {
         setIllegalMoveSquares({ from: fromSquare, to: toSquare });
         return;
       }
-  
-      // Update the board state to reflect the player's move
+
       setBoardState([...gameLogicRef.current.getBoardState()]);
       setMovesLeft((prevMoves) => prevMoves - 1);
-  
-      // Check for game end conditions
+
       if (gameLogicRef.current.chess.isCheckmate()) {
         Alert.alert('Game Over', 'Checkmate! The game has ended.', [{ text: 'OK', onPress: () => handleReload() }]);
         return;
       }
       setDisplayedArrows([]);
-      // Generate Black's move (this might take time)
-      const blackMoveResult = await gameLogicRef.current.makeMove_Black();
-  
-      if (!blackMoveResult || !blackMoveResult.move) {
-        // Handle error or make a random move
-        console.log('AI failed to make a move for Black, making random move.');
-        const randomMove = gameLogicRef.current.selectRandomMove();
-        blackMoveResult = gameLogicRef.current.makeMove_Black(randomMove);
-        if (!blackMoveResult) {
-          Alert.alert("Computer's move failed.", 'Please try again.', [{ text: 'OK' }]);
-          return;
-        }
-      }
+
+      setIsThinking(true);
+
       setTimeout(() => {
-        setBoardState([...gameLogicRef.current.getBoardState()]);
-        fetchAdviceAfterBlackMove();
-      }, 500); // Delay of 500 ms
+        const blackMoveResult = gameLogicRef.current.makeMove_Black();
+        if (!blackMoveResult || !blackMoveResult.move) {
+          console.log('Engine failed to make a move for Black, making random move.');
+          const randomMove = gameLogicRef.current.selectRandomMove();
+          gameLogicRef.current.chess.move(randomMove);
+          setBoardState([...gameLogicRef.current.getBoardState()]);
+          fetchAdviceAfterBlackMove();
+          setIsThinking(false);
+        } else {
+          setBoardState([...gameLogicRef.current.getBoardState()]);
+          fetchAdviceAfterBlackMove();
+          setIsThinking(false);
+        }
+      }, 500);
     } catch (error) {
       console.log('Error during move:', error);
       Alert.alert('Error', 'Error processing move, please try again.', [{ text: 'OK' }]);
       setIllegalMoveSquares({ from: fromSquare, to: toSquare });
     }
   };
-  
-  const fetchAdviceAfterBlackMove = async () => {
-        setTimeout(() => {setIsThinking(true);}, 500);
-    // Display the 'thinking' animation
-    
-  
-    // Fetch advice from the AI
-    const apiName = 'Claude_stream';
-    const advice = await gameLogicRef.current.getAdviceFromAPI(apiName);
-  
-    setIsThinking(false);
-  
+
+  const fetchAdviceAfterBlackMove = () => {
+    const advice = gameLogicRef.current.fetchAdviceAfterBlackMove();
+
     if (!advice) {
       setPositionAnalysis('');
       setRecommendedNextMoves([]);
       return;
     }
-  
+
     gameLogicRef.current.latestAdvice = advice;
-  
-    // Process the advice
+
     const processedAdvice = renderMoveAdvice(advice);
     setRecommendedNextMoves(processedAdvice);
     setDisplayedArrows(
@@ -476,16 +359,12 @@ const ChessTutorApp = () => {
       }))
     );
     setPositionAnalysis(advice.positionAnalysis);
-  
-    // Update analysis complete flag
+
     analysisComplete.current = true;
-  
-    // Scroll to the top of the ScrollView
+
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
-  
 
-  
   function renderMoveAdvice(advice) {
     return advice.recommendedNextMoves.map((move) => {
       let arrowOpacity = 1.0;
@@ -496,58 +375,27 @@ const ChessTutorApp = () => {
           moveLabel = `${move.move} (STRONG)`;
           break;
         case 'OPTIONAL':
-          arrowOpacity = 0.1;
+          arrowOpacity = 0.5;
           moveLabel = `${move.move} (OPTIONAL)`;
           break;
         default:
           arrowOpacity = 1.0;
       }
 
-      // Get move details for the advised move
-      const moveDetails = gameLogicRef.current.getMoveDetailsFromSAN(move.originalMove || move.move);
-      let from = null;
-      let to = null;
-      let newFEN = null;
-      if (moveDetails) {
-        from = moveDetails.from;
-        to = moveDetails.to;
-
-        // Make the advised move to get the new FEN
-        gameLogicRef.current.chess.move(move.originalMove || move.move);
-        newFEN = gameLogicRef.current.chess.fen();
-        gameLogicRef.current.chess.undo();
-      }
-
-      const enrichedBlackResponses = (move.blackResponses || []).map((response) => {
-        // Get move details for the black response in the new position
-        const responseDetails = gameLogicRef.current.getMoveDetailsFromSAN(response.move, newFEN);
-        let responseFrom = null;
-        let responseTo = null;
-        if (responseDetails) {
-          responseFrom = responseDetails.from;
-          responseTo = responseDetails.to;
-        }
-        return {
-          ...response,
-          from: responseFrom,
-          to: responseTo,
-        };
-      });
       return {
         ...move,
         move: moveLabel,
         arrowOpacity: arrowOpacity,
         originalMove: move.move,
-        from: from,
-        to: to,
-        blackResponses: enrichedBlackResponses,
+        from: move.from,
+        to: move.to,
+        blackResponses: [], // Not generating black responses here
       };
     });
   }
 
   useEffect(() => {
     setIsLandscape(windowWidth > windowHeight);
-    // Detect if the device is in landscape mode
   }, [windowWidth, windowHeight]);
 
   if (isLandscape) {
@@ -614,16 +462,7 @@ const ChessTutorApp = () => {
                           </TouchableOpacity>
                         </View>
                         <View style={[styles.tableCell, { flexDirection: 'row', flexWrap: 'wrap' }]}>
-                          {move.blackResponses.map((response, idx) => (
-                            <TouchableOpacity
-                              key={idx}
-                              onPress={() =>
-                                handleMovePress(response.move, 'b', response.threat, move.originalMove)
-                              }
-                            >
-                              <Text style={styles.tappableMove}>{response.move}</Text>
-                            </TouchableOpacity>
-                          ))}
+                          {/* Black responses are not generated in this setup */}
                         </View>
                       </View>
                     ))}
@@ -638,10 +477,10 @@ const ChessTutorApp = () => {
               )}
               {positionAnalysis ? (
                 <View>
-                    <View>
-                      <Text style={styles.analysisTitle}>Game Analysis:</Text>
-                      <Text style={styles.analysisText}>{positionAnalysis}</Text>
-                    </View>
+                  <View>
+                    <Text style={styles.analysisTitle}>Game Analysis:</Text>
+                    <Text style={styles.analysisText}>{positionAnalysis}</Text>
+                  </View>
                 </View>
               ) : null}
             </Animated.View>
@@ -657,8 +496,8 @@ const ChessTutorApp = () => {
         visible={popupVisible}
         description={popupDescription}
         onClose={() => {
-          setPopupVisible(false);          // Close the popup
-          setDisplayedArrows(          // Restore original advice arrows
+          setPopupVisible(false);
+          setDisplayedArrows(
             recommendedNextMoves.map((move) => ({
               from: move.from,
               to: move.to,
@@ -670,4 +509,5 @@ const ChessTutorApp = () => {
     </SafeAreaView>
   );
 };
+
 export default ChessTutorApp;

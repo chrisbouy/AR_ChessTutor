@@ -47,7 +47,7 @@ const ChessTutorApp = () => {
   // Initialize the engine when the component mounts
   useEffect(() => {
     gameLogicRef.current.initializeEngine();
-    fetchAdviceAfterBlackMove();
+    // fetchAdviceAfterBlackMove();
   }, []);
 
   const styles = useMemo(
@@ -263,9 +263,10 @@ const ChessTutorApp = () => {
     setPossibleMoves([]);
     textOpacity.setValue(1);
     thinkingOpacity.setValue(0);
+    setIsThinking(false);
     analysisComplete.current = false;
     setMovesLeft(12);
-    fetchAdviceAfterBlackMove();
+    // fetchAdviceAfterBlackMove();
   };
 
   const onSquarePress = (position) => {

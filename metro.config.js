@@ -19,7 +19,15 @@
   
 // metro.config.js
 const { getDefaultConfig } = require('@react-native/metro-config');
-
+// metro.config.js
+const path = require('path');
 const config = getDefaultConfig(__dirname);
+
+module.exports = {
+  watchFolders: [
+    // Include additional directories to watch
+    path.resolve(__dirname, 'engines'),
+  ],
+};
 
 module.exports = config;

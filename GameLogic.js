@@ -1,12 +1,12 @@
 import { Chess } from 'chess.js';
 import { Alert } from 'react-native';
-import Engine from './engines/wukong';
+import Engine from './engines/wukong.js';
 
 class GameLogic {
   constructor() {
-    this.chess = new Chess();
+    this.chess = new Chess();   
     this.latestAdvice = null;
-    this.engine = null; // Will be initialized later
+    this.engine = null; // Will be initialized later   
   }
 
   initializeEngine() {
@@ -44,6 +44,7 @@ class GameLogic {
   makeMove(move) {
     try {
       const result = this.chess.move(move);
+      this.engine.setFEN(this.chess.fen());
       return result || null;
     } catch (error) {
       return null;
@@ -60,103 +61,164 @@ class GameLogic {
   getLegalMoves(position) {
     return this.chess.moves({ square: position, verbose: true });
   }
-
   getBestMovesFromEngine() {
     const fen = this.chess.fen();
     this.engine.setFEN(fen);
-    const depth = 4;
-    const topMoves = this.engine.searchPosition(depth, 3);
-
-    const processedMoves = topMoves.map((moveInfo) => {
-      const move = moveInfo.move;
-      const fromSquare = Object.keys(this.engine.SQUARES).find(
-        (key) => this.engine.SQUARES[key] === move.from
-      );
-      const toSquare = Object.keys(this.engine.SQUARES).find(
-        (key) => this.engine.SQUARES[key] === move.to
-      );
-      const promotion = move.promotion ? this.engine.PIECE_SYMBOLS[move.promotion] : '';
-      const uciMove = fromSquare + toSquare + promotion;
-      const sanMove = this.convertMoveToSAN(uciMove);
-      return {
-        move: sanMove,
-        score: moveInfo.score,
-        attributes: moveInfo.attributes,
-        from: fromSquare,
-        to: toSquare,
-        uci: uciMove,
-      };
-    });
-    return processedMoves;
-  }
-
-  convertMoveToSAN(uciMove) {
-    const move = this.chess.move(uciMove, { sloppy: true });
-    if (move) {
-      const san = move.san;
-      this.chess.undo();
-      return san;
+    const depth = 4; // Increased depth for better analysis
+    
+    const moves = this.engine.searchPosition(depth);
+    if (!moves || moves.length === 0) return [];
+    
+    return moves.map(moveInfo => {
+        if (!moveInfo || !moveInfo.move) return null;
+        
+        // Get the squares from wukong's SQUARES object directly
+        const from = Object.keys(this.engine.SQUARES).find(
+            key => this.engine.SQUARES[key] === moveInfo.move.from
+        );
+        const to = Object.keys(this.engine.SQUARES).find(
+            key => this.engine.SQUARES[key] === moveInfo.move.to
+        );
+        
+        if (!from || !to) return null;
+        
+        // Validate the move with chess.js before returning it
+        try {
+            const testMove = { from, to };
+            if (moveInfo.move.promotion) {
+                testMove.promotion = this.engine.PIECE_SYMBOLS[moveInfo.move.promotion].toLowerCase();
+            }
+            
+            // Test if move is legal
+            const testChess = new Chess(this.chess.fen());
+            if (!testChess.move(testMove)) return null;
+            
+            return {
+                move: from + to + (testMove.promotion || ''),
+                score: moveInfo.score,
+                attributes: moveInfo.attributes,
+                from: from,
+                to: to
+            };
+        } catch (e) {
+            return null;
+        }
+    }).filter(move => move !== null);
+}
+  
+  indexToAlgebraic(index) {
+    const file = index & 7;
+    const rank = 8 - (index >> 4); // Ensure rank is calculated correctly
+    if (file < 0 || file > 7 || rank < 1 || rank > 8) {
+        console.log(`Invalid index for algebraic conversion: ${index}`);
+        return null;
     }
-    return uciMove;
-  }
+    return 'abcdefgh'[file] + rank;
+}
 
-  makeMove_Black() {
-    try {
-      const bestMoves = this.getBestMovesFromEngine();
-      if (bestMoves.length === 0) {
-        return null;
-      }
-      const bestMove = bestMoves[0];
-      const moveResult = this.chess.move(bestMove.move, { sloppy: true });
-      if (moveResult) {
-        return {
-          move: moveResult,
-          boardState: this.getBoardState(),
-          status: this.getGameStatus(),
-          uci: moveResult.from + moveResult.to,
-          san: moveResult.san,
-        };
-      } else {
-        return null;
-      }
-    } catch (error) {
-      console.log('Error in makeMove_Black:', error);
+  
+  
+
+
+ convertMoveToSAN(move) {
+  const fromSquare = this.indexToAlgebraic[move.from];
+  const toSquare = this.indexToAlgebraic[move.to];
+  const promotion = move.promotion ? pieceSymbols[move.promotion] : '';
+
+  return fromSquare + toSquare + promotion;
+}
+
+
+makeMove_Black() {
+  const moves = this.getBestMovesFromEngine();
+  
+  if (!moves.length) {
+      console.log('No valid engine moves available');
       return null;
-    }
   }
+
+  // Sort moves by score to ensure we try the best moves first
+  moves.sort((a, b) => b.score - a.score);
+
+  // Try each move
+  for (const moveInfo of moves) {
+      try {
+          const moveObj = {
+              from: moveInfo.from,
+              to: moveInfo.to
+          };
+          
+          if (moveInfo.move.length > 4) { // Has promotion
+              moveObj.promotion = moveInfo.move[4];
+          }
+          
+          const moveResult = this.chess.move(moveObj);
+          if (moveResult) {
+              // Update engine's position
+              this.engine.setFEN(this.chess.fen());
+              
+              return {
+                  move: moveResult,
+                  boardState: this.getBoardState(),
+                  status: this.getGameStatus()
+              };
+          }
+      } catch (e) {
+          console.log('Move failed:', moveInfo.move);
+      }
+  }
+
+  return null;
+}
+
 
   selectRandomMove() {
     const possibleMoves = this.chess.moves();
+    console.log(`Possible random moves: ${JSON.stringify(possibleMoves)}`);
+
     if (possibleMoves.length === 0) {
       console.log('No legal moves available.');
       return null;
     }
     const randomIndex = Math.floor(Math.random() * possibleMoves.length);
+    const randomMove = possibleMoves[randomIndex];
+    console.log(`Selected random move: ${randomMove}`);
+  
     return possibleMoves[randomIndex];
   }
 
   getAdvice() {
     const bestMoves = this.getBestMovesFromEngine();
     const evaluation = this.engine.evaluate();
-    const advice = {
-      positionAnalysis: `Engine evaluation: ${evaluation}`,
-      recommendedNextMoves: bestMoves.map((move) => ({
-        move: move.move,
-        priority: 'STRONG',
-        reasoning: move.attributes.join(', ') || 'No specific reasoning.',
-        blackResponses: [],
-        from: move.from,
-        to: move.to,
-      })),
-    };
-    return advice;
-  }
 
+    // Filter out any moves that aren't legal
+    const legalMoves = bestMoves.filter(move => {
+        try {
+            const testChess = new Chess(this.chess.fen());
+            return testChess.move({from: move.from, to: move.to});
+        } catch (e) {
+            return false;
+        }
+    });
+
+    return {
+        positionAnalysis: `Engine evaluation: ${evaluation}`,
+        recommendedNextMoves: legalMoves.map((move) => ({
+            move: move.move,
+            priority: move.score > 0 ? 'STRONG' : 'MODERATE',
+            reasoning: move.attributes.join(', ') || 'Position improvement',
+            blackResponses: [],
+            from: move.from,
+            to: move.to,
+        }))
+    };
+}
   fetchAdviceAfterBlackMove() {
     const advice = this.getAdvice();
     return advice;
   }
 
+  
   convertMoveToDescription(sanMove, color) {
     const originalFEN = this.chess.fen();
 
@@ -180,7 +242,7 @@ class GameLogic {
     if (move) {
       if (move.flags.includes('k') || move.flags.includes('q')) {
         const side = move.san === 'O-O' ? 'king-side' : 'queen-side';
-        const from = move.from.toUpperCase();
+        const from = move.from.toUpperCase(); 
         const to = move.to.toUpperCase();
         return `Castling ${side} from ${from} to ${to}`;
       } else {

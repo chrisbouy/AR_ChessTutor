@@ -9,8 +9,17 @@ class GameLogic {
     }
 
     initializeEngine() {
-        this.engine = new TutorEngine();
-        this.engine.setPosition(this.chess.fen());
+        try {
+            if (!this.engine) {
+                this.engine = new TutorEngine();
+                if (this.chess) {
+                    this.engine.setPosition(this.chess.fen());
+                }
+            }
+        } catch (error) {
+            console.error('Error in initializeEngine:', error);
+            throw error;
+        }
     }
 
     getBoardState() {
@@ -30,14 +39,19 @@ class GameLogic {
         });
     }
 
-    makeMove(move) {
+    makeMove_White(move) {
         try {
             const result = this.chess.move(move);
             if (result) {
                 this.engine.setPosition(this.chess.fen());
+                console.log('Move made:', move);
+                console.log('New FEN:', this.chess.fen());
+                console.log('Side to move:', this.chess.turn() === 'w' ? 'White' : 'Black');
+    
             }
             return result;
         } catch (error) {
+            console.error('Error making move:', error);
             return null;
         }
     }
@@ -56,26 +70,154 @@ class GameLogic {
     makeMove_Black() {
         try {
             this.engine.setPosition(this.chess.fen());
-            const bestMove = this.engine.getBestMove(2); // Reduced depth
+            const legalMoves = this.chess.moves({ verbose: true });
+            
+            if (!legalMoves.length) {
+                console.log('No legal moves available for Black');
+                return null;
+            }
+    
+            // Get best move from engine
+            const bestMove = this.engine.getBestMove_Black(2);
             
             if (!bestMove || !bestMove.move) {
-                return null;
+                console.log('Engine failed to suggest a move - using principle-based move');
+                // Use principle-based move instead of random
+                return this.makePrincipledMove(legalMoves);
             }
     
+            // Try to make the move directly
             const result = this.chess.move(bestMove.move);
-            if (!result) {
-                return null;
+            if (result) {
+                return {
+                    move: result,
+                    boardState: this.getBoardState(),
+                    status: this.getGameStatus()
+                };
             }
     
-            return {
-                move: result,
-                boardState: this.getBoardState(),
-                status: this.getGameStatus()
+            // If direct move failed, try using from/to
+            const moveToMake = {
+                from: bestMove.move.from,
+                to: bestMove.move.to,
+                promotion: bestMove.move.promotion
             };
+    
+            const result2 = this.chess.move(moveToMake);
+            if (result2) {
+                return {
+                    move: result2,
+                    boardState: this.getBoardState(),
+                    status: this.getGameStatus()
+                };
+            }
+    
+            // If both attempts failed, use principle-based move
+            console.log('Failed to make engine move - using principle-based move');
+            return this.makePrincipledMove(legalMoves);
+    
         } catch (error) {
             console.log('Error in makeMove_Black:', error);
-            return null;
+            // Even on error, use principle-based move instead of random
+            return this.makePrincipledMove(this.chess.moves({ verbose: true }));
         }
+    }
+    makePrincipledMove(legalMoves) {
+        // Score moves based on basic chess principles
+        const scoredMoves = legalMoves.map(move => {
+            let score = 0;
+            
+            // Early game principles
+            if (this.chess.moveNumber() <= 10) {
+                // Develop knights to good squares
+                if (move.piece === 'n') {
+                    if (['c6', 'f6'].includes(move.to)) score += 100;  // Best knight squares
+                    if (['e7', 'd6'].includes(move.to)) score += 50;   // OK knight squares
+                    if (move.to.includes('a') || move.to.includes('h')) score -= 100; // Knights on rim
+                }
+                
+                // Control center with pawns
+                if (move.piece === 'p') {
+                    if (['d5', 'e5'].includes(move.to)) score += 90;
+                    if (['c5', 'f5'].includes(move.to)) score += 40;
+                }
+                
+                // Develop bishops
+                if (move.piece === 'b') {
+                    if (['f5', 'g4', 'c5', 'd6'].includes(move.to)) score += 80;
+                }
+                
+                // Penalize early queen moves
+                if (move.piece === 'q') score -= 150;
+            }
+            
+            // General principles
+            if (move.captured) {
+                const pieceValues = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+                score += pieceValues[move.captured] * 50;
+                
+                // Don't trade unless capturing higher value piece
+                if (pieceValues[move.piece] > pieceValues[move.captured]) {
+                    score -= 30;
+                }
+            }
+            
+            return { move, score };
+        });
+            // Sort by score and get best move
+        scoredMoves.sort((a, b) => b.score - a.score);
+        const bestMove = scoredMoves[0].move;
+        
+        // Make the move
+        const result = this.chess.move(bestMove);
+        
+        return {
+            move: result,
+            boardState: this.getBoardState(),
+            status: this.getGameStatus()
+        };
+    }
+    findSafestMove(moves) {
+        // Conservative move selection when main engine fails
+        const scoredMoves = moves.map(move => {
+            let score = 0;
+            
+            // Prefer developing moves in opening
+            if (this.chess.moveNumber() < 10) {
+                // Develop knights to good squares
+                if (move.piece === 'n' && ['c6', 'f6'].includes(move.to)) {
+                    score += 50;
+                }
+                
+                // Develop center pawns
+                if (move.piece === 'p' && ['d5', 'e5'].includes(move.to)) {
+                    score += 40;
+                }
+                
+                // Penalize early queen moves
+                if (move.piece === 'q') {
+                    score -= 100;
+                }
+            }
+            
+            // Avoid moving to edge of board
+            if (move.to.includes('a') || move.to.includes('h')) {
+                score -= 30;
+            }
+            
+            // Avoid moving same piece twice in opening
+            const history = this.chess.history({ verbose: true });
+            if (this.chess.moveNumber() < 10 && 
+                history.some(h => h.piece === move.piece && h.from === move.from)) {
+                score -= 40;
+            }
+            
+            return { move, score };
+        });
+        
+        // Sort by score and return the best conservative move
+        scoredMoves.sort((a, b) => b.score - a.score);
+        return scoredMoves[0].move;
     }
 
     selectRandomMove() {
@@ -91,11 +233,14 @@ class GameLogic {
     }
 
     fetchAdviceAfterBlackMove() {
+        if (this.chess.turn() !== 'w') {
+            console.log('Not White\'s turn, skipping advice generation.');
+            return null;
+        }
         this.engine.setPosition(this.chess.fen());
         const engineAdvice = this.engine.getAdvice();
         
         if (!engineAdvice || engineAdvice.length === 0) {
-            console.log('No advice generated');
             return {
                 positionAnalysis: 'No analysis available',
                 recommendedNextMoves: []
@@ -104,18 +249,30 @@ class GameLogic {
     
         const formattedAdvice = {
             positionAnalysis: `Position evaluation: ${this.engine.evaluatePosition()}`,
-            recommendedNextMoves: engineAdvice.map(moveInfo => ({
-                move: moveInfo.move.san,
-                priority: moveInfo.score > 50 ? 'STRONG' : 'MODERATE',
-                reasoning: moveInfo.reasoning.join(', '),
-                from: moveInfo.move.from,
-                to: moveInfo.move.to
-            }))
+            recommendedNextMoves: engineAdvice.map(moveInfo => {
+                // Determine priority based on score
+                let priority;
+                if (moveInfo.score >= 200) {
+                    priority = 'STRONG';
+                } else if (moveInfo.score >= 50) {
+                    priority = 'GOOD';
+                } else {
+                    priority = 'MODERATE';
+                }
+    
+                return {
+                    move: moveInfo.move.san,
+                    priority,
+                    reasoning: moveInfo.reasoning.join(', '),
+                    from: moveInfo.move.from,
+                    to: moveInfo.move.to
+                };
+            })
         };
     
-        console.log('Generated advice:', formattedAdvice);
         return formattedAdvice;
     }
+    
 
     convertMoveToDescription(sanMove, color) {
         const originalFEN = this.chess.fen();

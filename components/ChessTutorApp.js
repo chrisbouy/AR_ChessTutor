@@ -300,12 +300,11 @@ const ChessTutorApp = () => {
 
   const onMove = async (fromSquare, toSquare) => {
     try {
-      const playerMove = gameLogicRef.current.makeMove({ from: fromSquare, to: toSquare });
+      const playerMove = gameLogicRef.current.makeMove_White({ from: fromSquare, to: toSquare });
       if (!playerMove) {
         setIllegalMoveSquares({ from: fromSquare, to: toSquare });
         return;
       }
-
       setBoardState([...gameLogicRef.current.getBoardState()]);
       setMovesLeft((prevMoves) => prevMoves - 1);
 
@@ -314,24 +313,21 @@ const ChessTutorApp = () => {
         return;
       }
       setDisplayedArrows([]);
-
       setIsThinking(true);
+      const blackMoveResult = gameLogicRef.current.makeMove_Black();
+      if (!blackMoveResult || !blackMoveResult.move) {
+        console.log('Engine failed to make a move for Black, making random move.');
+        const randomMove = gameLogicRef.current.selectRandomMove();
+        gameLogicRef.current.chess.move(randomMove);
+        setBoardState([...gameLogicRef.current.getBoardState()]);
+        fetchAdviceAfterBlackMove();
+        setIsThinking(false);
+      } else {
+        setBoardState([...gameLogicRef.current.getBoardState()]);
+        fetchAdviceAfterBlackMove();
+        setIsThinking(false);
+      }
 
-      setTimeout(() => {
-        const blackMoveResult = gameLogicRef.current.makeMove_Black();
-        if (!blackMoveResult || !blackMoveResult.move) {
-          console.log('Engine failed to make a move for Black, making random move.');
-          const randomMove = gameLogicRef.current.selectRandomMove();
-          gameLogicRef.current.chess.move(randomMove);
-          setBoardState([...gameLogicRef.current.getBoardState()]);
-          fetchAdviceAfterBlackMove();
-          setIsThinking(false);
-        } else {
-          setBoardState([...gameLogicRef.current.getBoardState()]);
-          fetchAdviceAfterBlackMove();
-          setIsThinking(false);
-        }
-      }, 500);
     } catch (error) {
       console.log('Error during move:', error);
       Alert.alert('Error', 'Error processing move, please try again.', [{ text: 'OK' }]);
@@ -341,7 +337,6 @@ const ChessTutorApp = () => {
 
   const fetchAdviceAfterBlackMove = () => {
     const advice = gameLogicRef.current.fetchAdviceAfterBlackMove();
-
     if (!advice) {
       setPositionAnalysis('');
       setRecommendedNextMoves([]);

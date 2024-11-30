@@ -1,8 +1,11 @@
 import { Chess } from 'chess.js';
 
 export default class TutorEngine {
-    constructor() {
-        this.chess = new Chess();
+    constructor(chessInstance) {
+        if (!chessInstance) {
+            throw new Error('A Chess instance must be provided to TutorEngine.');
+        }
+        this.chess = chessInstance; // Use the shared Chess instance
         
         // Core piece values
         this.PIECE_VALUES = {
@@ -42,7 +45,6 @@ export default class TutorEngine {
             console.error('Error setting position:', error);
         }
     }
-
     evaluatePosition() {
         const pieces = this.getAllPieces();
         let score = 0;
@@ -98,7 +100,6 @@ export default class TutorEngine {
         // this.chess.undo();
         return score;
     }
-    
     findAttackers(square) {
         const attackers = [];
         const moves = this.chess.moves({ verbose: true });
@@ -117,7 +118,6 @@ export default class TutorEngine {
         
         return attackers;
     }
-    
     findDefenders(square) {
         // Store current turn
         const currentTurn = this.chess.turn();
@@ -145,14 +145,12 @@ export default class TutorEngine {
         }
         return pieces;
     }
-
     evaluateMaterial(pieces) {
         return pieces.reduce((score, piece) => {
             const value = this.PIECE_VALUES[piece.type];
             return score + (piece.color === 'w' ? value : -value);
         }, 0);
     }
-
     evaluateOpening(pieces, moveHistory) {
         let score = 0;
 
@@ -291,7 +289,6 @@ export default class TutorEngine {
         const backRank = kingPiece.color === 'w' ? '1' : '8';
         return rank === backRank && this.hasPawnShield(kingPiece);
     }
-
     hasPawnShield(kingPiece) {
         const file = kingPiece.square[0];
         const rank = kingPiece.color === 'w' ? '2' : '7';
@@ -304,7 +301,6 @@ export default class TutorEngine {
             return piece && piece.type === 'p' && piece.color === kingPiece.color;
         });
     }
-
     isRookOnOpenFile(rookPiece) {
         const file = rookPiece.square[0];
         for (let rank = 1; rank <= 8; rank++) {
@@ -316,50 +312,45 @@ export default class TutorEngine {
         }
         return true;
     }
-
-    getBestMove_Black(depth = 2) {
-        console.log('Getting best move for black...');
+    getBestMoves(numMoves = 1) {
+        console.log(`fen in engine.getbestmoves before move: ${this.chess.fen()}`);
         const moves = this.chess.moves({ verbose: true });
         if (!moves.length) return null;
     
-        const scoredMoves = moves.map(move => {
-            const originalFEN = this.chess.fen();
-            this.chess.move(move);
-            const positionScore = -this.evaluatePosition();
-            const safetyScore = this.evaluateMoveSafety(move);
-            const materialBefore = this.evaluateMaterial(this.getAllPieces());
-            const tradeScore = move.captured ? 
-                (this.PIECE_VALUES[move.captured] - this.PIECE_VALUES[move.piece]) : 0;
-            this.chess.undo();
-            this.chess.load(originalFEN);
-            const totalScore = 
-                positionScore * 1.5 +    // Position is important
-                safetyScore * 2 +        // Safety is very important
-                (materialBefore > 200 ? tradeScore : -tradeScore); // Only favor trades when ahead
-            return { move, score: totalScore };
-        });
+        const originalFEN = this.chess.fen();
     
-        scoredMoves.sort((a, b) => b.score - a.score);
-        console.log('Best move:', scoredMoves[0]);
-        return scoredMoves[0];
-    }
-
-    getAdvice() {
-        const moves = this.chess.moves({ verbose: true });
-        const evaluatedMoves = moves.map(move => {
-            const originalFEN = this.chess.fen();
+        const scoredMoves = moves.map((move) => {
             this.chess.move(move);
-            const score = -this.evaluatePosition();
-            const reasoning = this.getMoveReasoning(move, score);
+            const score =
+                -this.evaluatePosition() * 1.5 +
+                this.evaluateMoveSafety(move) * 2; // Safety weighting
             this.chess.undo();
             this.chess.load(originalFEN);
-            return { move, score, reasoning };
-        });
+            
 
-        return evaluatedMoves
+            return { move, score };
+        });
+    console.log(`fen in engine.getbestmoves after undoing move: ${this.chess.fen()}`);
+        return scoredMoves
             .sort((a, b) => b.score - a.score)
-            .slice(0, 3);
+            .slice(0, numMoves); // Return top `numMoves` moves
     }
+//     getLikelyBlackResponses(fen) {
+//         this.chess.load(fen); // Load the FEN after White's move
+//         const moves = this.chess.moves({ verbose: true });
+//         const scoredMoves = moves.map(move => {
+//             this.chess.move(move);
+//             const score = -this.evaluatePosition();
+//             this.chess.undo(); // Undo the Black move
+//             this.chess.load(fen); // Restore the FEN
+//             return { move: move.san, score };
+//         });
+
+//     // Sort moves by score and return the top 2
+//     return scoredMoves
+//     .sort((a, b) => b.score - a.score)
+//     .slice(0, 2);
+// }
 
     getMoveReasoning(move, score) {
         const reasons = [];

@@ -189,9 +189,11 @@ const ChessBoard2D = ({
               <Path d="M0,0 L0,7 L10,3.5 z" fill="red" fillOpacity="0.4" />
             </Marker>
           </Defs>
+          
           {recommendedMoves.map((move, index) => {
             if (!move.from || !move.to) {
-              console.log('Invalid move:', move);
+              console.log('Recommended Moves:', recommendedMoves);
+              console.log('Invalid moove:', move);
               return null; 
             }
             const fromCoords = getSquareCoordinates(move.from);

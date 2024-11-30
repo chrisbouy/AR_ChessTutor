@@ -314,6 +314,7 @@ const ChessTutorApp = () => {
       }
       setDisplayedArrows([]);
       setIsThinking(true);
+
       const blackMoveResult = gameLogicRef.current.makeMove_Black();
       if (!blackMoveResult || !blackMoveResult.move) {
         console.log('Engine failed to make a move for Black, making random move.');
@@ -324,6 +325,7 @@ const ChessTutorApp = () => {
         setIsThinking(false);
       } else {
         setBoardState([...gameLogicRef.current.getBoardState()]);
+        console.log(`fetching advice`);
         fetchAdviceAfterBlackMove();
         setIsThinking(false);
       }
@@ -336,59 +338,81 @@ const ChessTutorApp = () => {
   };
 
   const fetchAdviceAfterBlackMove = () => {
-    const advice = gameLogicRef.current.fetchAdviceAfterBlackMove();
-    if (!advice) {
-      setPositionAnalysis('');
-      setRecommendedNextMoves([]);
-      return;
+    console.log(`getting table data`);
+    const tableData = gameLogicRef.current.getTableData();
+    console.log(`table data: ${JSON.stringify(tableData, null, 2)}`);
+
+    if (!tableData || tableData.length === 0) {
+        console.log('Error: Table data is empty or undefined.');
+        setPositionAnalysis('');
+        setRecommendedNextMoves([]);
+        setDisplayedArrows([]);
+        analysisComplete.current = false;
+        return;
     }
 
-    gameLogicRef.current.latestAdvice = advice;
+    // Save the latest advice in GameLogic
+    gameLogicRef.current.latestAdvice = tableData;
 
-    const processedAdvice = renderMoveAdvice(advice);
+    // Use renderMoveAdvice to process the tableData
+    const processedAdvice = renderMoveAdvice(tableData);
+
+    // Update the state with processed advice
     setRecommendedNextMoves(processedAdvice);
     setDisplayedArrows(
-      processedAdvice.map((move) => ({
-        from: move.from,
-        to: move.to,
-        arrowOpacity: move.arrowOpacity,
-      }))
+        processedAdvice.map((move) => ({
+            from: move.from,
+            to: move.to,
+            arrowOpacity: move.arrowOpacity,
+        }))
     );
-    setPositionAnalysis(advice.positionAnalysis);
+
+    setPositionAnalysis('Game analysis based on table data.');
 
     analysisComplete.current = true;
 
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-  };
+};
 
-  function renderMoveAdvice(advice) {
-    return advice.recommendedNextMoves.map((move) => {
+  
+
+function renderMoveAdvice(tableData) {
+  return tableData.map((entry) => {
       let arrowOpacity = 1.0;
-      let moveLabel = move.move;
-      switch (move.priority) {
-        case 'STRONG':
-          arrowOpacity = 0.8;
-          moveLabel = `${move.move} (STRONG)`;
-          break;
-        case 'OPTIONAL':
-          arrowOpacity = 0.5;
-          moveLabel = `${move.move} (OPTIONAL)`;
-          break;
-        default:
-          arrowOpacity = 1.0;
+      let moveLabel = entry.move;
+
+      // Assign priorities based on reasoning or other criteria (customizable)
+      if (entry.reasoning.includes('Significant')) {
+          arrowOpacity = 1.0; // Strongest
+          moveLabel = `${entry.move} (STRONGEST)`;
+      } else if (entry.reasoning.includes('Controls')) {
+          arrowOpacity = 0.8; // Stronger
+          moveLabel = `${entry.move} (STRONGER)`;
+      } else {
+          arrowOpacity = 0.5; // Strong
+          moveLabel = `${entry.move} (STRONG)`;
       }
 
+      // Process the likely responses (optional)
+      const blackResponses = entry.likelyResponses.map((response) => ({
+          move: response, // Black's likely response
+          arrowOpacity: 0.6, // Default arrow opacity for responses
+      }));
+      const moveList = gameLogicRef.current.chess.moves({ verbose: true });
+      const matchingMove = moveList.find((m) => m.san === entry.move || m.lan === entry.move);
+
       return {
-        ...move,
-        move: moveLabel,
-        arrowOpacity: arrowOpacity,
-        originalMove: move.move,
-        from: move.from,
-        to: move.to,
-        blackResponses: [], // Not generating black responses here
+          move: moveLabel,
+          reasoning: entry.reasoning || 'No reasoning provided',
+          likelyResponses: blackResponses,
+          arrowOpacity,
+          from: matchingMove.from, // Extract "from"
+          to: matchingMove.to, // Extract "to"
       };
-    });
-  }
+  });
+}
+
+
 
   useEffect(() => {
     setIsLandscape(windowWidth > windowHeight);
@@ -400,7 +424,7 @@ const ChessTutorApp = () => {
         <Text style={styles.warningText}>Please rotate your device back to portrait mode.</Text>
       </View>
     );
-  }
+  } 
 
   return (
     <SafeAreaView style={styles.safeArea}>

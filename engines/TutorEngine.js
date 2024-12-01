@@ -48,54 +48,69 @@ export default class TutorEngine {
     evaluatePosition() {
         const pieces = this.getAllPieces();
         let score = 0;
-    
+      
         // Material evaluation (weighted more heavily)
         const materialScore = this.evaluateMaterial(pieces);
+        // console.log(`Material Score: ${materialScore}`);
         score += materialScore * 2; // Double weight for material
-    
+      
         // Positional evaluation
         const positionalScore = this.evaluatePositional(pieces);
+        // console.log(`Positional Score: ${positionalScore}`);
         score += positionalScore;
-    
+      
         // Trade evaluation - only encourage trades if ahead in material
+        const tradeScore = this.evaluateTrades();
+        // console.log(`Trade Score: ${tradeScore}`);
         if (materialScore > 200) { // Significant material advantage
-            score += this.evaluateTrades() * 0.5;
+          score += tradeScore * 0.5;
         } else {
-            score -= this.evaluateTrades(); // Discourage trades when not ahead
+          score -= tradeScore; // Discourage trades when not ahead
         }
-    
+      
+        //console.log(`Total Evaluation Score: ${this.chess.turn() === 'w' ? score : -score}`);
         return this.chess.turn() === 'w' ? score : -score;
-    }
-    evaluateMoveSafety(move) {
+      }
+      
+      evaluateMoveSafety(move) {
         let score = 0;
+      
+        // Make the move to analyze resulting position
+        this.chess.move(move);
         
         // Check if the moved piece can be captured
         const attackers = this.findAttackers(move.to);
         const defenders = this.findDefenders(move.to);
         if (attackers.length > 0) {
-            // Basic piece safety evaluation
-            const pieceValue = this.PIECE_VALUES[move.piece];
-            const lowestAttackerValue = Math.min(...attackers.map(a => this.PIECE_VALUES[a.piece]));
-            
-            // Heavy penalty for hanging pieces
-            if (defenders.length === 0) {
-                score -= pieceValue * 2; // Double penalty for completely hanging pieces
-            } else {
-                // Evaluate exchange
-                const strongestDefenderValue = Math.max(...defenders.map(d => this.PIECE_VALUES[d.piece]));
-                if (lowestAttackerValue < pieceValue && strongestDefenderValue < lowestAttackerValue) {
-                    score -= pieceValue; // Penalty for moving into unfavorable exchange
-                }
+          // Basic piece safety evaluation
+          const pieceValue = this.PIECE_VALUES[move.piece];
+          const lowestAttackerValue = Math.min(...attackers.map(a => this.PIECE_VALUES[a.piece]));
+      
+          // Heavy penalty for hanging pieces
+          if (defenders.length === 0) {
+            score -= pieceValue * 2; // Double penalty for completely hanging pieces
+            console.log(`Hanging piece at ${move.to}, Penalty: ${pieceValue * 2}`);
+          } else {
+            // Evaluate exchange
+            const strongestDefenderValue = Math.max(...defenders.map(d => this.PIECE_VALUES[d.piece]));
+            if (lowestAttackerValue < pieceValue && strongestDefenderValue < lowestAttackerValue) {
+              score -= pieceValue; // Penalty for moving into unfavorable exchange
+              console.log(`Unfavorable exchange at ${move.to}, Penalty: ${pieceValue}`);
             }
-            
-            // Extra penalty for unsafe bishop moves
-            if (move.piece === 'b' && defenders.length === 0) {
-                score -= 150; // Extra penalty for hanging bishop
-            }
+          }
+      
+          // Extra penalty for unsafe bishop moves
+          if (move.piece === 'b' && defenders.length === 0) {
+            score -= 150; // Extra penalty for hanging bishop
+            console.log(`Hanging bishop at ${move.to}, Penalty: 150`);
+          }
         }
-        
+      
+        // Undo the move
+        this.chess.undo();
         return score;
-    }
+      }
+      
     findAttackers(square) {
         const attackers = [];
         const moves = this.chess.moves({ verbose: true });
@@ -115,19 +130,32 @@ export default class TutorEngine {
         return attackers;
     }
     findDefenders(square) {
-        // Store current turn
         const currentTurn = this.chess.turn();
-        
-        // Temporarily switch turn to find defenders
-        this.chess.load(this.chess.fen().replace(/ [wb] /, currentTurn === 'w' ? ' b ' : ' w '));
-        
-        const defenders = this.findAttackers(square);
-        
-        // Restore original position
-        this.chess.load(this.chess.fen().replace(/ [wb] /, ` ${currentTurn} `));
-        
+      
+        // Clone the chess instance to avoid mutating the original
+        const tempChess = new Chess(this.chess.fen());
+      
+        // Switch turn to find defenders
+        tempChess.turn(currentTurn === 'w' ? 'b' : 'w');
+      
+        const defenders = [];
+        const moves = tempChess.moves({ verbose: true });
+      
+        moves.forEach(move => {
+          if (move.to === square) {
+            const piece = tempChess.get(move.from);
+            if (piece) {
+              defenders.push({
+                piece: piece.type,
+                square: move.from
+              });
+            }
+          }
+        });
+      
         return defenders;
-    }
+      }
+      
     getAllPieces() {
         const pieces = [];
         for (let row = 0; row < 8; row++) {
@@ -320,9 +348,9 @@ export default class TutorEngine {
             this.chess.move(move);
             const score =
                 -this.evaluatePosition() * 1.5 +
-                this.evaluateMoveSafety(move) * 2; // Safety weighting
-            this.chess.undo();
-           // this.chess.load(originalFEN);
+                //this.evaluateMoveSafety(move) * 2; // Safety weighting
+              this.chess.undo();
+         // this.chess.load(originalFEN);
             
 
             return { move, score };

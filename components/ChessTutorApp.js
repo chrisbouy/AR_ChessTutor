@@ -21,7 +21,6 @@ const ChessTutorApp = () => {
   }, []);
 
   const gameLogicRef = useRef(new GameLogic());
-
   const [boardState, setBoardState] = useState(gameLogicRef.current.getBoardState());
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [recommendedNextMoves, setRecommendedNextMoves] = useState([]);
@@ -314,8 +313,8 @@ const ChessTutorApp = () => {
       }
       setDisplayedArrows([]);
       setIsThinking(true);
-
-      const blackMoveResult = gameLogicRef.current.makeMove_Black();
+      const whiteMoveSAN = playerMove.san;
+      const blackMoveResult = gameLogicRef.current.makeMove_Black(whiteMoveSAN);
       if (!blackMoveResult || !blackMoveResult.move) {
         console.log('Engine failed to make a move for Black, making random move.');
         const randomMove = gameLogicRef.current.selectRandomMove();

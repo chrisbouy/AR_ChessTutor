@@ -42,14 +42,14 @@ class GameLogic {
 
             if (result) {
                 this.engine.setPosition(this.chess.fen());
-                // console.log('White move made:', move);
+                console.log(`White move made: ${result.san}`);
                 // console.log('New FEN after white:', this.chess.fen());
                 // console.log('Side to move:', this.chess.turn() === 'w' ? 'White' : 'Black');
     
             }
             return result;
         } catch (error) {
-            console.error('Error making move:', error);
+            console.error('Error making White move:', error);
             return null;
         }
     }
@@ -67,7 +67,7 @@ class GameLogic {
 
     makeMove_Black(whiteMove) {
         const originalFEN = this.chess.fen();
-    
+
         // Check if White's move is one of the advised moves
         const advisedMove = this.latestAdvice?.find(advice => advice.move.san === whiteMove);
         if (advisedMove) {
@@ -76,7 +76,8 @@ class GameLogic {
             const selectedMove = blackResponses[Math.floor(Math.random() * blackResponses.length)];
             console.log(`fen in logic.makemoveblack before script move: ${this.chess.fen()}`);
 
-            this.chess.move(selectedMove.move); // Make Black's response
+            const result=this.chess.move(selectedMove.move); // Make Black's response
+            console.log(`Black move made: ${result.san}`);
             console.log(`fen in logic.makemoveblack after script move: ${this.chess.fen()}`);
 
             return {
@@ -85,10 +86,12 @@ class GameLogic {
                 status: this.getGameStatus(),
             };
         } else {
-            // White's move does not match advice; calculate the best move dynamically
+           console.log(`White's move does not match advice; calculate the best move dynamically`);
             const bestMove = this.engine.getBestMoves(1)[0];
             console.log(`fen in logic.makemoveblack before off-script move: ${this.chess.fen()}`);
-            this.chess.move(bestMove.move);
+            
+            const result=this.chess.move(bestMove.move);
+            console.log(`off-script Black move made: ${result.san}`);
             console.log(`fen in logic.makemoveblack after off-script move:  ${this.chess.fen()}`);
             // console.log(`black moves: ${bestMove.move.san}`);
             // console.log(`new fen in makeblackmove: ${this.chess.fen()}`);            
@@ -226,11 +229,15 @@ class GameLogic {
         const tableData = topWhiteMoves.map((whiteMove) => {
             console.log(`fen in logic.gettabledata before temp move:        ${this.chess.fen()}`);
 
-            this.chess.move(whiteMove.move); // Temporarily make the White move
+            const moveResult = this.chess.move(whiteMove.move.san);
+            if (!moveResult) {
+              console.warn(`Failed to make temporary White move: ${whiteMove.move.san}`);
+              return null;
+            }
             const fenAfterWhiteMove = this.chess.fen();
             const likelyResponses = this.engine.getBestMoves(2); // Get top 2 Black moves
-            this.chess.undo();
-           // this.chess.load(originalFEN); // Restore FEN
+           // this.chess.undo();
+            this.chess.load(originalFEN); // Restore FEN
             console.log(`fen in logic.gettabledata after undoing temp move: ${this.chess.fen()}`);
 
             //  console.log(`move: ${whiteMove.move.san}`);
@@ -268,9 +275,7 @@ class GameLogic {
 
         // Set the correct side to move if needed
         if (color === 'b') {
-            const fenParts = originalFEN.split(' ');
-            fenParts[1] = 'b';
-            tempChess.load(fenParts.join(' '));
+            tempChess.turn('b');
         }
 
         const moves = tempChess.moves({ verbose: true });

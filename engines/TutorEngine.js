@@ -69,9 +69,6 @@ export default class TutorEngine {
     evaluateMoveSafety(move) {
         let score = 0;
         
-        // Make the move to analyze resulting position
-        //this.chess.move(move);
-        
         // Check if the moved piece can be captured
         const attackers = this.findAttackers(move.to);
         const defenders = this.findDefenders(move.to);
@@ -97,7 +94,6 @@ export default class TutorEngine {
             }
         }
         
-        // this.chess.undo();
         return score;
     }
     findAttackers(square) {
@@ -313,19 +309,20 @@ export default class TutorEngine {
         return true;
     }
     getBestMoves(numMoves = 1) {
-        console.log(`fen in engine.getbestmoves before move: ${this.chess.fen()}`);
+        console.log(`fen in engine.getbestmoves before move:        ${this.chess.fen()}`);
         const moves = this.chess.moves({ verbose: true });
         if (!moves.length) return null;
     
         const originalFEN = this.chess.fen();
-    
+
+
         const scoredMoves = moves.map((move) => {
             this.chess.move(move);
             const score =
                 -this.evaluatePosition() * 1.5 +
                 this.evaluateMoveSafety(move) * 2; // Safety weighting
             this.chess.undo();
-            this.chess.load(originalFEN);
+           // this.chess.load(originalFEN);
             
 
             return { move, score };
@@ -335,22 +332,7 @@ export default class TutorEngine {
             .sort((a, b) => b.score - a.score)
             .slice(0, numMoves); // Return top `numMoves` moves
     }
-//     getLikelyBlackResponses(fen) {
-//         this.chess.load(fen); // Load the FEN after White's move
-//         const moves = this.chess.moves({ verbose: true });
-//         const scoredMoves = moves.map(move => {
-//             this.chess.move(move);
-//             const score = -this.evaluatePosition();
-//             this.chess.undo(); // Undo the Black move
-//             this.chess.load(fen); // Restore the FEN
-//             return { move: move.san, score };
-//         });
 
-//     // Sort moves by score and return the top 2
-//     return scoredMoves
-//     .sort((a, b) => b.score - a.score)
-//     .slice(0, 2);
-// }
 
     getMoveReasoning(move, score) {
         const reasons = [];

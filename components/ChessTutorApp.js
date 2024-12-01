@@ -325,7 +325,7 @@ const ChessTutorApp = () => {
         setIsThinking(false);
       } else {
         setBoardState([...gameLogicRef.current.getBoardState()]);
-        console.log(`fetching advice`);
+        // console.log(`fetching advice`);
         fetchAdviceAfterBlackMove();
         setIsThinking(false);
       }
@@ -338,7 +338,7 @@ const ChessTutorApp = () => {
   };
 
   const fetchAdviceAfterBlackMove = () => {
-    console.log(`getting table data`);
+    // console.log(`getting table data`);
     const tableData = gameLogicRef.current.getTableData();
     console.log(`table data: ${JSON.stringify(tableData, null, 2)}`);
 
@@ -482,7 +482,16 @@ function renderMoveAdvice(tableData) {
                           </TouchableOpacity>
                         </View>
                         <View style={[styles.tableCell, { flexDirection: 'row', flexWrap: 'wrap' }]}>
-                          {/* Black responses are not generated in this setup */}
+                        {move.likelyResponses.map((response, idx) => (
+                            <TouchableOpacity
+                              key={idx}
+                              onPress={() =>
+                                handleMovePress(response.move, 'b', response.threat, move.originalMove)
+                              }
+                            >
+                              <Text style={styles.tappableMove}>{response.move}</Text>
+                            </TouchableOpacity>
+                          ))}                        
                         </View>
                       </View>
                     ))}

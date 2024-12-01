@@ -1,5 +1,6 @@
 import { Chess } from 'chess.js';
 import TutorEngine from './engines/TutorEngine';
+import { validateFen } from "chess.js";
 
 class GameLogic {
     constructor() {
@@ -37,13 +38,13 @@ class GameLogic {
             console.log(`fen in logic.makemovewhite before move: ${this.chess.fen()}`);
 
             const result = this.chess.move(move);
-            console.log(`fen in logic.makemovewhite after move: ${this.chess.fen()}`);
+            console.log(`fen in logic.makemovewhite after move:  ${this.chess.fen()}`);
 
             if (result) {
                 this.engine.setPosition(this.chess.fen());
-                console.log('Move made:', move);
-                console.log('New FEN:', this.chess.fen());
-                console.log('Side to move:', this.chess.turn() === 'w' ? 'White' : 'Black');
+                // console.log('White move made:', move);
+                // console.log('New FEN after white:', this.chess.fen());
+                // console.log('Side to move:', this.chess.turn() === 'w' ? 'White' : 'Black');
     
             }
             return result;
@@ -87,12 +88,10 @@ class GameLogic {
             // White's move does not match advice; calculate the best move dynamically
             const bestMove = this.engine.getBestMoves(1)[0];
             console.log(`fen in logic.makemoveblack before off-script move: ${this.chess.fen()}`);
-
             this.chess.move(bestMove.move);
-            console.log(`fen in logic.makemoveblack after off-script move: ${this.chess.fen()}`);
-
-            console.log(`black moves: ${bestMove.move.san}`);
-            console.log(`new fen in makeblackmove: ${this.chess.fen()}`);            
+            console.log(`fen in logic.makemoveblack after off-script move:  ${this.chess.fen()}`);
+            // console.log(`black moves: ${bestMove.move.san}`);
+            // console.log(`new fen in makeblackmove: ${this.chess.fen()}`);            
             return {
                 move: bestMove.move,
                 boardState: this.getBoardState(),
@@ -215,26 +214,26 @@ class GameLogic {
 
     getTableData() {
         const originalFEN = this.chess.fen();
-    
+       
         // Step 1: Get top 3 moves for White
         const topWhiteMoves = this.engine.getBestMoves(3);
-    console.log(`white move 1: ${topWhiteMoves[0].move.san}`);
-    console.log(`white move 2: ${topWhiteMoves[1].move.san}`);
-    console.log(`white move 3: ${topWhiteMoves[2].move.san}`);
+    // console.log(`white move 1: ${topWhiteMoves[0].move.san}`);
+    // console.log(`white move 2: ${topWhiteMoves[1].move.san}`);
+    // console.log(`white move 3: ${topWhiteMoves[2].move.san}`);
 
 
         // Step 2: For each move, get likely Black responses
         const tableData = topWhiteMoves.map((whiteMove) => {
-            console.log(`fen in logic.gettabledata before temp move: ${this.chess.fen()}`);
+            console.log(`fen in logic.gettabledata before temp move:        ${this.chess.fen()}`);
 
             this.chess.move(whiteMove.move); // Temporarily make the White move
             const fenAfterWhiteMove = this.chess.fen();
             const likelyResponses = this.engine.getBestMoves(2); // Get top 2 Black moves
             this.chess.undo();
-            this.chess.load(originalFEN); // Restore FEN
+           // this.chess.load(originalFEN); // Restore FEN
             console.log(`fen in logic.gettabledata after undoing temp move: ${this.chess.fen()}`);
 
-             console.log(`move: ${whiteMove.move.san}`);
+            //  console.log(`move: ${whiteMove.move.san}`);
             // console.log(`reasoning:  ${this.attachAttributes(whiteMove)}`);
             // console.log(`likelyResponses:  ${likelyResponses.map((response) => response.move.san)}`);
 

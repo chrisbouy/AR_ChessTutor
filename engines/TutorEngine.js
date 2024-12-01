@@ -337,7 +337,7 @@ export default class TutorEngine {
         return true;
     }
     getBestMoves(numMoves = 1) {
-        console.log(`fen in engine.getbestmoves before move:        ${this.chess.fen()}`);
+        // console.log(`fen in engine.getbestmoves before move:        ${this.chess.fen()}`);
         const moves = this.chess.moves({ verbose: true });
         if (!moves.length) return null;
     
@@ -355,7 +355,7 @@ export default class TutorEngine {
 
             return { move, score };
         });
-    console.log(`fen in engine.getbestmoves after undoing move: ${this.chess.fen()}`);
+    // console.log(`fen in engine.getbestmoves after undoing move: ${this.chess.fen()}`);
         return scoredMoves
             .sort((a, b) => b.score - a.score)
             .slice(0, numMoves); // Return top `numMoves` moves

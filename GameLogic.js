@@ -35,10 +35,10 @@ class GameLogic {
 
     makeMove_White(move) {
         try {
-            console.log(`fen in logic.makemovewhite before move: ${this.chess.fen()}`);
+            // console.log(`fen in logic.makemovewhite before move: ${this.chess.fen()}`);
 
             const result = this.chess.move(move);
-            console.log(`fen in logic.makemovewhite after move:  ${this.chess.fen()}`);
+            // console.log(`fen in logic.makemovewhite after move:  ${this.chess.fen()}`);
 
             if (result) {
                 this.engine.setPosition(this.chess.fen());
@@ -74,11 +74,11 @@ class GameLogic {
             // White's move matches advice; pick one of the likely responses
             const blackResponses = advisedMove.likelyResponses;
             const selectedMove = blackResponses[Math.floor(Math.random() * blackResponses.length)];
-            console.log(`fen in logic.makemoveblack before script move: ${this.chess.fen()}`);
+            // console.log(`fen in logic.makemoveblack before script move: ${this.chess.fen()}`);
 
             const result=this.chess.move(selectedMove.move); // Make Black's response
             console.log(`Black move made: ${result.san}`);
-            console.log(`fen in logic.makemoveblack after script move: ${this.chess.fen()}`);
+            // console.log(`fen in logic.makemoveblack after script move: ${this.chess.fen()}`);
 
             return {
                 move: selectedMove.move,
@@ -88,11 +88,11 @@ class GameLogic {
         } else {
            console.log(`White's move does not match advice; calculate the best move dynamically`);
             const bestMove = this.engine.getBestMoves(1)[0];
-            console.log(`fen in logic.makemoveblack before off-script move: ${this.chess.fen()}`);
+            // console.log(`fen in logic.makemoveblack before off-script move: ${this.chess.fen()}`);
             
             const result=this.chess.move(bestMove.move);
             console.log(`off-script Black move made: ${result.san}`);
-            console.log(`fen in logic.makemoveblack after off-script move:  ${this.chess.fen()}`);
+            // console.log(`fen in logic.makemoveblack after off-script move:  ${this.chess.fen()}`);
             // console.log(`black moves: ${bestMove.move.san}`);
             // console.log(`new fen in makeblackmove: ${this.chess.fen()}`);            
             return {
@@ -148,11 +148,11 @@ class GameLogic {
             // Sort by score and get best move
         scoredMoves.sort((a, b) => b.score - a.score);
         const bestMove = scoredMoves[0].move;
-        console.log(`fen in logic.makeprincipaledmove before move: ${this.chess.fen()}`);
+        // console.log(`fen in logic.makeprincipaledmove before move: ${this.chess.fen()}`);
 
         // Make the move
         const result = this.chess.move(bestMove);
-        console.log(`fen in logic.makeprincipalmove after  move: ${this.chess.fen()}`);
+        // console.log(`fen in logic.makeprincipalmove after  move: ${this.chess.fen()}`);
 
         return {
             move: result,
@@ -227,7 +227,7 @@ class GameLogic {
 
         // Step 2: For each move, get likely Black responses
         const tableData = topWhiteMoves.map((whiteMove) => {
-            console.log(`fen in logic.gettabledata before temp move:        ${this.chess.fen()}`);
+            // console.log(`fen in logic.gettabledata before temp move:        ${this.chess.fen()}`);
 
             const moveResult = this.chess.move(whiteMove.move.san);
             if (!moveResult) {
@@ -238,7 +238,7 @@ class GameLogic {
             const likelyResponses = this.engine.getBestMoves(2); // Get top 2 Black moves
            // this.chess.undo();
             this.chess.load(originalFEN); // Restore FEN
-            console.log(`fen in logic.gettabledata after undoing temp move: ${this.chess.fen()}`);
+            // console.log(`fen in logic.gettabledata after undoing temp move: ${this.chess.fen()}`);
 
             //  console.log(`move: ${whiteMove.move.san}`);
             // console.log(`reasoning:  ${this.attachAttributes(whiteMove)}`);

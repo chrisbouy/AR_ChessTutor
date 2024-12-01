@@ -339,7 +339,7 @@ const ChessTutorApp = () => {
   const fetchAdviceAfterBlackMove = () => {
     // console.log(`getting table data`);
     const tableData = gameLogicRef.current.getTableData();
-    console.log(`table data: ${JSON.stringify(tableData, null, 2)}`);
+    // console.log(`table data: ${JSON.stringify(tableData, null, 2)}`);
 
     if (!tableData || tableData.length === 0) {
         console.log('Error: Table data is empty or undefined.');

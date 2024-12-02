@@ -390,16 +390,17 @@ console.log('called set pos analysis');
   };
 
   function renderMoveAdvice(advice) {
-    return advice.recommendedNextMoves.map((move) => {
+    console.log(advice[0]);
+    return advice.map((move) => {
       let arrowOpacity = 1.0;
-      const moveSan = entry.move.san;
+      const moveSan = move.san;
       let moveLabel = moveSan;
 // console.log(`entry: ${JSON.stringify(entry, null, 2)}`)
       // Assign priorities based on reasoning or other criteria (customizable)
-      if (entry.reasoning.includes('Significant')) {
+      if (move.reasoning.includes('Significant')) {
           arrowOpacity = 1.0; // Strongest
           moveLabel = `${moveSan} (STRONGEST)`;
-      } else if (entry.reasoning.includes('Controls')) {
+      } else if (move.reasoning.includes('Controls')) {
           arrowOpacity = 0.8; // Stronger
           moveLabel = `${moveSan} (STRONGER)`;
       } else {
@@ -408,14 +409,15 @@ console.log('called set pos analysis');
       }
 
       // Process the likely responses (optional)
-      const blackResponses = entry.likelyResponses.map((response) => ({
+      //console.log(entry.likelyResponses);
+      const blackResponses = move.likelyResponses.map((response) => ({
           move: response.san, // Black's likely response
           arrowOpacity: 0.6, // Default arrow opacity for responses
       }));
       // const moveList = gameLogicRef.current.chess.moves({ verbose: true });
       // const matchingMove = moveList.find((m) => m === entry.move);
-      const fromAlgebraic = gameLogicRef.current.indexToAlgebraic(entry.move.from);
-      const toAlgebraic = gameLogicRef.current.indexToAlgebraic(entry.move.to);
+      const fromAlgebraic = gameLogicRef.current.indexToAlgebraic(move.move.from);
+      const toAlgebraic = gameLogicRef.current.indexToAlgebraic(move.move.to);
       
       //  console.log(moveLabel);
       //  console.log(entry.reasoning);
@@ -426,7 +428,7 @@ console.log('called set pos analysis');
       
       return {
           move: moveLabel,
-          reasoning: entry.reasoning || 'No reasoning provided',
+          reasoning: move.reasoning || 'No reasoning provided',
           likelyResponses: blackResponses,
           arrowOpacity,
           from: fromAlgebraic, // Extract "from"

@@ -193,9 +193,9 @@ class Engine {
     this.transpositionTable = {};
 
     // Add logging to verify board state
-    console.log('Engine board after setFEN:');
-    this.printBoard();
-    console.log('Side to move:', this.sideToMove === this.WHITE ? 'WHITE' : 'BLACK');
+    // console.log('Engine board after setFEN:');
+    //this.printBoard();
+    // console.log('Side to move:', this.sideToMove === this.WHITE ? 'WHITE' : 'BLACK');
   }
 // Inside the Engine class
 
@@ -700,7 +700,10 @@ isSquareAttacked(square, attackerSide) {
   searchPosition(depth, pvCount = 1) {
     this.nodes = 0;
     const result = this.negamax(-this.INFINITY, this.INFINITY, depth);
+    // console.log('Result from negamax:', result);
+
     if (result.move !== null) {
+      // console.log('not null');
       return [{
         move: result.move,
         score: result.score,
@@ -1093,7 +1096,17 @@ calculateManhattanDistance(square1, square2) {
     const randomIndex = Math.floor(Math.random() * possibleMoves.length);
     return possibleMoves[randomIndex];
   }
-
+  getPieceName(pieceSymbol) {
+    const pieceNames = {
+        p: 'Pawn',
+        n: 'Knight',
+        b: 'Bishop',
+        r: 'Rook',
+        q: 'Queen',
+        k: 'King'
+    };
+    return pieceNames[pieceSymbol.toLowerCase()] || 'Piece';
+}
   // Make a random move (fallback)
   makeRandomMove() {
     const move = this.selectRandomMove();

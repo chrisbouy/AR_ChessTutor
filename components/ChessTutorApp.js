@@ -277,6 +277,7 @@ const ChessTutorApp = () => {
     if (!selectedSquare) {
       if (selectedPiece && selectedPiece.color === 'w') {
         setSelectedSquare(position);
+
         const legalMoves = gameLogicRef.current.getLegalMoves(position);
         const targetSquares = legalMoves.map((move) => move.to);
         setPossibleMoves(targetSquares);
@@ -287,11 +288,13 @@ const ChessTutorApp = () => {
         setPossibleMoves([]);
       } else if (selectedPiece && selectedPiece.color === 'w') {
         setSelectedSquare(position);
+
         const legalMoves = gameLogicRef.current.getLegalMoves(position);
         const targetSquares = legalMoves.map((move) => move.to);
         setPossibleMoves(targetSquares);
       } else {
         onMove(selectedSquare, position);
+        console.log('called onmove')
         setSelectedSquare(null);
         setPossibleMoves([]);
       }
@@ -312,7 +315,7 @@ const ChessTutorApp = () => {
         Alert.alert('Game Over', 'Checkmate! The game has ended.', [{ text: 'OK', onPress: () => handleReload() }]);
         return;
       }
-      setDisplayedArrows([]);
+      setDisplayedArrows([]); 
       setIsThinking(true);
       const blackMoveResult = gameLogicRef.current.makeMove_Black();
       if (!blackMoveResult || !blackMoveResult.move) {
@@ -324,7 +327,10 @@ const ChessTutorApp = () => {
         setIsThinking(false);
       } else {
         setBoardState([...gameLogicRef.current.getBoardState()]);
+          console.log(`fetching advice`);
         fetchAdviceAfterBlackMove();
+               console.log(`fetched advice`);
+   
         setIsThinking(false);
       }
 
@@ -336,17 +342,34 @@ const ChessTutorApp = () => {
   };
 
   const fetchAdviceAfterBlackMove = () => {
-    const advice = gameLogicRef.current.fetchAdviceAfterBlackMove();
-    if (!advice) {
-      setPositionAnalysis('');
-      setRecommendedNextMoves([]);
-      return;
+    console.log(`getting table data`);
+    const tableData = gameLogicRef.current.getTableData();
+    console.log(`table data: ${JSON.stringify(tableData, null, 2)}`);
+
+    if (!tableData || tableData.length === 0) {
+        console.log('Error: Table data is empty or undefined.');
+        setPositionAnalysis('');
+        setRecommendedNextMoves([]);
+        setDisplayedArrows([]);
+        analysisComplete.current = false;
+        return;
     }
 
-    gameLogicRef.current.latestAdvice = advice;
+    // Save the latest advice in GameLogic
+    gameLogicRef.current.latestAdvice = tableData;
+console.log('calling render');
+    // Use renderMoveAdvice to process the tableData
+    const processedAdvice = renderMoveAdvice(tableData);
+console.log('called render');
 
-    const processedAdvice = renderMoveAdvice(advice);
+    // Update the state with processed advice
+console.log('calling setrecommended');
+
     setRecommendedNextMoves(processedAdvice);
+    console.log('called setrecommended');
+
+    console.log('calling display arrows');
+
     setDisplayedArrows(
       processedAdvice.map((move) => ({
         from: move.from,
@@ -354,7 +377,12 @@ const ChessTutorApp = () => {
         arrowOpacity: move.arrowOpacity,
       }))
     );
-    setPositionAnalysis(advice.positionAnalysis);
+    console.log('called display arrows');
+
+console.log('calling set pos analysis');
+
+    setPositionAnalysis('Game analysis based on table data.');
+console.log('called set pos analysis');
 
     analysisComplete.current = true;
 
@@ -364,28 +392,46 @@ const ChessTutorApp = () => {
   function renderMoveAdvice(advice) {
     return advice.recommendedNextMoves.map((move) => {
       let arrowOpacity = 1.0;
-      let moveLabel = move.move;
-      switch (move.priority) {
-        case 'STRONG':
-          arrowOpacity = 0.8;
-          moveLabel = `${move.move} (STRONG)`;
-          break;
-        case 'OPTIONAL':
-          arrowOpacity = 0.5;
-          moveLabel = `${move.move} (OPTIONAL)`;
-          break;
-        default:
-          arrowOpacity = 1.0;
+      const moveSan = entry.move.san;
+      let moveLabel = moveSan;
+// console.log(`entry: ${JSON.stringify(entry, null, 2)}`)
+      // Assign priorities based on reasoning or other criteria (customizable)
+      if (entry.reasoning.includes('Significant')) {
+          arrowOpacity = 1.0; // Strongest
+          moveLabel = `${moveSan} (STRONGEST)`;
+      } else if (entry.reasoning.includes('Controls')) {
+          arrowOpacity = 0.8; // Stronger
+          moveLabel = `${moveSan} (STRONGER)`;
+      } else {
+          arrowOpacity = 0.5; // Strong
+          moveLabel = `${moveSan} (STRONG)`;
       }
 
+      // Process the likely responses (optional)
+      const blackResponses = entry.likelyResponses.map((response) => ({
+          move: response.san, // Black's likely response
+          arrowOpacity: 0.6, // Default arrow opacity for responses
+      }));
+      // const moveList = gameLogicRef.current.chess.moves({ verbose: true });
+      // const matchingMove = moveList.find((m) => m === entry.move);
+      const fromAlgebraic = gameLogicRef.current.indexToAlgebraic(entry.move.from);
+      const toAlgebraic = gameLogicRef.current.indexToAlgebraic(entry.move.to);
+      
+      //  console.log(moveLabel);
+      //  console.log(entry.reasoning);
+      //  console.log(blackResponses);
+      //  console.log(arrowOpacity);
+      //  console.log(fromAlgebraic); 
+      //  console.log(toAlgebraic);
+      
       return {
-        ...move,
-        move: moveLabel,
-        arrowOpacity: arrowOpacity,
-        originalMove: move.move,
-        from: move.from,
-        to: move.to,
-        blackResponses: [], // Not generating black responses here
+          move: moveLabel,
+          reasoning: entry.reasoning || 'No reasoning provided',
+          likelyResponses: blackResponses,
+          arrowOpacity,
+          from: fromAlgebraic, // Extract "from"
+          to: toAlgebraic, // Extract "to"
+          originalMove: moveSan,
       };
     });
   }
@@ -446,7 +492,7 @@ const ChessTutorApp = () => {
                       <Text style={[styles.tableCell, styles.tableHeader, styles.adviceColumn]}>Advice</Text>
                       <Text style={[styles.tableCell, styles.tableHeader, styles.responseColumn]}>
                         Likely Responses
-                      </Text>
+                      </Text> 
                     </View>
                     {recommendedNextMoves.map((move, index) => (
                       <View key={index} style={styles.tableRow}>

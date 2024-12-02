@@ -1,25 +1,17 @@
 import { Chess } from 'chess.js';
-import TutorEngine from './engines/TutorEngine';
+import Engine from './engines/wukong.js';
+import { validateFen } from "chess.js";
 
 class GameLogic {
     constructor() {
-        this.chess = new Chess();
-        this.engine = null; // Will be initialized later
-        this.latestAdvice = null;
+      this.chess = new Chess();   
+      this.latestAdvice = null;
+      this.engine = null; // Will be initialized later   
     }
-
+  
     initializeEngine() {
-        try {
-            if (!this.engine) {
-                this.engine = new TutorEngine();
-                if (this.chess) {
-                    this.engine.setPosition(this.chess.fen());
-                }
-            }
-        } catch (error) {
-            console.error('Error in initializeEngine:', error);
-            throw error;
-        }
+      this.engine = new Engine();
+      this.engine.initialize();
     }
 
     getBoardState() {
@@ -42,11 +34,14 @@ class GameLogic {
     makeMove_White(move) {
         try {
             const result = this.chess.move(move);
+            this.engine.setFEN(this.chess.fen());
+            // console.log(`fen in logic.makemovewhite after move:  ${this.chess.fen()}`);
+
             if (result) {
-                this.engine.setPosition(this.chess.fen());
-                console.log('Move made:', move);
-                console.log('New FEN:', this.chess.fen());
-                console.log('Side to move:', this.chess.turn() === 'w' ? 'White' : 'Black');
+                this.engine.setFEN(this.chess.fen());
+                console.log(`White move made: ${result.san}`);
+                // console.log('New FEN after white:', this.chess.fen());
+                // console.log('Side to move:', this.chess.turn() === 'w' ? 'White' : 'Black');
     
             }
             return result;
@@ -64,64 +59,66 @@ class GameLogic {
     }
 
     getLegalMoves(position) {
+        console.log('Current FEN:', this.chess.fen());
+
+        console.log('Legal Moves for position', position, ':', this.chess.moves({ square: position }));
+
         return this.chess.moves({ square: position, verbose: true });
     }
 
-    makeMove_Black() {
-        try {
-            this.engine.setPosition(this.chess.fen());
-            const legalMoves = this.chess.moves({ verbose: true });
-            
-            if (!legalMoves.length) {
-                console.log('No legal moves available for Black');
-                return null;
-            }
-    
-            // Get best move from engine
-            const bestMove = this.engine.getBestMove_Black(2);
-            
-            if (!bestMove || !bestMove.move) {
-                console.log('Engine failed to suggest a move - using principle-based move');
-                // Use principle-based move instead of random
-                return this.makePrincipledMove(legalMoves);
-            }
-    
-            // Try to make the move directly
-            const result = this.chess.move(bestMove.move);
-            if (result) {
-                return {
-                    move: result,
-                    boardState: this.getBoardState(),
-                    status: this.getGameStatus()
-                };
-            }
-    
-            // If direct move failed, try using from/to
-            const moveToMake = {
-                from: bestMove.move.from,
-                to: bestMove.move.to,
-                promotion: bestMove.move.promotion
+    makeMove_Black(whiteMove) {
+        const originalFEN = this.chess.fen();
+
+        // Check if White's move is one of the advised moves
+        const advisedMove = this.latestAdvice?.find(advice => advice.move.san === whiteMove);
+        if (advisedMove) {
+            // White's move matches advice; pick one of the likely responses
+            const blackResponses = advisedMove.likelyResponses;
+            const selectedMove = blackResponses[Math.floor(Math.random() * blackResponses.length)];
+            // console.log(`fen in logic.makemoveblack before script move: ${this.chess.fen()}`);
+
+            const result=this.chess.move(selectedMove.move); // Make Black's response
+            this.engine.setFEN(this.chess.fen());
+            console.log(`Black move made: ${result.san}`);
+            // console.log(`fen in logic.makemoveblack after script move: ${this.chess.fen()}`);
+
+            return {
+                move: selectedMove.move,
+                boardState: this.getBoardState(),
+                status: this.getGameStatus(),
             };
-    
-            const result2 = this.chess.move(moveToMake);
-            if (result2) {
-                return {
-                    move: result2,
-                    boardState: this.getBoardState(),
-                    status: this.getGameStatus()
-                };
-            }
-    
-            // If both attempts failed, use principle-based move
-            console.log('Failed to make engine move - using principle-based move');
-            return this.makePrincipledMove(legalMoves);
-    
-        } catch (error) {
-            console.log('Error in makeMove_Black:', error);
-            // Even on error, use principle-based move instead of random
-            return this.makePrincipledMove(this.chess.moves({ verbose: true }));
+        } else {
+           console.log(`White's move does not match advice; calculate the best move dynamically`);
+            const bestMove = this.engine.searchPosition(3)[0];
+            // console.log('result from searchPosition:', JSON.stringify(bestMove, null, 2));
+            // Convert numeric indices to algebraic notation
+            const fromAlgebraic = this.indexToAlgebraic(bestMove.move.from);
+            const toAlgebraic = this.indexToAlgebraic(bestMove.move.to);
+            // console.log(`Converting from ${bestMove.move.from} to ${fromAlgebraic}`);
+            // console.log(`Converting to ${bestMove.move.to} to ${toAlgebraic}`);
+            const result=this.chess.move({ from: fromAlgebraic, to: toAlgebraic });
+            this.engine.setFEN(this.chess.fen());
+            console.log(`off-script Black move made: ${result.san}`);
+            // console.log(`fen in logic.makemoveblack after off-script move:  ${this.chess.fen()}`);
+            // console.log(`black moves: ${bestMove.move.san}`);
+            // console.log(`new fen in makeblackmove: ${this.chess.fen()}`);            
+            return {
+                move: bestMove.move,
+                boardState: this.getBoardState(),
+                status: this.getGameStatus(),
+            };
         }
     }
+    indexToAlgebraic(index) {
+        const file = index & 7;
+        const rank = (index >> 4) + 1;
+        if (file < 0 || file > 7 || rank < 1 || rank > 8) {
+            console.log(`Invalid index for algebraic conversion: ${index}`);
+            return null;
+        }
+        return 'abcdefgh'[file] + rank;
+    }
+    
     makePrincipledMove(legalMoves) {
         // Score moves based on basic chess principles
         const scoredMoves = legalMoves.map(move => {
@@ -170,7 +167,9 @@ class GameLogic {
         
         // Make the move
         const result = this.chess.move(bestMove);
-        
+        this.engine.setFEN(this.chess.fen());
+        // console.log(`fen in logic.makeprincipalmove after  move: ${this.chess.fen()}`);
+
         return {
             move: result,
             boardState: this.getBoardState(),
@@ -232,45 +231,81 @@ class GameLogic {
         return 'ongoing';
     }
 
-    fetchAdviceAfterBlackMove() {
-        if (this.chess.turn() !== 'w') {
-            console.log('Not White\'s turn, skipping advice generation.');
-            return null;
-        }
-        this.engine.setPosition(this.chess.fen());
-        const engineAdvice = this.engine.getAdvice();
-        
-        if (!engineAdvice || engineAdvice.length === 0) {
-            return {
-                positionAnalysis: 'No analysis available',
-                recommendedNextMoves: []
-            };
-        }
-    
-        const formattedAdvice = {
-            positionAnalysis: `Position evaluation: ${this.engine.evaluatePosition()}`,
-            recommendedNextMoves: engineAdvice.map(moveInfo => {
-                // Determine priority based on score
-                let priority;
-                if (moveInfo.score >= 200) {
-                    priority = 'STRONG';
-                } else if (moveInfo.score >= 50) {
-                    priority = 'GOOD';
-                } else {
-                    priority = 'MODERATE';
-                }
-    
+    getTableData() {
+        const originalFEN = this.chess.fen();
+        //this.engine.setFEN(this.chess.fen());
+        // Step 1: Get top 3 moves for White
+        const topWhiteMoves = [
+            this.engine.searchPosition(4)[0],
+            this.engine.searchPosition(3)[0],
+            this.engine.searchPosition(2)[0]
+        ];
+        // console.log(`white move 1: ${topWhiteMoves[0].move}`);
+        // console.log(`white move 2: ${topWhiteMoves[1].move.san}`);
+        // console.log(`white move 3: ${topWhiteMoves[2].move.san}`);
+        // Step 2: For each move, get likely Black responses
+        const tableData = topWhiteMoves.map((whiteMove) => {
+            //  console.log(`fen in logic.gettabledata before temp move:        ${this.chess.fen()}`);
+            const fromAlgebraic = this.indexToAlgebraic(whiteMove.move.from);
+            const toAlgebraic = this.indexToAlgebraic(whiteMove.move.to);
+            const moveResult = this.chess.move({ from: fromAlgebraic, to: toAlgebraic });
+            const fenafterwhite = this.chess.fen()
+            this.engine.setFEN(fenafterwhite);
+            console.log('temp white');
+            this.engine.printBoard();
+            console.log(this.chess.ascii());
+
+            if (!moveResult) {
+               console.warn(`Failed to make temporary White move: `);
+              return null;
+            }
+            const sanMove = moveResult.san;
+            const likelyResponses = [
+                this.engine.searchPosition(3)[0],
+                this.engine.searchPosition(2)[0]
+            ];
+            console.log(`likelyResponses:`);
+            const processedResponses = likelyResponses.map((response) => {
+                const responseFrom = this.indexToAlgebraic(response.move.from);
+                const responseTo = this.indexToAlgebraic(response.move.to);
+                // Get SAN notation for the response
+                const responseResult = this.chess.move({ from: responseFrom, to: responseTo });
+                const responseSan = responseResult ? responseResult.san : '';
+                this.chess.undo();  //undo black response
+                this.engine.setFEN(fenafterwhite);
+                console.log(`from ${responseFrom}`);
+                console.log(`to ${responseTo}`);
                 return {
-                    move: moveInfo.move.san,
-                    priority,
-                    reasoning: moveInfo.reasoning.join(', '),
-                    from: moveInfo.move.from,
-                    to: moveInfo.move.to
+                    san: responseSan,
+                    move:response.move,
                 };
-            })
-        };
+            });
+            this.chess.undo();  //undo white advice
+            //this.chess.load(originalFEN); // Restore FEN
+            this.engine.setFEN(originalFEN);
+            //  console.log(`move: ${whiteMove.move.san}`);
+            return {
+                san: sanMove,
+                move: whiteMove.move,
+                reasoning: this.attachAttributes(whiteMove),
+                likelyResponses: processedResponses
+            };
+        });
+        return tableData.filter(row => row !== null);;
+    }
     
-        return formattedAdvice;
+    attachAttributes(moveInfo) {
+        const reasoning = [];
+        if (moveInfo.move.captured) {
+            reasoning.push(`Captures opponent's ${this.engine.getPieceName(moveInfo.move.captured)}`);
+        }
+        // if (this.engine.CENTER_SQUARES.includes(moveInfo.move.to)) {
+        //     reasoning.push('Controls a central square');
+        // }
+        if (moveInfo.score > 100) {
+            reasoning.push('Significant positional advantage');
+        }
+        return reasoning.join(', ');
     }
     
 

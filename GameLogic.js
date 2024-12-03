@@ -39,7 +39,7 @@ class GameLogic {
 
             if (result) {
                 this.engine.setFEN(this.chess.fen());
-                console.log(`White move made: ${result.san}`);
+                // console.log(`White move made: ${result.san}`);
                 // console.log('New FEN after white:', this.chess.fen());
                 // console.log('Side to move:', this.chess.turn() === 'w' ? 'White' : 'Black');
     
@@ -59,9 +59,9 @@ class GameLogic {
     }
 
     getLegalMoves(position) {
-        console.log('Current FEN:', this.chess.fen());
+        // console.log('Current FEN:', this.chess.fen());
 
-        console.log('Legal Moves for position', position, ':', this.chess.moves({ square: position }));
+        // console.log('Legal Moves for position', position, ':', this.chess.moves({ square: position }));
 
         return this.chess.moves({ square: position, verbose: true });
     }
@@ -70,7 +70,11 @@ class GameLogic {
         const originalFEN = this.chess.fen();
 
         // Check if White's move is one of the advised moves
-        const advisedMove = this.latestAdvice?.find(advice => advice.move.san === whiteMove);
+        const advisedMove = this.latestAdvice?.find(advice => advice.san === whiteMove);
+        // console.log(`latestadvice: ${JSON.stringify(this.latestAdvice,null,2)}`);        
+       
+        // console.log(`white move: ${JSON.stringify(whiteMove,null,2)}`);        
+        // console.log(`advised move: ${JSON.stringify(advisedMove,null,2)}`);
         if (advisedMove) {
             // White's move matches advice; pick one of the likely responses
             const blackResponses = advisedMove.likelyResponses;
@@ -79,7 +83,7 @@ class GameLogic {
 
             const result=this.chess.move(selectedMove.move); // Make Black's response
             this.engine.setFEN(this.chess.fen());
-            console.log(`Black move made: ${result.san}`);
+            // console.log(`Black move made: ${result.san}`);
             // console.log(`fen in logic.makemoveblack after script move: ${this.chess.fen()}`);
 
             return {
@@ -88,7 +92,7 @@ class GameLogic {
                 status: this.getGameStatus(),
             };
         } else {
-           console.log(`White's move does not match advice; calculate the best move dynamically`);
+        //    console.log(`White's move does not match advice; calculate the best move dynamically`);
             const bestMove = this.engine.searchPosition(3)[0];
             // console.log('result from searchPosition:', JSON.stringify(bestMove, null, 2));
             // Convert numeric indices to algebraic notation
@@ -98,7 +102,7 @@ class GameLogic {
             // console.log(`Converting to ${bestMove.move.to} to ${toAlgebraic}`);
             const result=this.chess.move({ from: fromAlgebraic, to: toAlgebraic });
             this.engine.setFEN(this.chess.fen());
-            console.log(`off-script Black move made: ${result.san}`);
+            // console.log(`off-script Black move made: ${result.san}`);
             // console.log(`fen in logic.makemoveblack after off-script move:  ${this.chess.fen()}`);
             // console.log(`black moves: ${bestMove.move.san}`);
             // console.log(`new fen in makeblackmove: ${this.chess.fen()}`);            
@@ -233,27 +237,29 @@ class GameLogic {
 
     getTableData() {
         const originalFEN = this.chess.fen();
-        //this.engine.setFEN(this.chess.fen());
+        this.engine.setFEN(this.chess.fen());
         // Step 1: Get top 3 moves for White
         const topWhiteMoves = [
             this.engine.searchPosition(4)[0],
             this.engine.searchPosition(3)[0],
             this.engine.searchPosition(2)[0]
         ];
-        // console.log(`white move 1: ${topWhiteMoves[0].move}`);
-        // console.log(`white move 2: ${topWhiteMoves[1].move.san}`);
-        // console.log(`white move 3: ${topWhiteMoves[2].move.san}`);
+        // console.log(`white move 1: ${JSON.stringify(topWhiteMoves[0],null,2)}`);
+        // console.log(`white move 2: ${JSON.stringify(topWhiteMoves[1],null,2)}`);
+        // console.log(`white move 3: ${JSON.stringify(topWhiteMoves[2],null,2)}`);
         // Step 2: For each move, get likely Black responses
         const tableData = topWhiteMoves.map((whiteMove) => {
             //  console.log(`fen in logic.gettabledata before temp move:        ${this.chess.fen()}`);
             const fromAlgebraic = this.indexToAlgebraic(whiteMove.move.from);
             const toAlgebraic = this.indexToAlgebraic(whiteMove.move.to);
             const moveResult = this.chess.move({ from: fromAlgebraic, to: toAlgebraic });
+            //  console.log(`fen in logic.gettabledata after temp move:        ${this.chess.fen()}`);
+            
             const fenafterwhite = this.chess.fen()
             this.engine.setFEN(fenafterwhite);
-            console.log('temp white');
-            this.engine.printBoard();
-            console.log(this.chess.ascii());
+            // console.log('temp white');
+            // this.engine.printBoard();
+            // console.log(this.chess.ascii());
 
             if (!moveResult) {
                console.warn(`Failed to make temporary White move: `);
@@ -264,7 +270,7 @@ class GameLogic {
                 this.engine.searchPosition(3)[0],
                 this.engine.searchPosition(2)[0]
             ];
-            console.log(`likelyResponses:`);
+            // console.log(`likelyResponses:`);
             const processedResponses = likelyResponses.map((response) => {
                 const responseFrom = this.indexToAlgebraic(response.move.from);
                 const responseTo = this.indexToAlgebraic(response.move.to);
@@ -273,15 +279,15 @@ class GameLogic {
                 const responseSan = responseResult ? responseResult.san : '';
                 this.chess.undo();  //undo black response
                 this.engine.setFEN(fenafterwhite);
-                console.log(`from ${responseFrom}`);
-                console.log(`to ${responseTo}`);
+                // console.log(`from ${responseFrom}`);
+                // console.log(`to ${responseTo}`);
                 return {
                     san: responseSan,
                     move:response.move,
                 };
             });
-            this.chess.undo();  //undo white advice
-            //this.chess.load(originalFEN); // Restore FEN
+            //this.chess.undo();  //undo white advice
+            this.chess.load(originalFEN); // Restore FEN
             this.engine.setFEN(originalFEN);
             //  console.log(`move: ${whiteMove.move.san}`);
             return {

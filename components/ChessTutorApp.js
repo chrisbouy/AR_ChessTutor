@@ -294,7 +294,7 @@ const ChessTutorApp = () => {
         setPossibleMoves(targetSquares);
       } else {
         onMove(selectedSquare, position);
-        console.log('called onmove')
+        // console.log('called onmove')
         setSelectedSquare(null);
         setPossibleMoves([]);
       }
@@ -317,9 +317,9 @@ const ChessTutorApp = () => {
       }
       setDisplayedArrows([]); 
       setIsThinking(true);
-      const blackMoveResult = gameLogicRef.current.makeMove_Black();
+      const blackMoveResult = gameLogicRef.current.makeMove_Black(playerMove.san);
       if (!blackMoveResult || !blackMoveResult.move) {
-        console.log('Engine failed to make a move for Black, making random move.');
+        // console.log('Engine failed to make a move for Black, making random move.');
         const randomMove = gameLogicRef.current.selectRandomMove();
         gameLogicRef.current.chess.move(randomMove);
         setBoardState([...gameLogicRef.current.getBoardState()]);
@@ -327,9 +327,9 @@ const ChessTutorApp = () => {
         setIsThinking(false);
       } else {
         setBoardState([...gameLogicRef.current.getBoardState()]);
-          console.log(`fetching advice`);
+          // console.log(`fetching advice`);
         fetchAdviceAfterBlackMove();
-               console.log(`fetched advice`);
+              //  console.log(`fetched advice`);
    
         setIsThinking(false);
       }
@@ -342,9 +342,9 @@ const ChessTutorApp = () => {
   };
 
   const fetchAdviceAfterBlackMove = () => {
-    console.log(`getting table data`);
+    // console.log(`getting table data`);
     const tableData = gameLogicRef.current.getTableData();
-    console.log(`table data: ${JSON.stringify(tableData, null, 2)}`);
+    // console.log(`table data: ${JSON.stringify(tableData, null, 2)}`);
 
     if (!tableData || tableData.length === 0) {
         console.log('Error: Table data is empty or undefined.');
@@ -357,18 +357,18 @@ const ChessTutorApp = () => {
 
     // Save the latest advice in GameLogic
     gameLogicRef.current.latestAdvice = tableData;
-console.log('calling render');
+// console.log('calling render');
     // Use renderMoveAdvice to process the tableData
     const processedAdvice = renderMoveAdvice(tableData);
-console.log('called render');
+// console.log('called render');
 
     // Update the state with processed advice
-console.log('calling setrecommended');
+// console.log('calling setrecommended');
 
     setRecommendedNextMoves(processedAdvice);
-    console.log('called setrecommended');
+    // console.log('called setrecommended');
 
-    console.log('calling display arrows');
+    // console.log('calling display arrows');
 
     setDisplayedArrows(
       processedAdvice.map((move) => ({
@@ -377,12 +377,12 @@ console.log('calling setrecommended');
         arrowOpacity: move.arrowOpacity,
       }))
     );
-    console.log('called display arrows');
+    // console.log('called display arrows');
 
-console.log('calling set pos analysis');
+// console.log('calling set pos analysis');
 
     setPositionAnalysis('Game analysis based on table data.');
-console.log('called set pos analysis');
+// console.log('called set pos analysis');
 
     analysisComplete.current = true;
 
@@ -390,7 +390,7 @@ console.log('called set pos analysis');
   };
 
   function renderMoveAdvice(advice) {
-    console.log(advice[0]);
+    // console.log(advice[0]);
     return advice.map((move) => {
       let arrowOpacity = 1.0;
       const moveSan = move.san;

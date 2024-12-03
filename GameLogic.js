@@ -133,7 +133,7 @@ class GameLogic {
       } else {
         const userLastMove = moveHistory.slice(-1)[0];
         const userLastMoveSAN = userLastMove.san;
-        console.log(`last white move ${userLastMoveSAN}`)
+        // console.log(`last white move ${userLastMoveSAN}`)
         if (this.latestAdvice && this.latestAdvice.recommendedNextMoves) {
           // Find if the user's move matches any of the AI's recommended moves
           const matchingAdvice = this.latestAdvice.recommendedNextMoves.find(
@@ -159,8 +159,8 @@ class GameLogic {
       // Make the move
       const moveResult = this.chess.move(blackMove);
       if (moveResult) {
-        console.log(`whites move: ${this.getLastWhiteMove().san}`);
-        console.log(`blacks move: ${this.getLastBlackMove().san}`);
+        // console.log(`whites move: ${this.getLastWhiteMove().san}`);
+        // console.log(`blacks move: ${this.getLastBlackMove().san}`);
 
         return {
           move: moveResult,
@@ -294,7 +294,7 @@ class GameLogic {
     //   console.log(responseText);
 
       const advice = this.extractMovesFromResponse(responseText);
-      console.log(`getDataFromGpt.advice ${JSON.stringify(advice,null,2)}`)
+    //   console.log(`getDataFromGpt.advice ${JSON.stringify(advice,null,2)}`)
       return advice;
     } catch (error) {
       console.log('Error fetching analysis from AI:', error);
@@ -490,14 +490,14 @@ class GameLogic {
           return null;
         }
 
-        console.log('Claude API Response:', data);
+        // console.log('Claude API Response:', data);
         if (data && data.content && data.content[0] && data.content[0].text) {
             let explanation = data.content[0].text;
             const advice = this.extractReasoningFromResponse(explanation);
-            console.log(`after extracton ${advice}`)
-            console.log(`after extracton ${advice.recommendedNextMoves}`)
+            // console.log(`after extracton ${advice}`)
+            // console.log(`after extracton ${advice.recommendedNextMoves}`)
 
-            console.log(`after extracton ${advice.positionAnalysis}`)
+            // console.log(`after extracton ${advice.positionAnalysis}`)
             return advice;
         }
     } catch (error) {
@@ -660,7 +660,10 @@ async getReasoningFromAI(apiName, advisedMoves) {
     - Avoid referring to bishops by square colors
     - Do not include any additional text or explanations outside the JSON.
 `;
-const advisedMovesString = JSON.stringify(advisedMoves);
+//const advisedMovesString = JSON.stringify(advisedMoves);
+const advisedMovesString = this.formatAdvisedMoves(advisedMoves);
+console.log('advisedMovesString ', advisedMovesString);
+
     const user_prompt = `
 - Current FEN: ${fen}
 - Respond in the following JSON format:
@@ -694,6 +697,20 @@ ${advisedMovesString}
         throw new Error(`Unknown API name: ${apiName}`);
     }
   }  
+    formatAdvisedMoves(advisedMoves) {
+    const moves = advisedMoves.recommendedNextMoves;
+    let movesDescription = '';
+    for (let i = 0; i < moves.length; i++) {
+      const move = moves[i];
+      const moveNumber = i + 1;
+      movesDescription += `move ${moveNumber}. ${move.move} (${move.priority.toLowerCase()} move), `;
+    }
+  
+    // Remove the trailing comma and space at the end
+    movesDescription = movesDescription.trim().replace(/,$/, '');
+  
+    return movesDescription;
+  }
   extractPositionAnalysis(result) {
     try {
       const regex = /"positionAnalysis":\s*(\{[^}]*\})/;
@@ -714,9 +731,9 @@ ${advisedMovesString}
     //   console.log(`Raw advice text: ${adviceText}`);
       const cleanedText = adviceText.replace(/```(?:json)?/g, '').trim();
       const parsedResponse = JSON.parse(cleanedText);
-      console.log('Parsed response:', parsedResponse);
+    //   console.log('Parsed response:', parsedResponse);
       const { recommendedNextMoves } = parsedResponse;
-      console.log('recommendedNextMoves:', recommendedNextMoves);
+    //   console.log('recommendedNextMoves:', recommendedNextMoves);
       return { recommendedNextMoves };
     } catch (e) {
       console.log("Error parsing the assistant's response:", e);
@@ -728,10 +745,10 @@ ${advisedMovesString}
     //   console.log(`Raw advice text: ${adviceText}`);
       const cleanedText = adviceText.replace(/```(?:json)?/g, '').trim();
       const parsedResponse = JSON.parse(cleanedText);
-      console.log('Parsed response:', parsedResponse);
+    //   console.log('Parsed response:', parsedResponse);
       const { positionAnalysis, reasoning } = parsedResponse;
-      console.log('positionAnalysis:', positionAnalysis);
-      console.log('reasoning:', reasoning);
+    //   console.log('positionAnalysis:', positionAnalysis);
+    //   console.log('reasoning:', reasoning);
       return { positionAnalysis, reasoning };
     } catch (e) {
       console.log("Error parsing the assistant's response:", e);

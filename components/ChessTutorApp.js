@@ -356,10 +356,10 @@ const ChessTutorApp = () => {
       console.log('Failed to fetch moves from AI.');
       return;
     }
-    console.log(`advised_moves: ${JSON.stringify(advised_moves,null,2)}`);    
+    // console.log(`advised_moves: ${JSON.stringify(advised_moves,null,2)}`);    
     gameLogicRef.current.latestAdvice = advised_moves;
     const processedAdvisedMoves = renderAdvisedMoves(advised_moves);
-        console.log(`processedAdvisedMoves: ${processedAdvisedMoves}`);
+        // console.log(`processedAdvisedMoves: ${processedAdvisedMoves}`);
 
     setRecommendedNextMoves(processedAdvisedMoves);
     setDisplayedArrows(
@@ -383,7 +383,7 @@ const ChessTutorApp = () => {
       return;
     }
     const reasoningData = await gameLogicRef.current.getReasoningFromAI(apiName,advisedMoves);
-    console.log(`reasoningdata: ${JSON.stringify(reasoningData)}`);
+    // console.log(`fetchReasoningAfterBlackMove.reasoningdata: ${JSON.stringify(reasoningData)}`);
     if (!reasoningData) {
       console.log('Failed to fetch reasoning from AI.');
       return;

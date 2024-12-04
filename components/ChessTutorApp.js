@@ -36,7 +36,7 @@ const ChessTutorApp = () => {
   const [isLandscape, setIsLandscape] = useState(false);
   const guidelineBaseWidth = 350; // Base width for scaling fonts
   const scaleFont = (size) => (windowWidth / guidelineBaseWidth) * size;
-  const [movesLeft, setMovesLeft] = useState(12);
+  const [movesLeft, setMovesLeft] = useState(500);
   const [isThinking, setIsThinking] = useState(false);
   const [popupVisible, setPopupVisible] = useState(false);
   const [popupDescription, setPopupDescription] = useState('');
@@ -281,7 +281,7 @@ const ChessTutorApp = () => {
     setIsThinking(false);
     analysisComplete.current = false;    // Set analysis as incomplete
     positionAnalysisExtracted.current = false;    // Set position analysis as not extracted
-    setMovesLeft(12);    // Reset moves left
+    setMovesLeft(500);    // Reset moves left
   };
 
   const onSquarePress = (position) => {    // Function to handle when a square is pressed
@@ -383,7 +383,7 @@ const ChessTutorApp = () => {
       return;
     }
     const reasoningData = await gameLogicRef.current.getReasoningFromAI(apiName,advisedMoves);
-    // console.log(`fetchReasoningAfterBlackMove.reasoningdata: ${JSON.stringify(reasoningData)}`);
+  console.log(`fetchReasoningAfterBlackMove.reasoningdata: ${JSON.stringify(reasoningData)}`);
     if (!reasoningData) {
       console.log('Failed to fetch reasoning from AI.');
       return;

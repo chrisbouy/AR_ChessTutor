@@ -202,7 +202,7 @@ class GameLogic {
     try {
       await EncryptedStorage.setItem('apiKey', key);
       this.apiKey = key; // Optionally update the instance variable
-      console.log('API key stored successfully.');
+      // console.log('API key stored successfully.');
     } catch (error) {
       console.error('Error storing the API key:', error);
     }
@@ -212,7 +212,7 @@ class GameLogic {
       const key = await EncryptedStorage.getItem('apiKey');
       if (key) {
         this.apiKey = key; // Store it in the instance variable
-        console.log('API key retrieved:', key); // Be cautious with logging sensitive data
+        // console.log('API key retrieved:', key); // Be cautious with logging sensitive data
         return key;
       } else {
         console.error('API key not found in storage.');
@@ -240,16 +240,16 @@ class GameLogic {
     //   });
   
     //   // Log the request body
-    //   console.log('Request Body:', {
+      // console.log('Request Body:', {
     //       model: "gpt-4o-mini",
     //       messages: [
     //         {
     //           role: 'system',
-    //           content: system_prompt,
+               console.log('gpt system_prompt ',system_prompt);
     //         },
     //         {
     //           role: 'user',
-    //           content: user_prompt,
+                 console.log('gpt user_prompt ', user_prompt);
     //         },
     //       ],
     //       max_tokens: 1000,
@@ -280,8 +280,11 @@ class GameLogic {
               content: user_prompt,
             },
           ],
-          max_tokens: 500,
           temperature: 0,
+          max_tokens: 500,
+          top_p: 1,
+          frequency_penalty: 0,
+          presence_penalty: 0
         }),
       });
 
@@ -291,10 +294,9 @@ class GameLogic {
         return null;
       }      
       const responseText = jsonResponse.choices[0].message.content;
-    //   console.log(responseText);
 
       const advice = this.extractMovesFromResponse(responseText);
-    //   console.log(`getDataFromGpt.advice ${JSON.stringify(advice,null,2)}`)
+      //  console.log(`getDataFromGpt.advice ${JSON.stringify(advice,null,2)}`)
       return advice;
     } catch (error) {
       console.log('Error fetching analysis from AI:', error);
@@ -446,11 +448,11 @@ class GameLogic {
         // console.log('Request Body:', {
         //     model: "claude-3-5-sonnet-20241022",
         //     max_tokens: 1000,
-        //     system: system_prompt,
+        console.log('claude system_prompt ',system_prompt);
         //     messages: [
         //         {
         //             role: "user",
-        //             content: user_prompt
+        console.log('claude user_prompt ',user_prompt);
         //         },
         //     ]
         // });
@@ -472,7 +474,7 @@ class GameLogic {
             },
             body: JSON.stringify({
                 model: "claude-3-5-sonnet-20241022",
-                max_tokens: 1000,
+                max_tokens: 300,
                 system: system_prompt,
                 messages: [
 
@@ -490,7 +492,7 @@ class GameLogic {
           return null;
         }
 
-        // console.log('Claude API Response:', data);
+        //  console.log('Claude API Response:', JSON.stringify(data, null, 2));
         if (data && data.content && data.content[0] && data.content[0].text) {
             let explanation = data.content[0].text;
             const advice = this.extractReasoningFromResponse(explanation);
@@ -603,15 +605,20 @@ Instructions:
 
 
 Constraints:
-- Provide one strong white move, one stronger white move, and one strongest white move.
+- Provide one unique strong white move, one unique stronger white move, and one unique strongest white move.
 - Provide two likely black responses
 - Responses must strictly follow the specified JSON format.
 - Do not include any additional text or explanations outside the JSON.
 `;
 
     const user_prompt = `
-- Current FEN: ${fen}
-- Respond in the following JSON format:
+- Current FEN: 
+${fen}
+- Current game move history: 
+${moveHistory}
+- Current board setup: 
+${this.chess.ascii()}
+- Respond EXACTLY in the following JSON format:
 {
   "recommendedNextMoves": [
     {
@@ -634,7 +641,7 @@ Constraints:
       case 'Perplexity':
         return await this.getAdviceFromPerplexity(system_prompt, user_prompt);   
       case 'Claude':
-        return await this.getAdviceFromClaude(system_prompt, user_prompt);
+        return await this.getDataFromClaude(system_prompt, user_prompt);
         case 'Claude_stream':
           return await this.getAdviceFromClaude_stream(system_prompt, user_prompt, options); 
       case 'GPTinstruct':
@@ -662,13 +669,16 @@ async getReasoningFromAI(apiName, advisedMoves) {
 `;
 //const advisedMovesString = JSON.stringify(advisedMoves);
 const advisedMovesString = this.formatAdvisedMoves(advisedMoves);
-console.log('advisedMovesString ', advisedMovesString);
+// console.log('advisedMovesString ', advisedMovesString);
 
     const user_prompt = `
-- Current FEN: ${fen}
+- Current FEN: 
+${fen}
+- Current game move history: 
+${moveHistory}
+- Current board setup: 
+${this.chess.ascii()}
 - Respond in the following JSON format:
-
-
 Advised Moves:
 ${advisedMovesString}
 {

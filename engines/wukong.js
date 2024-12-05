@@ -354,26 +354,29 @@ generatePawnMoves(square, moves) {
 }
 
 
-  // Generate moves for pieces other than pawns
-  generatePieceMoves(square, offsets, isSliding, moves) {
-    const piece = this.board[square];
-    for (let offset of offsets) {
-      let toSquare = square;
-      while (true) {
-        toSquare += offset;
-        if ((toSquare & 0x88) !== 0) break;
-        if (this.board[toSquare] === null) {
+generatePieceMoves(square, offsets, isSliding, moves) {
+  const piece = this.board[square];
+  for (let offset of offsets) {
+    let toSquare = square;
+    while (true) {
+      toSquare += offset;
+      if ((toSquare & 0x88) !== 0) break; // Off board, stop for non-sliding or break out of loop if sliding
+      const targetPiece = this.board[toSquare];
+      // Debug
+      // console.log(`Trying move from ${this.getSquareName(square)} to ${this.getSquareName(toSquare)} for ${this.PIECE_SYMBOLS[piece]}`);
+      if (targetPiece === null) {
+        moves.push(this.createMove(square, toSquare));
+      } else {
+        if (Math.sign(targetPiece) !== Math.sign(piece)) {
           moves.push(this.createMove(square, toSquare));
-        } else {
-          if (Math.sign(this.board[toSquare]) !== Math.sign(piece)) {
-            moves.push(this.createMove(square, toSquare));
-          }
-          break;
         }
-        if (!isSliding) break;
+        break;
       }
+      if (!isSliding) break;
     }
   }
+}
+
 
   // Generate castling moves
   generateCastlingMoves(square, moves) {
@@ -1029,20 +1032,77 @@ calculateManhattanDistance(square1, square2) {
     return targets >= 2;
   }
 
-  // Check if the move creates a pin (Simplified)
   createsPin(move) {
-    // Simplified pin detection
-    // After the move, check if any opponent piece is pinned
-    // This requires more complex logic; here we'll use a simple approximation
-    return false; // Placeholder
+    // We'll do a very simplified approximation:
+    // 1. Make the move.
+    this.makeMove(move);
+  
+    // 2. Identify if after this move, removing the moved piece would expose the king.
+    // Actually, let's just check if before the move, the piece was aligned with the king and a potential enemy slider.
+  
+    // Undo the move and try a more direct approach:
+    this.undoMove();
+  
+    // Approach:
+    // - The idea: A pin is usually detected before we move the piece. If the piece currently on 'from' square moves,
+    //   would that expose the king to an attack from a rook/bishop/queen line?
+    // To do that:
+    // 1. Identify our king square.
+    const kingSq = this.kingSquare[this.sideToMove]; 
+  
+    // 2. Check all sliding directions (for rook, bishop, queen) from king to see if 
+    //    the piece at 'from' was along that line blocking an enemy attack.
+    const directionsToCheck = this.DIRECTIONS.ROOK.concat(this.DIRECTIONS.BISHOP);
+    let isPinned = false;
+  
+    // If the piece moved was not on the same line with the king and a potential attacker, it can't be a pin.
+    // Check lines from king to 'from' square:
+    const deltaFile = ((move.from & 7) - (kingSq & 7));
+    const deltaRank = ((move.from >> 4) - (kingSq >> 4));
+  
+    // If piece is not aligned with king (straight or diagonal), not pinned
+    let aligned = false;
+    if (deltaFile === 0 || deltaRank === 0 || Math.abs(deltaFile) === Math.abs(deltaRank)) aligned = true;
+  
+    if (!aligned) return false;
+  
+    // Now, simulate the piece being gone: temporarily remove it and check if king is attacked
+    const savedPiece = this.board[move.from];
+    this.board[move.from] = null; // Temporarily remove piece
+    const wasAttacked = this.isSquareAttacked(kingSq, this.sideToMove ^ 1);
+    this.board[move.from] = savedPiece; // restore piece
+  
+    if (wasAttacked) {
+      isPinned = true;
+    }
+  
+    return isPinned;
   }
 
-  // Check if the move threatens mate (Simplified)
   threatensMate(move) {
-    // After making the move, check if there is a mate threat
-    // Simplified for now
-    return false; // Placeholder
+    // Make the move
+    this.makeMove(move);
+  
+    // Now check if the opponent is in check and has no moves
+    const oppSide = this.sideToMove; // After makeMove, sideToMove has switched
+    const kingSq = this.kingSquare[oppSide];
+  
+    const inCheck = this.isSquareAttacked(kingSq, oppSide ^ 1);
+    let isMate = false;
+    if (inCheck) {
+      const oppMoves = this.generateLegalMoves();
+      if (oppMoves.length === 0) {
+        // It's checkmate
+        isMate = true;
+      }
+    }
+  
+    // Undo the move
+    this.undoMove();
+  
+    return isMate;
   }
+  
 
   // Check if the move captures a valuable piece
   capturesValuablePiece(move) {

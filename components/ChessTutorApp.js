@@ -19,9 +19,7 @@ const ChessTutorApp = () => {
   useEffect(() => {
     SplashScreen.hide();
   }, []);
-
   const gameLogicRef = useRef(new GameLogic());
-
   const [boardState, setBoardState] = useState(gameLogicRef.current.getBoardState());
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [recommendedNextMoves, setRecommendedNextMoves] = useState([]);
@@ -310,7 +308,6 @@ const ChessTutorApp = () => {
       }
       setBoardState([...gameLogicRef.current.getBoardState()]);
       setMovesLeft((prevMoves) => prevMoves - 1);
-
       if (gameLogicRef.current.chess.isCheckmate()) {
         Alert.alert('Game Over', 'Checkmate! The game has ended.', [{ text: 'OK', onPress: () => handleReload() }]);
         return;
@@ -318,22 +315,13 @@ const ChessTutorApp = () => {
       setDisplayedArrows([]); 
       setIsThinking(true);
       const blackMoveResult = gameLogicRef.current.makeMove_Black(playerMove.san);
-      if (!blackMoveResult || !blackMoveResult.move) {
-        // console.log('Engine failed to make a move for Black, making random move.');
-        const randomMove = gameLogicRef.current.selectRandomMove();
-        gameLogicRef.current.chess.move(randomMove);
-        setBoardState([...gameLogicRef.current.getBoardState()]);
-        fetchAdviceAfterBlackMove();
-        setIsThinking(false);
-      } else {
-        setBoardState([...gameLogicRef.current.getBoardState()]);
-          // console.log(`fetching advice`);
-        fetchAdviceAfterBlackMove();
-              //  console.log(`fetched advice`);
-   
-        setIsThinking(false);
-      }
-
+      // console.log('Engine failed to make a move for Black, making random move.');
+      const randomMove = gameLogicRef.current.selectRandomMove();
+      gameLogicRef.current.chess.move(randomMove);
+      setBoardState([...gameLogicRef.current.getBoardState()]);
+      await fetchMovesAfterBlackMove();
+      setIsThinking(false);
+      fetchReasoningAfterBlackMove();
     } catch (error) {
       console.log('Error during move:', error);
       Alert.alert('Error', 'Error processing move, please try again.', [{ text: 'OK' }]);
@@ -341,10 +329,10 @@ const ChessTutorApp = () => {
     }
   };
 
-  const fetchAdviceAfterBlackMove = () => {
-    // console.log(`getting table data`);
+  const fetchMovesAfterBlackMove = () => {
+    console.log(`getting table data`);
     const tableData = gameLogicRef.current.getTableData();
-    // console.log(`table data: ${JSON.stringify(tableData, null, 2)}`);
+    console.log(`table data: ${JSON.stringify(tableData, null, 2)}`);
 
     if (!tableData || tableData.length === 0) {
         console.log('Error: Table data is empty or undefined.');
@@ -357,10 +345,10 @@ const ChessTutorApp = () => {
 
     // Save the latest advice in GameLogic
     gameLogicRef.current.latestAdvice = tableData;
-// console.log('calling render');
+console.log('calling render');
     // Use renderMoveAdvice to process the tableData
-    const processedAdvice = renderMoveAdvice(tableData);
-// console.log('called render');
+    const processedAdvice = renderAdvisedMoves(tableData);
+console.log('called render');
 
     // Update the state with processed advice
 // console.log('calling setrecommended');
@@ -388,14 +376,48 @@ const ChessTutorApp = () => {
 
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
+  const fetchReasoningAfterBlackMove = async () => {
+    const apiName = 'Claude';
+    const advisedMoves = gameLogicRef.current.latestAdvice;
+    if (!advisedMoves) {
+      console.log('No advised moves available for reasoning.');
+      return;
+    }
+    const reasoningData = await gameLogicRef.current.getReasoningFromAI(apiName,advisedMoves);
+    console.log(`fetchReasoningAfterBlackMove.reasoningdata: ${JSON.stringify(reasoningData)}`);
+    if (!reasoningData) {
+      console.log('Failed to fetch reasoning from AI.');
+      return;
+    }
+    // Update the advice with reasoning
+    const updatedAdvice = {
+      ...gameLogicRef.current.latestAdvice,
+      positionAnalysis: reasoningData.positionAnalysis,
+      recommendedNextMoves: gameLogicRef.current.latestAdvice.recommendedNextMoves.map((move, index) => ({
+        ...move,
+        reasoning: reasoningData.reasoning[index] || move.reasoning,
+      })),
+    };
+    gameLogicRef.current.latestAdvice = updatedAdvice;
+    // Re-process the advice to include reasoning
+    const processedAdvice = renderAdvisedMoves(updatedAdvice);
+    setRecommendedNextMoves(processedAdvice);
+    setPositionAnalysis(updatedAdvice.positionAnalysis);
+    analysisComplete.current = true;
+  };
 
-  function renderMoveAdvice(advice) {
+
+
+
+
+
+  function renderAdvisedMoves(advice) {
     // console.log(advice[0]);
     return advice.map((move) => {
       let arrowOpacity = 1.0;
       const moveSan = move.san;
       let moveLabel = moveSan;
-// console.log(`entry: ${JSON.stringify(entry, null, 2)}`)
+      // console.log(`entry: ${JSON.stringify(entry, null, 2)}`)
       // Assign priorities based on reasoning or other criteria (customizable)
       if (move.reasoning.includes('Significant')) {
           arrowOpacity = 1.0; // Strongest

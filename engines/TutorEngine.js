@@ -45,20 +45,18 @@ export default class TutorEngine {
             console.error('Error setting position:', error);
         }
     }
-    evaluatePosition() {
+    evaluatePosition(move) {
         const pieces = this.getAllPieces();
         let score = 0;
-      
+        this.chess.move(move.san);
         // Material evaluation (weighted more heavily)
         const materialScore = this.evaluateMaterial(pieces);
         // console.log(`Material Score: ${materialScore}`);
         score += materialScore * 2; // Double weight for material
-      
         // Positional evaluation
         const positionalScore = this.evaluatePositional(pieces);
         // console.log(`Positional Score: ${positionalScore}`);
         score += positionalScore;
-      
         // Trade evaluation - only encourage trades if ahead in material
         const tradeScore = this.evaluateTrades();
         // console.log(`Trade Score: ${tradeScore}`);
@@ -67,30 +65,35 @@ export default class TutorEngine {
         } else {
           score -= tradeScore; // Discourage trades when not ahead
         }
-      
         //console.log(`Total Evaluation Score: ${this.chess.turn() === 'w' ? score : -score}`);
+        this.chess.undo();     
+        console.log('positional score ', score);   
         return this.chess.turn() === 'w' ? score : -score;
+
       }
       
       evaluateMoveSafety(move) {
         let score = 0;
-      
+        console.log(`fen at eval safety for move ${move.san} ${this.chess.fen()}`);
         // Make the move to analyze resulting position
-        this.chess.move(move);
-        
+        this.chess.move(move.san);
         // Check if the moved piece can be captured
         const attackers = this.findAttackers(move.to);
         const defenders = this.findDefenders(move.to);
         if (attackers.length > 0) {
           // Basic piece safety evaluation
+          console.log(`attackers: ${attackers.map(a => a.piece)}`);
+        //   console.log(`lowestAttackerValue: ${lowestAttackerValue}`);
+        //   console.log(`strongestDefenderValue: ${strongestDefenderValue}`);
           const pieceValue = this.PIECE_VALUES[move.piece];
           const lowestAttackerValue = Math.min(...attackers.map(a => this.PIECE_VALUES[a.piece]));
-      
           // Heavy penalty for hanging pieces
           if (defenders.length === 0) {
+
             score -= pieceValue * 2; // Double penalty for completely hanging pieces
             console.log(`Hanging piece at ${move.to}, Penalty: ${pieceValue * 2}`);
-          } else {
+          } else {  
+            console.log(`defenders: ${defenders.map(d => d.piece)}`);
             // Evaluate exchange
             const strongestDefenderValue = Math.max(...defenders.map(d => this.PIECE_VALUES[d.piece]));
             if (lowestAttackerValue < pieceValue && strongestDefenderValue < lowestAttackerValue) {
@@ -98,63 +101,77 @@ export default class TutorEngine {
               console.log(`Unfavorable exchange at ${move.to}, Penalty: ${pieceValue}`);
             }
           }
-      
           // Extra penalty for unsafe bishop moves
           if (move.piece === 'b' && defenders.length === 0) {
             score -= 150; // Extra penalty for hanging bishop
             console.log(`Hanging bishop at ${move.to}, Penalty: 150`);
           }
         }
-      
         // Undo the move
         this.chess.undo();
-        return score;
+        console.log('move safety score ', score);
+        return score
       }
       
-    findAttackers(square) {
-        const attackers = [];
-        const moves = this.chess.moves({ verbose: true });
-        
-        moves.forEach(move => {
-            if (move.to === square && move.flags.includes('c')) {
-                const piece = this.chess.get(move.from);
-                if (piece) {
-                    attackers.push({
-                        piece: piece.type,
-                        square: move.from
-                    });
-                }
-            }
-        });
-        
-        return attackers;
-    }
+
     findDefenders(square) {
-        const currentTurn = this.chess.turn();
+        // Identify the piece on the square
+        const pieceOnSquare = this.chess.get(square);
+        if (!pieceOnSquare) return [];
       
-        // Clone the chess instance to avoid mutating the original
-        const tempChess = new Chess(this.chess.fen());
+        const pieceColor = pieceOnSquare.color; // 'w' or 'b'
       
-        // Switch turn to find defenders
-        tempChess.turn(currentTurn === 'w' ? 'b' : 'w');
+        // Modify FEN so that pieceColor is to move
+        let fenParts = this.chess.fen().split(' ');
+        fenParts[1] = pieceColor; // Set turn to the piece’s color
+        const fenForDefenders = fenParts.join(' ');
       
-        const defenders = [];
+        const tempChess = new Chess(fenForDefenders);
         const moves = tempChess.moves({ verbose: true });
+        const defenders = [];
       
-        moves.forEach(move => {
-          if (move.to === square) {
-            const piece = tempChess.get(move.from);
-            if (piece) {
-              defenders.push({
-                piece: piece.type,
-                square: move.from
-              });
+        for (let m of moves) {
+          if (m.to === square) {
+            const p = tempChess.get(m.from);
+            if (p && p.color === pieceColor) {
+              defenders.push({ piece: p.type, square: m.from });
             }
           }
-        });
+        }
       
         return defenders;
       }
+      
+      findAttackers(square) {
+        // Identify the piece on the square
+        const pieceOnSquare = this.chess.get(square);
+        if (!pieceOnSquare) return [];
+      
+        const victimColor = pieceOnSquare.color; 
+        const attackerColor = (victimColor === 'w') ? 'b' : 'w';
+      
+        // Modify FEN so that attackerColor is to move
+        let fenParts = this.chess.fen().split(' ');
+        fenParts[1] = attackerColor;
+        const fenForAttackers = fenParts.join(' ');
+      
+        const tempChess = new Chess(fenForAttackers);
+        const moves = tempChess.moves({ verbose: true });
+        const attackers = [];
+      
+        for (let m of moves) {
+          if (m.to === square) {
+            const p = tempChess.get(m.from);
+            if (p && p.color === attackerColor) {
+              attackers.push({ piece: p.type, square: m.from });
+            }
+          }
+        }
+      
+        return attackers;
+      }
+      
+      
       
     getAllPieces() {
         const pieces = [];
@@ -337,22 +354,16 @@ export default class TutorEngine {
         return true;
     }
     getBestMoves(numMoves = 1) {
-        // console.log(`fen in engine.getbestmoves before move:        ${this.chess.fen()}`);
+         console.log(`fen in engine.getbestmoves before move:        ${this.chess.fen()}`);
         const moves = this.chess.moves({ verbose: true });
         if (!moves.length) return null;
-    
         const originalFEN = this.chess.fen();
-
-
         const scoredMoves = moves.map((move) => {
-            this.chess.move(move);
+            //this.chess.move(move);
             const score =
-                -this.evaluatePosition() * 1.5 +
-                //this.evaluateMoveSafety(move) * 2; // Safety weighting
-              this.chess.undo();
+            (-this.evaluatePosition(move) * 1.5) + (this.evaluateMoveSafety(move) * 2);
+                      //this.chess.undo();
          // this.chess.load(originalFEN);
-            
-
             return { move, score };
         });
     // console.log(`fen in engine.getbestmoves after undoing move: ${this.chess.fen()}`);

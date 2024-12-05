@@ -1,16 +1,22 @@
 import { Chess } from 'chess.js';
-import Engine from './engines/wukong.js';
 import { validateFen } from "chess.js";
+import { ToastAndroid } from 'react-native';
+const { Engine } = require('./engines/wukong');
+
 
 class GameLogic {
     constructor() {
       this.chess = new Chess();   
-      this.latestAdvice = null;
-      this.engine = null; // Will be initialized later   
+      this.latestAdvice = null; 
+      this.engine = null; // Initialize the engine 
     }
     initializeEngine() {
-      this.engine = new Engine();
-      this.engine.initialize();
+      try {
+        this.engine = new Engine();
+        // console.log('Engine initialized successfully:', this.engine);
+    } catch (error) {
+        console.error('Failed to initialize the engine:', error);
+    } 
     }
     getBoardState() {
         const board = this.chess.board();
@@ -30,12 +36,28 @@ class GameLogic {
     }
     makeMove_White(move) {
         try {
+          if (!this.engine) {
+            console.error('Engine is not initialized');
+            return null;
+        }
             const result = this.chess.move(move);
-            this.engine.setFEN(this.chess.fen());
+
+            // let promotedPiece = (this.engine.getSide() ? (5 + 6): 5) // queen promotion only for now
+            //  let encodedmove = move.from + move.to + this.engine.promotedToString(promotedPiece);
+            //  console.log('encodedmove ',encodedmove);
+            //  let validMove = this.engine.moveFromString(encodedmove);
+            //  console.log('validMove ', validMove);
+
+             this.engine.makeMove(this.encodeMove(move));
+            // const fen = this.engine.generateFen(); // Get the updated FEN
+            //  console.log('move:', move);
+            this.engine.printBoard();
+
+            // this.engine.setFEN(this.chess.fen());
             // console.log(`fen in logic.makemovewhite after move:  ${this.chess.fen()}`);
 
             if (result) {
-                this.engine.setFEN(this.chess.fen());
+                // this.engine.setFEN(this.chess.fen());
                 // console.log(`White move made: ${result.san}`);
                 // console.log('New FEN after white:', this.chess.fen());
                 // console.log('Side to move:', this.chess.turn() === 'w' ? 'White' : 'Black');
@@ -60,6 +82,15 @@ class GameLogic {
 
         return this.chess.moves({ square: position, verbose: true });
     }
+    encodeMove(move)
+    {
+      let promotedPiece = (this.engine.getSide() ? (5 + 6): 5) // queen promotion only for now
+      let encodedmove = move.from + move.to + this.engine.promotedToString(promotedPiece);
+      console.log('encodedmove ',encodedmove);
+      let validMove = this.engine.moveFromString(encodedmove);
+      console.log('validMove ', validMove);
+      return validMove;
+    }
     makeMove_Black(whiteMove) {
         const originalFEN = this.chess.fen();
 
@@ -76,7 +107,8 @@ class GameLogic {
             // console.log(`fen in logic.makemoveblack before script move: ${this.chess.fen()}`);
 
             const result=this.chess.move(selectedMove.move); // Make Black's response
-            this.engine.setFEN(this.chess.fen());
+            // this.engine.setFEN(this.chess.fen());
+            this.engine.makeMove(selectedMove.move);
             // console.log(`Black move made: ${result.san}`);
             // console.log(`fen in logic.makemoveblack after script move: ${this.chess.fen()}`);
 
@@ -86,16 +118,31 @@ class GameLogic {
                 status: this.getGameStatus(),
             };
         } else {
-        //    console.log(`White's move does not match advice; calculate the best move dynamically`);
-            const bestMove = this.engine.searchPosition(3)[0];
-            // console.log('result from searchPosition:', JSON.stringify(bestMove, null, 2));
-            // Convert numeric indices to algebraic notation
-            const fromAlgebraic = this.indexToAlgebraic(bestMove.move.from);
-            const toAlgebraic = this.indexToAlgebraic(bestMove.move.to);
+            console.log(`White's move does not match advice; calculate the best move dynamically`);
+            // const bestMove = this.engine.searchPosition(3)[0];
+            // 
+            // let bestMove = this.engine.searchTime(1000); 
+            //  console.log('result from searchTime:', JSON.stringify(bestMove, null, 2));
+            // const fromAlgebraic = this.indexToAlgebraic(bestMove.move.from);
+            // const toAlgebraic = this.indexToAlgebraic(bestMove.move.to);
             // console.log(`Converting from ${bestMove.move.from} to ${fromAlgebraic}`);
             // console.log(`Converting to ${bestMove.move.to} to ${toAlgebraic}`);
-            const result=this.chess.move({ from: fromAlgebraic, to: toAlgebraic });
-            this.engine.setFEN(this.chess.fen());
+            // const result=this.chess.move({ from: fromAlgebraic, to: toAlgebraic });
+            // this.engine.setFEN(this.chess.fen());
+
+            // this.engine.setBoard(this.engine.generateFen());
+            // console.log('Engine state before making move:');
+// this.engine.printBoard();
+             let bestMove = this.engine.searchTime(1000); // search for 1 second
+            console.log('bestmove ', bestMove);
+             this.engine.makeMove(bestMove);
+            // let fen = engine.generateFen();
+            // board.position(fen);
+             this.engine.printBoard();
+
+
+
+
             // console.log(`off-script Black move made: ${result.san}`);
             // console.log(`fen in logic.makemoveblack after off-script move:  ${this.chess.fen()}`);
             // console.log(`black moves: ${bestMove.move.san}`);
@@ -164,7 +211,8 @@ class GameLogic {
         
         // Make the move
         const result = this.chess.move(bestMove);
-        this.engine.setFEN(this.chess.fen());
+        // this.engine.setFEN(this.chess.fen());
+        this.engine.makeMove(bestMove);
         // console.log(`fen in logic.makeprincipalmove after  move: ${this.chess.fen()}`);
 
         return {
@@ -227,12 +275,12 @@ class GameLogic {
     }
     getTableData() {
         const originalFEN = this.chess.fen();
-        this.engine.setFEN(this.chess.fen());
+        // this.engine.setFEN(this.chess.fen());
         // Step 1: Get top 3 moves for White
         const topWhiteMoves = [
-            this.engine.searchPosition(4)[0],
-            this.engine.searchPosition(3)[0],
-            this.engine.searchPosition(2)[0]
+            this.engine.searchTime(1500),
+            this.engine.searchTime(1000),
+            this.engine.searchTime(500)
         ];
         // console.log(`white move 1: ${JSON.stringify(topWhiteMoves[0],null,2)}`);
         // console.log(`white move 2: ${JSON.stringify(topWhiteMoves[1],null,2)}`);
@@ -246,7 +294,8 @@ class GameLogic {
             //  console.log(`fen in logic.gettabledata after temp move:        ${this.chess.fen()}`);
             
             const fenafterwhite = this.chess.fen()
-            this.engine.setFEN(fenafterwhite);
+            this.engine.makeMove(whiteMove.move);
+            // this.engine.setFEN(fenafterwhite);
             // console.log('temp white');
             // this.engine.printBoard();
             // console.log(this.chess.ascii());
@@ -257,8 +306,8 @@ class GameLogic {
             }
             const sanMove = moveResult.san;
             const likelyResponses = [
-                this.engine.searchPosition(3)[0],
-                this.engine.searchPosition(2)[0]
+                this.engine.searchTime(1000),
+                this.engine.searchTime(500)
             ];
             // console.log(`likelyResponses:`);
             const processedResponses = likelyResponses.map((response) => {
@@ -268,7 +317,8 @@ class GameLogic {
                 const responseResult = this.chess.move({ from: responseFrom, to: responseTo });
                 const responseSan = responseResult ? responseResult.san : '';
                 this.chess.undo();  //undo black response
-                this.engine.setFEN(fenafterwhite);
+                // this.engine.setFEN(fenafterwhite);
+                this.engine.takeBack();
                 // console.log(`from ${responseFrom}`);
                 // console.log(`to ${responseTo}`);
                 return {
@@ -278,68 +328,69 @@ class GameLogic {
             });
             //this.chess.undo();  //undo white advice
             this.chess.load(originalFEN); // Restore FEN
-            this.engine.setFEN(originalFEN);
+            // this.engine.setFEN(originalFEN);
+            this.engine.takeBack();
             //  console.log(`move: ${whiteMove.move.san}`);
             return {
                 san: sanMove,
                 move: whiteMove.move,
-                reasoning: this.attachAttributes(whiteMove),
+                // reasoning: this.attachAttributes(whiteMove),
                 likelyResponses: processedResponses
             };
         });
         return tableData.filter(row => row !== null);;
     }
-    attachAttributes(moveInfo) {
-        const reasoning = [];
-        if (moveInfo.move.captured) {
-            reasoning.push(`Captures opponent's ${this.engine.getPieceName(moveInfo.move.captured)}`);
-        }
-        // if (this.engine.CENTER_SQUARES.includes(moveInfo.move.to)) {
-        //     reasoning.push('Controls a central square');
-        // }
-        if (moveInfo.score > 100) {
-            reasoning.push('Significant positional advantage');
-        }
-        return reasoning.join(', ');
-    }
-    convertMoveToDescription(sanMove, color) {
-        const originalFEN = this.chess.fen();
-        const tempChess = new Chess(originalFEN);
+    // attachAttributes(moveInfo) {
+    //     const reasoning = [];
+    //     if (moveInfo.move.captured) {
+    //         reasoning.push(`Captures opponent's ${this.engine.getPieceName(moveInfo.move.captured)}`);
+    //     }
+    //     // if (this.engine.CENTER_SQUARES.includes(moveInfo.move.to)) {
+    //     //     reasoning.push('Controls a central square');
+    //     // }
+    //     if (moveInfo.score > 100) {
+    //         reasoning.push('Significant positional advantage');
+    //     }
+    //     return reasoning.join(', ');
+    // }
+    // convertMoveToDescription(sanMove, color) {
+    //     const originalFEN = this.chess.fen();
+    //     const tempChess = new Chess(originalFEN);
 
-        // Set the correct side to move if needed
-        if (color === 'b') {
-            const fenParts = originalFEN.split(' ');
-            fenParts[1] = 'b';
-            tempChess.load(fenParts.join(' '));
-        }
+    //     // Set the correct side to move if needed
+    //     if (color === 'b') {
+    //         const fenParts = originalFEN.split(' ');
+    //         fenParts[1] = 'b';
+    //         tempChess.load(fenParts.join(' '));
+    //     }
 
-        const moves = tempChess.moves({ verbose: true });
-        const move = moves.find(m => m.san === sanMove);
+    //     const moves = tempChess.moves({ verbose: true });
+    //     const move = moves.find(m => m.san === sanMove);
 
-        if (!move) return sanMove;
+    //     if (!move) return sanMove;
 
-        if (move.flags.includes('k') || move.flags.includes('q')) {
-            const side = move.san === 'O-O' ? 'king-side' : 'queen-side';
-            return `Castling ${side} from ${move.from.toUpperCase()} to ${move.to.toUpperCase()}`;
-        }
+    //     if (move.flags.includes('k') || move.flags.includes('q')) {
+    //         const side = move.san === 'O-O' ? 'king-side' : 'queen-side';
+    //         return `Castling ${side} from ${move.from.toUpperCase()} to ${move.to.toUpperCase()}`;
+    //     }
 
-        const pieceName = this.getPieceName(move.piece);
-        const action = move.captured ? 'captures on' : 'to';
-        const promotion = move.promotion ? ` and promotes to ${this.getPieceName(move.promotion)}` : '';
+    //     const pieceName = this.getPieceName(move.piece);
+    //     const action = move.captured ? 'captures on' : 'to';
+    //     const promotion = move.promotion ? ` and promotes to ${this.getPieceName(move.promotion)}` : '';
         
-        return `${pieceName} from ${move.from.toUpperCase()} ${action} ${move.to.toUpperCase()}${promotion}`;
-    }
-    getPieceName(pieceSymbol) {
-        const pieceNames = {
-            p: 'Pawn',
-            n: 'Knight',
-            b: 'Bishop',
-            r: 'Rook',
-            q: 'Queen',
-            k: 'King'
-        };
-        return pieceNames[pieceSymbol.toLowerCase()] || 'Piece';
-    }
+    //     return `${pieceName} from ${move.from.toUpperCase()} ${action} ${move.to.toUpperCase()}${promotion}`;
+    // }
+    // getPieceName(pieceSymbol) {
+    //     const pieceNames = {
+    //         p: 'Pawn',
+    //         n: 'Knight',
+    //         b: 'Bishop',
+    //         r: 'Rook',
+    //         q: 'Queen',
+    //         k: 'King'
+    //     };
+    //     return pieceNames[pieceSymbol.toLowerCase()] || 'Piece';
+    // }
 
   async storeApiKey(key) {
     try {

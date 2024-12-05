@@ -1,6 +1,6 @@
 // testEngine.js
 
-import Engine from './engines/wukong.js';
+import Engine from './engines/wukong2.js';
 
 const engine = new Engine();
 engine.initialize();

@@ -19,7 +19,7 @@ const ChessTutorApp = () => {
   useEffect(() => {
     SplashScreen.hide();
   }, []);
-  const gameLogicRef = useRef(new GameLogic());
+  const gameLogicRef = useRef(new GameLogic);
   const [boardState, setBoardState] = useState(gameLogicRef.current.getBoardState());
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [recommendedNextMoves, setRecommendedNextMoves] = useState([]);
@@ -44,6 +44,7 @@ const ChessTutorApp = () => {
 
   // Initialize the engine when the component mounts
   useEffect(() => {
+    // gameLogicRef.current = new GameLogic();
     gameLogicRef.current.initializeEngine();
     // fetchAdviceAfterBlackMove();
   }, []);
@@ -301,12 +302,16 @@ const ChessTutorApp = () => {
 
   const onMove = async (fromSquare, toSquare) => {
     try {
+
+      console.log('making white move');
       const playerMove = gameLogicRef.current.makeMove_White({ from: fromSquare, to: toSquare });
       if (!playerMove) {
         setIllegalMoveSquares({ from: fromSquare, to: toSquare });
         return;
       }
       setBoardState([...gameLogicRef.current.getBoardState()]);
+      console.log('made white move');
+
       setMovesLeft((prevMoves) => prevMoves - 1);
       if (gameLogicRef.current.chess.isCheckmate()) {
         Alert.alert('Game Over', 'Checkmate! The game has ended.', [{ text: 'OK', onPress: () => handleReload() }]);
@@ -314,14 +319,24 @@ const ChessTutorApp = () => {
       }
       setDisplayedArrows([]); 
       setIsThinking(true);
-      const blackMoveResult = gameLogicRef.current.makeMove_Black(playerMove.san);
-      // console.log('Engine failed to make a move for Black, making random move.');
-      const randomMove = gameLogicRef.current.selectRandomMove();
-      gameLogicRef.current.chess.move(randomMove);
-      setBoardState([...gameLogicRef.current.getBoardState()]);
+
+      setTimeout(() => {
+      //   console.log('making black move');
+        const blackMoveResult = gameLogicRef.current.makeMove_Black(playerMove.san);
+        // console.log('Engine failed to make a move for Black, making random move.');
+        // const randomMove = gameLogicRef.current.selectRandomMove();
+        // gameLogicRef.current.chess.move(randomMove);
+        setBoardState([...gameLogicRef.current.getBoardState()]);
+        console.log('made black move');
+      }, 1500); // 1 second delay
+      console.log('getting advised moves');
       await fetchMovesAfterBlackMove();
+      console.log('got advised moves');
+
       setIsThinking(false);
+      console.log('getting reasoning');
       fetchReasoningAfterBlackMove();
+      console.log('got reasoning');      
     } catch (error) {
       console.log('Error during move:', error);
       Alert.alert('Error', 'Error processing move, please try again.', [{ text: 'OK' }]);

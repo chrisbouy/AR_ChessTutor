@@ -194,6 +194,7 @@ const ChessBoard2D = ({
               console.log('Invalid move:', move);
               return null; 
             }
+            console.log('moves for arrows ', move);
             const fromCoords = getSquareCoordinates(move.from);
             const toCoords = getSquareCoordinates(move.to);
             let strokeOpacity = move.arrowOpacity !== undefined ? move.arrowOpacity : 1.0;

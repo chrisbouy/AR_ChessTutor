@@ -320,7 +320,7 @@ const ChessTutorApp = () => {
       setDisplayedArrows([]); 
       setIsThinking(true);
 
-      setTimeout(() => {
+      // setTimeout(() => {
       //   console.log('making black move');
         const blackMoveResult = gameLogicRef.current.makeMove_Black(playerMove.san);
         // console.log('Engine failed to make a move for Black, making random move.');
@@ -328,14 +328,14 @@ const ChessTutorApp = () => {
         // gameLogicRef.current.chess.move(randomMove);
         setBoardState([...gameLogicRef.current.getBoardState()]);
         console.log('made black move');
-      }, 1500); // 1 second delay
+      // }, 1000); // 1 second delay
       console.log('getting advised moves');
-      await fetchMovesAfterBlackMove();
+      fetchMovesAfterBlackMove();
       console.log('got advised moves');
 
       setIsThinking(false);
       console.log('getting reasoning');
-      fetchReasoningAfterBlackMove();
+      // fetchReasoningAfterBlackMove();
       console.log('got reasoning');      
     } catch (error) {
       console.log('Error during move:', error);
@@ -391,6 +391,7 @@ console.log('called render');
 
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
+
   const fetchReasoningAfterBlackMove = async () => {
     const apiName = 'Claude';
     const advisedMoves = gameLogicRef.current.latestAdvice;
@@ -421,55 +422,33 @@ console.log('called render');
     analysisComplete.current = true;
   };
 
-
-
-
-
-
   function renderAdvisedMoves(advice) {
-    // console.log(advice[0]);
+     console.log('advice ', advice);
     return advice.map((move) => {
       let arrowOpacity = 1.0;
       const moveSan = move.san;
       let moveLabel = moveSan;
-      // console.log(`entry: ${JSON.stringify(entry, null, 2)}`)
-      // Assign priorities based on reasoning or other criteria (customizable)
-      if (move.reasoning.includes('Significant')) {
-          arrowOpacity = 1.0; // Strongest
-          moveLabel = `${moveSan} (STRONGEST)`;
-      } else if (move.reasoning.includes('Controls')) {
-          arrowOpacity = 0.8; // Stronger
-          moveLabel = `${moveSan} (STRONGER)`;
-      } else {
+      // if (move.reasoning.includes('Significant')) {
+      //     arrowOpacity = 1.0; // Strongest
+      //     moveLabel = `${moveSan} (STRONGEST)`;
+      // } else if (move.reasoning.includes('Controls')) {
+      //     arrowOpacity = 0.8; // Stronger
+      //     moveLabel = `${moveSan} (STRONGER)`;
+      // } else {
           arrowOpacity = 0.5; // Strong
           moveLabel = `${moveSan} (STRONG)`;
-      }
-
-      // Process the likely responses (optional)
-      //console.log(entry.likelyResponses);
+      // }
       const blackResponses = move.likelyResponses.map((response) => ({
           move: response.san, // Black's likely response
           arrowOpacity: 0.6, // Default arrow opacity for responses
       }));
-      // const moveList = gameLogicRef.current.chess.moves({ verbose: true });
-      // const matchingMove = moveList.find((m) => m === entry.move);
-      const fromAlgebraic = gameLogicRef.current.indexToAlgebraic(move.move.from);
-      const toAlgebraic = gameLogicRef.current.indexToAlgebraic(move.move.to);
-      
-      //  console.log(moveLabel);
-      //  console.log(entry.reasoning);
-      //  console.log(blackResponses);
-      //  console.log(arrowOpacity);
-      //  console.log(fromAlgebraic); 
-      //  console.log(toAlgebraic);
-      
       return {
           move: moveLabel,
           reasoning: move.reasoning || 'No reasoning provided',
           likelyResponses: blackResponses,
           arrowOpacity,
-          from: fromAlgebraic, // Extract "from"
-          to: toAlgebraic, // Extract "to"
+          from: move.move.slice(0, 2), // Extract "from"
+          to: move.move.slice(2), // Extract "to"
           originalMove: moveSan,
       };
     });
@@ -543,7 +522,16 @@ console.log('called render');
                           </TouchableOpacity>
                         </View>
                         <View style={[styles.tableCell, { flexDirection: 'row', flexWrap: 'wrap' }]}>
-                          {/* Black responses are not generated in this setup */}
+                        {move.likelyResponses.map((response, idx) => (
+                            <TouchableOpacity
+                              key={idx}
+                              onPress={() =>
+                                handleMovePress(response.move, 'b', response.threat, move.originalMove)
+                              }
+                            >
+                              <Text style={styles.tappableMove}>{response.move}</Text>
+                            </TouchableOpacity>
+                          ))}
                         </View>
                       </View>
                     ))}

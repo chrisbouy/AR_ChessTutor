@@ -45,7 +45,7 @@ class GameLogic {
           const result = this.chess.move(move);
           this.engine.makeMove(this.encodeMove(move));
            this.engine.setBoard(this.chess.fen());
-          this.engine.printBoard();
+          // this.engine.printBoard();
           return result;
         } 
         catch (error) {
@@ -123,22 +123,23 @@ class GameLogic {
             this.chess.move(selectedMove.move); // Make Black's response
             this.engine.makeMove(selectedMove.move);
              this.engine.setBoard(this.chess.fen());
-            this.engine.printBoard();
+            // this.engine.printBoard();
             return {
                 move: selectedMove.move,
                 boardState: this.getBoardState(),
                 status: this.getGameStatus(),
             };
         } else {
-             let bestMove = this.engine.search(1, this.chess.fen()); 
+             let searchResult = this.engine.search(1, this.chess.fen()); 
             //  let bestMove =this.engine.searchTime(500);
-             this.engine.makeMove(bestMove);
+            console.log('best black move ', searchResult)
+             this.engine.makeMove(searchResult.bestMove);
              // this.engine.setBoard(this.chess.fen());
-            this.engine.printBoard();
-            const decodedbestmove = this.decodeMove(bestMove);
+            // this.engine.printBoard();
+            const decodedbestmove = this.decodeMove(searchResult.bestMove);
              this.chess.move(decodedbestmove);
-            //  console.log('decodedbestmove ',decodedbestmove );
-            //  console.log('bestMove.move ',bestMove.move );
+             console.log('decodedbestmove ',decodedbestmove );
+             console.log('bestMove.move ',searchResult.bestMove.move );
             return {
                 move: decodedbestmove,
                 boardState: this.getBoardState(),
@@ -170,53 +171,81 @@ class GameLogic {
     }
 
     getTableData() {
-        const originalFEN = this.chess.fen();
-        const topWhiteMoves = [
-            this.engine.search(5,this.chess.fen()),
-            this.engine.search(3,this.chess.fen()),
-            this.engine.search(1,this.chess.fen())
-            // this.engine.searchTime(1000),
-            // this.engine.searchTime(750),
-            // this.engine.searchTime(500)
-        ];
-        const tableData = topWhiteMoves.map((whiteMove) => {
-            const moveResult = this.chess.move(this.decodeMove(whiteMove));
-            const fenafterwhite = this.chess.fen()
-            this.engine.makeMove(whiteMove);
-            this.engine.setBoard(this.chess.fen());
-            this.engine.printBoard();
-            if (!moveResult) {
-               console.warn(`Failed to make temporary White move: `);
-              return null;
-            }
-            const sanMove = moveResult.san;
-            const likelyResponses = [
-                this.engine.search(3, this.chess.fen()),
-                this.engine.search(2, this.chess.fen())
-                // this.engine.searchTime(750),
-                // this.engine.searchTime(500)
-
-            ];
-            const processedResponses = likelyResponses.map((response) => {
-                const responseResult = this.chess.move(this.decodeMove(response));
-                const responseSan = responseResult ? responseResult.san : '';
-                this.chess.undo();  //undo black response
-                return {
-                    san: responseSan,
-                    move:this.decodeMove(response),
-                };
-            });
-            this.chess.load(originalFEN); // Restore FEN
-            this.engine.takeBack();
-            // this.engine.setBoard(this.chess.fen());
-            return {
-                san: sanMove,
-                move: this.decodeMove(whiteMove),
-                likelyResponses: processedResponses
-            };
+      const originalFEN = this.chess.fen();
+      const advisedMoves = [];
+      const maxAdvisedMoves = 5;
+      const maxLikelyResponses = 2;
+      const depths = [4, 3, 2];
+    
+      for (const depth of depths) {
+        if (advisedMoves.length >= maxAdvisedMoves) break;
+        const searchResult = this.engine.search(depth, this.chess.fen());
+        const primaryVariant = searchResult.info.match(/pv (.+)/)[1].split(' ');
+        const advisedMove = primaryVariant[0];
+        if (!advisedMoves.some((move) => move.move === advisedMove)) {
+          const fenBeforeMove = this.chess.fen();  
+          console.log('encoded:',searchResult.bestMove);        
+          this.engine.makeMove(searchResult.bestMove);
+          console.log('uci:',advisedMove);
+          this.chess.move(advisedMove);
+          const fenAfterMove = this.chess.fen();
+          const sanMove = this.convertFromSquareToSan(advisedMove, fenBeforeMove);
+          advisedMoves.push({
+            san: sanMove,
+            move: advisedMove,
+            encoded: searchResult.bestMove,
+            fenAfterMove,
+            likelyResponses: [primaryVariant[1]],
+          });
+          this.chess.undo();
+          this.engine.takeBack();
+        }
+      }
+      console.log('responses');
+      advisedMoves.forEach((advisedMove) => {
+        const originalFen = this.chess.fen();
+        console.log('uci:',advisedMove.move);
+        this.chess.move(advisedMove.move);
+        console.log('encoded:',advisedMove.encoded);
+        this.engine.makeMove(advisedMove.encoded);
+        //this.engine.setBoard(this.chess.fen());
+        const likelyResponses = [];
+        const responseresult = this.engine.search(3, this.chess.fen())
+        const primaryVariant = responseresult.info.match(/pv (.+)/)[1].split(' ');
+        console.log(`pv afer ${advisedMove.move} : ${primaryVariant}`);
+        console.log('pv1 ', primaryVariant[0]);
+        likelyResponses.push(advisedMove.likelyResponses[0]);
+        if (primaryVariant.length > 1 && primaryVariant[0] !== advisedMove.likelyResponses[0]) {
+          console.log('shouldnt be here');
+          likelyResponses.push(primaryVariant[0]);
+        }
+        while (likelyResponses.length < maxLikelyResponses) {
+          const response = this.engine.search(2, this.chess.fen());
+          const responseMove = response.info.match(/pv (.+)/)[1].split(' ')[0];
+          if (!likelyResponses.includes(responseMove)) {
+            likelyResponses.push(responseMove);
+          }
+        }
+        advisedMove.likelyResponses = likelyResponses.map((response) => {
+          console.log('square ',response);
+          const sanresponse = this.convertFromSquareToSan(response, advisedMove.fenAfterMove);
+          console.log('san response ', sanresponse);
+          return {
+            move: response,
+            san: sanresponse
+          };
         });
-        return tableData.filter(row => row !== null);;
+        //this.chess.undo();
+        this.chess.load(originalFen); // Restore FEN
+
+        this.engine.takeBack();
+         
+      });
+     return advisedMoves; 
+
     }
+    
+
 
     async storeApiKey(key) {
       try {
@@ -721,9 +750,10 @@ class GameLogic {
       return moves.some((move) => move.san === sanMove);
     }
     convertMoveToDescription(sanMove, color) {
+
+
       // Get the current FEN
       const originalFEN = this.chess.fen();
-
       // Modify the FEN to switch the turn if necessary
       let modifiedFEN = originalFEN;
       if (color === 'b') {
@@ -735,16 +765,12 @@ class GameLogic {
         fenParts[1] = 'w'; // Ensure turn is White
         modifiedFEN = fenParts.join(' ');
       }
-
       // Create a new chess instance with the modified FEN
       const tempChess = new Chess(modifiedFEN);
-
-      // Get all possible moves for the current turn
       const moves = tempChess.moves({ verbose: true });
-
-      // Find the move matching the SAN notation
+      console.log('Available moves:', moves.map((m) => m.san));
+      console.log('SAN move passed:', sanMove);
       const move = moves.find((m) => m.san === sanMove);
-
       if (move) {
         if (move.flags.includes('k') || move.flags.includes('q')) {
           // Handle castling
@@ -762,10 +788,10 @@ class GameLogic {
           return `${pieceName} from ${from} ${action} ${to}${promotion}`;
         }
       }
-
       // If move not found, return the SAN notation
       return sanMove;
-    }
+  }
+  
     getLastMoveByColor(color) {
       const history = this.chess.history({ verbose: true });
       // Filter for the most recent move of the specified color
@@ -802,6 +828,22 @@ class GameLogic {
       const move = moves.find((m) => m.san === sanMove);
       return move || null;
     }
+    convertFromSquareToSan(move, fen) {
+      // Load the FEN to set the board state
+     this.chess.load(fen);
+    
+      // Get all legal moves in verbose format
+      const legalMoves = this.chess.moves({ verbose: true });
+    //console.log('all legal moves', legalMoves);
+      // Find the move in the verbose list
+      const sanMove = legalMoves.find(
+        (m) => `${m.from}${m.to}` === move
+      )?.san;
+    console.log('san:',sanMove);
+      // Return the SAN move or fallback to the original move
+      return sanMove || move;
+    }
+    
 }
 
 export default GameLogic;

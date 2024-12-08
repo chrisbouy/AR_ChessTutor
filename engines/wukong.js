@@ -1689,79 +1689,84 @@ var Engine = function(boardSize, lightSquare, darkSquare, selectColor) {
     return alpha;
   }
   
-  // search position for the best move
   function searchPosition(depth, fen) {
     let start = Date.now();
     let score = 0;
     let lastBestMove = 0;
-    
+
     clearSearch();
+
+    let finalInfo = ''; // To store the final info string
 
     // iterative deepening
     for (let currentDepth = 1; currentDepth <= depth; currentDepth++) {
-      lastBestMove = pvTable[0];
-      followPv = 1;
-      score = negamax(-infinity, infinity, currentDepth, DO_NULL);
-      
-      // stop searching if time is up
-      if (timing.stopped == 1 || 
-         ((Date.now() > timing.stopTime) &&
-          timing.time != -1)) break;
-      
-      let info = '';
-      
-      if (typeof(document) != 'undefined')
-        var uciScore = 0;
-      
-      if (score >= -mateValue && score <= -mateScore) {
-        info = 'info score mate ' + (parseInt(-(score + mateValue) / 2 - 1)) + 
-               ' depth ' + currentDepth +
-               ' nodes ' + nodes +
-               ' time ' + (Date.now() - start) +
-               ' pv ';
-               
-        if (typeof(document) != 'undefined')
-          uciScore = 'M' + Math.abs((parseInt(-(score + mateValue) / 2 - 1)));
-      } else if (score >= mateScore && score <= mateValue) {
-        info = 'info score mate ' + (parseInt((mateValue - score) / 2 + 1)) + 
-               ' depth ' + currentDepth +
-               ' nodes ' + nodes +
-               ' time ' + (Date.now() - start) +
-               ' pv ';
-             
-        if (typeof(document) != 'undefined')
-          uciScore = 'M' + Math.abs((parseInt((mateValue - score) / 2 + 1)));
-      } else {
-        info = 'info score cp ' + score + 
-               ' depth ' + currentDepth +
-               ' nodes ' + nodes +
-               ' time ' + (Date.now() - start) +
-               ' pv ';
-        
-        if (typeof(document) != 'undefined')
-          uciScore = -score;
-      }
-      
-      for (let count = 0; count < pvLength[0]; count++)
-        info += moveToString(pvTable[count]) + ' ';
-                
-      // console.log(info);
-      
-      if (typeof(document) != 'undefined') {
-        if (uciScore == 49000) uciScore = 'M1';
-        guiScore = uciScore;
-        guiDepth = info.split('depth ')[1].split(' ')[0];
-        guiPv = info.split('pv ')[1];
-        guiTime = info.split('time ')[1].split(' ')[0];
-      }
-      
-      if (info.includes('mate') || info.includes('-49000')) break;
+        lastBestMove = pvTable[0];
+        followPv = 1;
+        score = negamax(-infinity, infinity, currentDepth, DO_NULL);
+
+        // stop searching if time is up
+        if (
+            timing.stopped == 1 ||
+            (Date.now() > timing.stopTime && timing.time != -1)
+        )
+            break;
+
+        let info = '';
+
+        if (score >= -mateValue && score <= -mateScore) {
+            info =
+                'info score mate ' +
+                parseInt(-(score + mateValue) / 2 - 1) +
+                ' depth ' +
+                currentDepth +
+                ' nodes ' +
+                nodes +
+                ' time ' +
+                (Date.now() - start) +
+                ' pv ';
+        } else if (score >= mateScore && score <= mateValue) {
+            info =
+                'info score mate ' +
+                parseInt((mateValue - score) / 2 + 1) +
+                ' depth ' +
+                currentDepth +
+                ' nodes ' +
+                nodes +
+                ' time ' +
+                (Date.now() - start) +
+                ' pv ';
+        } else {
+            info =
+                'info score cp ' +
+                score +
+                ' depth ' +
+                currentDepth +
+                ' nodes ' +
+                nodes +
+                ' time ' +
+                (Date.now() - start) +
+                ' pv ';
+        }
+
+        for (let count = 0; count < pvLength[0]; count++) {
+            info += moveToString(pvTable[count]) + ' ';
+        }
+
+        // console.log(info);
+        finalInfo = info; // Store the latest info
+
+        if (info.includes('mate') || info.includes('-49000')) break;
     }
 
-    let bestMove = (timing.stopped == 1) ? lastBestMove: pvTable[0];
+    let bestMove = timing.stopped == 1 ? lastBestMove : pvTable[0];
     console.log('bestmove ' + moveToString(bestMove) + ' fen: ' + fen);
-    return bestMove;
-  }
+
+    return {
+        bestMove: bestMove,
+        info: finalInfo,
+    };
+}
+
 
 
   /****************************\

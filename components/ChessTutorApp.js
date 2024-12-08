@@ -228,26 +228,41 @@ const ChessTutorApp = () => {
   const handleMovePress = (sanMove, color, reasoning, respondingTo = null) => {
     const description = gameLogicRef.current.convertMoveToDescription(sanMove, color);
     const displayText = respondingTo
-      ? `Response to White's ${respondingTo}:\n\n${description}`
-      : `${description}\n\n${reasoning}`;
+        ? `Response to White's ${respondingTo}:\n\n${description}`
+        : `${description}\n\n${reasoning}`;
 
     setPopupDescription(displayText);
     setPopupVisible(true);
 
     if (color === 'w') {
-      const moveObj = recommendedNextMoves.find((move) => move.move === sanMove);
+        const moveObj = recommendedNextMoves.find((move) => move.move === sanMove);
 
-      if (moveObj && moveObj.from && moveObj.to) {
-        setDisplayedArrows([
-          {
-            from: moveObj.from,
-            to: moveObj.to,
-            arrowOpacity: moveObj.arrowOpacity,
-          },
-        ]);
-      }
+        if (moveObj && moveObj.from && moveObj.to) {
+            setDisplayedArrows([
+                {
+                    from: moveObj.from,
+                    to: moveObj.to,
+                    arrowOpacity: moveObj.arrowOpacity,
+                },
+            ]);
+        }
+    } else if (color === 'b') {
+        const moveObj = recommendedNextMoves
+            .flatMap((move) => move.likelyResponses)
+            .find((response) => response.move === sanMove);
+
+        if (moveObj && moveObj.from && moveObj.to) {
+            setDisplayedArrows([
+                {
+                    from: moveObj.from,
+                    to: moveObj.to,
+                    arrowOpacity: 0.6, // Adjust opacity for likely responses
+                },
+            ]);
+        }
     }
-  };
+};
+
 
   const handleReload = () => {
     gameLogicRef.current = new GameLogic();
@@ -302,47 +317,51 @@ const ChessTutorApp = () => {
 
   const onMove = async (fromSquare, toSquare) => {
     try {
+        console.log('making white move');
 
-      console.log('making white move');
-      const playerMove = gameLogicRef.current.makeMove_White({ from: fromSquare, to: toSquare });
-      if (!playerMove) {
-        setIllegalMoveSquares({ from: fromSquare, to: toSquare });
-        return;
-      }
-      setBoardState([...gameLogicRef.current.getBoardState()]);
-      console.log('made white move');
+        // Make the white move and update UI immediately
+        const playerMove = gameLogicRef.current.makeMove_White({ from: fromSquare, to: toSquare });
+        if (!playerMove) {
+            setIllegalMoveSquares({ from: fromSquare, to: toSquare });
+            return;
+        }
+        setBoardState([...gameLogicRef.current.getBoardState()]);
+        console.log('made white move');
 
-      setMovesLeft((prevMoves) => prevMoves - 1);
-      if (gameLogicRef.current.chess.isCheckmate()) {
-        Alert.alert('Game Over', 'Checkmate! The game has ended.', [{ text: 'OK', onPress: () => handleReload() }]);
-        return;
-      }
-      setDisplayedArrows([]); 
-      setIsThinking(true);
+        // Decrease move counter
+        setMovesLeft((prevMoves) => prevMoves - 1);
 
-      // setTimeout(() => {
-      //   console.log('making black move');
+        // Checkmate handling
+        if (gameLogicRef.current.chess.isCheckmate()) {
+            Alert.alert('Game Over', 'Checkmate! The game has ended.', [{ text: 'OK', onPress: () => handleReload() }]);
+            return;
+        }
+
+        // Pause for 500ms
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        // Make Black's move
+        console.log('making black move');
         const blackMoveResult = gameLogicRef.current.makeMove_Black(playerMove.san);
-        // console.log('Engine failed to make a move for Black, making random move.');
-        // const randomMove = gameLogicRef.current.selectRandomMove();
-        // gameLogicRef.current.chess.move(randomMove);
         setBoardState([...gameLogicRef.current.getBoardState()]);
         console.log('made black move');
-      // }, 1000); // 1 second delay
-      console.log('getting advised moves');
-      fetchMovesAfterBlackMove();
-      console.log('got advised moves');
 
-      setIsThinking(false);
-      console.log('getting reasoning');
-      // fetchReasoningAfterBlackMove();
-      console.log('got reasoning');      
+        // Show "thinking" animation
+        setIsThinking(true);
+
+        // Fetch advice concurrently during animation
+        fetchMovesAfterBlackMove();
+
+        // Hide thinking animation after advice is retrieved
+        setIsThinking(false);
+
     } catch (error) {
-      console.log('Error during move:', error);
-      Alert.alert('Error', 'Error processing move, please try again.', [{ text: 'OK' }]);
-      setIllegalMoveSquares({ from: fromSquare, to: toSquare });
+        console.log('Error during move:', error);
+        Alert.alert('Error', 'Error processing move, please try again.', [{ text: 'OK' }]);
+        setIllegalMoveSquares({ from: fromSquare, to: toSquare });
     }
-  };
+};
+
 
   const fetchMovesAfterBlackMove = () => {
     console.log(`getting table data`);
@@ -360,10 +379,10 @@ const ChessTutorApp = () => {
 
     // Save the latest advice in GameLogic
     gameLogicRef.current.latestAdvice = tableData;
-console.log('calling render');
+// console.log('calling render');
     // Use renderMoveAdvice to process the tableData
     const processedAdvice = renderAdvisedMoves(tableData);
-console.log('called render');
+// console.log('called render');
 
     // Update the state with processed advice
 // console.log('calling setrecommended');
@@ -423,7 +442,7 @@ console.log('called render');
   };
 
   function renderAdvisedMoves(advice) {
-     console.log('advice ', advice);
+      console.log('advice ', advice);
     return advice.map((move) => {
       let arrowOpacity = 1.0;
       const moveSan = move.san;
@@ -439,7 +458,10 @@ console.log('called render');
           moveLabel = `${moveSan} (STRONG)`;
       // }
       const blackResponses = move.likelyResponses.map((response) => ({
+          
           move: response.san, // Black's likely response
+          from: response.move.slice(0, 2),
+          to: response.move.slice(2),
           arrowOpacity: 0.6, // Default arrow opacity for responses
       }));
       return {

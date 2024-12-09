@@ -228,40 +228,52 @@ const ChessTutorApp = () => {
   const handleMovePress = (sanMove, color, reasoning, respondingTo = null) => {
     const description = gameLogicRef.current.convertMoveToDescription(sanMove, color);
     const displayText = respondingTo
-        ? `Response to White's ${respondingTo}:\n\n${description}`
-        : `${description}\n\n${reasoning}`;
-
+      ? `Response to White's ${respondingTo}:\n\n${description}`
+      : `${description}\n\n${reasoning}`;
+  
     setPopupDescription(displayText);
     setPopupVisible(true);
-
+  
     if (color === 'w') {
-        const moveObj = recommendedNextMoves.find((move) => move.move === sanMove);
-
-        if (moveObj && moveObj.from && moveObj.to) {
-            setDisplayedArrows([
-                {
-                    from: moveObj.from,
-                    to: moveObj.to,
-                    arrowOpacity: moveObj.arrowOpacity,
-                },
-            ]);
-        }
+      const moveObj = recommendedNextMoves.find((move) => move.move === sanMove);
+  
+      if (moveObj && moveObj.from && moveObj.to) {
+        setDisplayedArrows([
+          {
+            from: moveObj.from,
+            to: moveObj.to,
+            arrowOpacity: moveObj.arrowOpacity,
+          },
+        ]);
+      }
     } else if (color === 'b') {
-        const moveObj = recommendedNextMoves
-            .flatMap((move) => move.likelyResponses)
-            .find((response) => response.move === sanMove);
-
-        if (moveObj && moveObj.from && moveObj.to) {
-            setDisplayedArrows([
-                {
-                    from: moveObj.from,
-                    to: moveObj.to,
-                    arrowOpacity: 0.6, // Adjust opacity for likely responses
-                },
-            ]);
-        }
+      const responseMoveObj = recommendedNextMoves
+        .flatMap((move) => move.likelyResponses)
+        .find((response) => response.move === sanMove);
+  
+      if (responseMoveObj && responseMoveObj.from && responseMoveObj.to) {
+        const advisingMove = recommendedNextMoves.find(
+          (move) => move.move === respondingTo
+        );
+  
+        setDisplayedArrows([
+          {
+            from: responseMoveObj.from,
+            to: responseMoveObj.to,
+            arrowOpacity: 0.6, // Arrow opacity for Black's move
+          },
+          advisingMove && advisingMove.from && advisingMove.to
+            ? {
+                from: advisingMove.from,
+                to: advisingMove.to,
+                arrowOpacity: 1.0, // Arrow opacity for White's advised move
+              }
+            : null,
+        ].filter(Boolean)); // Remove any null entries
+      }
     }
-};
+  };
+  
 
 
   const handleReload = () => {
@@ -351,7 +363,7 @@ const ChessTutorApp = () => {
 
         // Fetch advice concurrently during animation
         fetchMovesAfterBlackMove();
-
+        //fetchReasoningAfterBlackMove();
         // Hide thinking animation after advice is retrieved
         setIsThinking(false);
 
@@ -454,7 +466,7 @@ const ChessTutorApp = () => {
       //     arrowOpacity = 0.8; // Stronger
       //     moveLabel = `${moveSan} (STRONGER)`;
       // } else {
-          arrowOpacity = 0.5; // Strong
+          arrowOpacity = 1; // Strong
           moveLabel = `${moveSan} (STRONG)`;
       // }
       const blackResponses = move.likelyResponses.map((response) => ({

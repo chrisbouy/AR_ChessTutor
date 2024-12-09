@@ -13,7 +13,7 @@ const ChessBoard2D = ({
   advisedMove,
   possibleMoves,
   isThinking,
-  recommendedMoves,
+  recommendedMoves = [],
 }) => {
   const blinkAnimation = useRef(new Animated.Value(0)).current;
   const squareSize = boardSize / 9;
@@ -152,81 +152,58 @@ const ChessBoard2D = ({
           <Defs>
             {/* Marker for opacity 1.0 */}
             <Marker
-              id="arrowheadOpacity1"
-              markerWidth="15"
-              markerHeight="7"
-              refX="9"
-              refY="3.5"
-              orient="auto"
-              markerUnits="strokeWidth"
-            >
-              <Path d="M0,0 L0,7 L10,3.5 z" fill="red" fillOpacity="1.0" />
-            </Marker>
+  id="arrowheadOpacity1"
+  markerWidth="4" // Smaller width
+  markerHeight="4" // Smaller height
+  refX="2" // Adjust this to align with the line
+  refY="2"
+  orient="auto"
+  markerUnits="strokeWidth"
+>
+  <Path d="M0,0 L0,4 L4,2 z" fill="red" fillOpacity="1.0" />
+</Marker>
 
             {/* Marker for opacity 0.8 */}
             <Marker
-              id="arrowheadOpacity0_8"
-              markerWidth="10"
-              markerHeight="7"
-              refX="9"
-              refY="3.5"
-              orient="auto"
-              markerUnits="strokeWidth"
-            >
-              <Path d="M0,0 L0,7 L10,3.5 z" fill="red" fillOpacity="0.8" />
-            </Marker>
+  id="arrowheadOpacity0_8"
+  markerWidth="4"
+  markerHeight="4"
+  refX="2"
+  refY="2"
+  orient="auto"
+  markerUnits="strokeWidth"
+>
+  <Path d="M0,0 L0,4 L4,2 z" fill="red" fillOpacity="0.8" />
+</Marker>
+
 
             {/* Marker for opacity 0.4 */}
             <Marker
-              id="arrowheadOpacity0_4"
-              markerWidth="10"
-              markerHeight="7"
-              refX="9"
-              refY="3.5"
-              orient="auto"
-              markerUnits="strokeWidth"
-            >
-              <Path d="M0,0 L0,7 L10,3.5 z" fill="red" fillOpacity="0.4" />
-            </Marker>
+  id="arrowheadOpacity0_4"
+  markerWidth="4"
+  markerHeight="4"
+  refX="2"
+  refY="2"
+  orient="auto"
+  markerUnits="strokeWidth"
+>
+  <Path d="M0,0 L0,4 L4,2 z" fill="red" fillOpacity="0.4" />
+</Marker>
           </Defs>
-          {recommendedMoves.map((move, index) => {
-            if (!move.from || !move.to) {
-              console.log('Invalid move:', move);
-              return null; 
-            }
-            // console.log('moves for arrows ', move);
-            const fromCoords = getSquareCoordinates(move.from);
-            const toCoords = getSquareCoordinates(move.to);
-            let strokeOpacity = move.arrowOpacity !== undefined ? move.arrowOpacity : 1.0;
-            let strokeWidth =4; 
-            
-            // Determine the marker id based on strokeOpacity
-            let markerId = '';
-            if (strokeOpacity === 1.0) {
-              markerId = 'url(#arrowheadOpacity1)';
-            } else if (strokeOpacity === 0.8) {
-              markerId = 'url(#arrowheadOpacity0_8)';
-            } else if (strokeOpacity === 0.1) {
-              markerId = 'url(#arrowheadOpacity0_4)';
-            } else {
-              // For any other opacity, default to opacity 1
-              markerId = 'url(#arrowheadOpacity1)';
-            }
-            
-            return (
-              <Line
-                key={index}
-                x1={fromCoords.x}
-                y1={fromCoords.y}
-                x2={toCoords.x}
-                y2={toCoords.y}
-                stroke="red"
-                strokeWidth={strokeWidth}
-                strokeOpacity={strokeOpacity}
-                markerEnd={markerId}
-              />
-            );
-          })}
+   {/* Render arrows */}
+   {recommendedMoves.map((arrow, index) => (
+        <Line
+          key={index}
+          x1={getSquareCoordinates(arrow.from).x}
+          y1={getSquareCoordinates(arrow.from).y}
+          x2={getSquareCoordinates(arrow.to).x}
+          y2={getSquareCoordinates(arrow.to).y}
+          stroke="red"
+          strokeWidth={2} // Adjust thickness as needed
+          strokeOpacity={arrow.arrowOpacity}
+          markerEnd="url(#arrowheadOpacity1)"
+        />
+      ))}
         </Svg>
       )}
       </View>

@@ -47,6 +47,9 @@ const Square = ({ square,
   isThinking,
  }) => {
   if (!square) return null;
+        
+        const isWhitePiece = square.piece?.color === 'w';
+
   const styles = StyleSheet.create({
     square: {
       position: 'relative',
@@ -55,15 +58,34 @@ const Square = ({ square,
       justifyContent: 'center',
       alignItems: 'center',
     },
+    pieceContainer: {
+      width: squareSize * 0.9,
+      height: squareSize * 0.9,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: isWhitePiece ? '#000000' : '#FFFFFF', // Black for white pieces, white for black
+      shadowOpacity: 1,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 0 },
+      elevation: 5, // Android support
+      backgroundColor: square.color, // Ensure no solid background blocks the shadow
+    },
     pieceImage: {
-      width: squareSize * .9,
-      height: squareSize * .9,
+      width: '100%',
+      height: '100%',
       resizeMode: 'contain',
     },
     shadow: {
-      borderWidth: 2,
+      borderWidth: 2, 
       borderColor: 'yellow',
     },
+        glowEffect: {
+          shadowColor: isWhitePiece ? '#FFFFFF' : '#FFFFFF', // Black glow for white pieces, white glow for black pieces
+          shadowOpacity: 1,
+          shadowRadius: 5,
+          shadowOffset: { width: 0, height: 0 },
+          elevation: 5, // Android equivalent of shadow
+        },
     possibleMoveIndicator: {
       position: 'absolute',
       width: squareSize * 0.3,
@@ -99,7 +121,7 @@ const Square = ({ square,
   }
 
 //   if (isAdvisedFromSquare || isAdvisedToSquare) {
-// //backgroundColor = 'rgba(0, 255, 0, 1)'; // Green background for advised move
+// backgroundColor = 'rgba(0, 255, 0, 1)'; // Green background for advised move
 //     shadowStyle = styles.shadow; 
 //   }
 
@@ -111,7 +133,9 @@ const Square = ({ square,
     disabled={isThinking}
     >
       <Animated.View style={[styles.square, { backgroundColor }, shadowStyle]}>
-        {pieceImage && <Image source={pieceImage} style={styles.pieceImage} />}
+      <View style={styles.pieceContainer}>
+        {pieceImage && <Image source={pieceImage} style={[styles.pieceImage, styles.glowEffect]} />}
+        </View>
         {isPossibleMove && <View style={styles.possibleMoveIndicator} />}
       </Animated.View>
     </TouchableOpacity>

@@ -5,10 +5,19 @@ import { createStackNavigator } from '@react-navigation/stack';
 
 import SplashScreen from './components/SplashScreen'; // Adjust the path if needed
 import ChessTutorApp from './components/ChessTutorApp'; // Your main app component
+import { LogBox } from 'react-native';
+
+
+
+
 
 const Stack = createStackNavigator();
 
 export default function App() {
+  LogBox.ignoreAllLogs(true);
+
+  
+  
   // useEffect(() => {
   //   // Simulate a delay to showcase the splash screen
   //   setTimeout(() => {

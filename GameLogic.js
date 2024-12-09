@@ -27,7 +27,7 @@ class GameLogic {
         return board.map((row, rowIndex) => {
             return row.map((piece, colIndex) => {
                 const position = files[colIndex] + (8 - rowIndex);
-                const squareColor = (rowIndex + colIndex) % 2 === 0 ? '#000000' : '#5c5d5e';
+                const squareColor = (rowIndex + colIndex) % 2 === 0 ? '#111111' : '#5c5d5e';
                 return {
                     position,
                     color: squareColor,
@@ -42,7 +42,7 @@ class GameLogic {
           if (!this.engine) {
             return null;
           }
-          const result = this.chess.move(move);
+          const result = this.chess.move(move); 
           this.engine.makeMove(this.encodeMove(move));
            this.engine.setBoard(this.chess.fen());
           // this.engine.printBoard();
@@ -172,9 +172,12 @@ class GameLogic {
 
     getTableData() {
       const originalFEN = this.chess.fen();
+      console.log('----fen at start of gettabledata-----', this.chess.fen());
+      // this.engine.printBoard();
       const advisedMoves = [];
       const maxAdvisedMoves = 5;
       const maxLikelyResponses = 2;
+      const maxsearchforresponses = 10;
       const depths = [4, 3, 2];
     
       for (const depth of depths) {
@@ -184,11 +187,16 @@ class GameLogic {
         const advisedMove = primaryVariant[0];
         if (!advisedMoves.some((move) => move.move === advisedMove)) {
           const fenBeforeMove = this.chess.fen();  
-          console.log('encoded:',searchResult.bestMove);        
-          this.engine.makeMove(searchResult.bestMove);
-          console.log('uci:',advisedMove);
+          // console.log('encoded white move:',searchResult.bestMove);        
+          // this.engine.makeMove(searchResult.bestMove);
+          // console.log('uci white move:',advisedMove);
+
           this.chess.move(advisedMove);
           const fenAfterMove = this.chess.fen();
+          this.chess.undo();
+
+          // console.log('fen after making white advised move', this.chess.fen());
+          // this.engine.printBoard();
           const sanMove = this.convertFromSquareToSan(advisedMove, fenBeforeMove);
           advisedMoves.push({
             san: sanMove,
@@ -197,39 +205,41 @@ class GameLogic {
             fenAfterMove,
             likelyResponses: [primaryVariant[1]],
           });
-          this.chess.undo();
-          this.engine.takeBack();
+          // this.engine.takeBack();
         }
       }
-      console.log('responses');
+      console.log('-black responses-');
       advisedMoves.forEach((advisedMove) => {
         const originalFen = this.chess.fen();
-        console.log('uci:',advisedMove.move);
+        console.log('making white advised move:',advisedMove.move);
         this.chess.move(advisedMove.move);
-        console.log('encoded:',advisedMove.encoded);
+        // console.log('white encoded:',advisedMove.encoded);
         this.engine.makeMove(advisedMove.encoded);
         //this.engine.setBoard(this.chess.fen());
         const likelyResponses = [];
+
         const responseresult = this.engine.search(3, this.chess.fen())
         const primaryVariant = responseresult.info.match(/pv (.+)/)[1].split(' ');
         console.log(`pv afer ${advisedMove.move} : ${primaryVariant}`);
-        console.log('pv1 ', primaryVariant[0]);
+        console.log('pushing pv[1] if unique', primaryVariant[0]);
         likelyResponses.push(advisedMove.likelyResponses[0]);
-        if (primaryVariant.length > 1 && primaryVariant[0] !== advisedMove.likelyResponses[0]) {
-          console.log('shouldnt be here');
+        if (primaryVariant[0] !== advisedMove.likelyResponses[0]) 
           likelyResponses.push(primaryVariant[0]);
-        }
-        while (likelyResponses.length < maxLikelyResponses) {
+        else
+          console.log('not unique');
+        loopsforresponses=0;
+        while (likelyResponses.length < maxLikelyResponses && loopsforresponses <= maxsearchforresponses) {
           const response = this.engine.search(2, this.chess.fen());
           const responseMove = response.info.match(/pv (.+)/)[1].split(' ')[0];
           if (!likelyResponses.includes(responseMove)) {
             likelyResponses.push(responseMove);
           }
+          loopsforresponses++;
         }
         advisedMove.likelyResponses = likelyResponses.map((response) => {
-          console.log('square ',response);
+          console.log('black move ',response);
           const sanresponse = this.convertFromSquareToSan(response, advisedMove.fenAfterMove);
-          console.log('san response ', sanresponse);
+          console.log('black san ', sanresponse);
           return {
             move: response,
             san: sanresponse

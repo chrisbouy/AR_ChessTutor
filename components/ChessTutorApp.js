@@ -11,9 +11,11 @@ import {
   Alert,
 } from 'react-native';
 import ChessBoard2D from './ChessBoard2D';
+import NavigationArrows from './NavigationArrows.js';
 import GameLogic from '../GameLogic';
 import SANPopup from './SANPopup.js';
 import SplashScreen from 'react-native-splash-screen';
+import { ActivityIndicator } from 'react-native';
 
 const ChessTutorApp = () => {
   useEffect(() => {
@@ -41,6 +43,11 @@ const ChessTutorApp = () => {
   const [popupVisible, setPopupVisible] = useState(false);
   const [popupDescription, setPopupDescription] = useState('');
   const [displayedArrows, setDisplayedArrows] = useState([]);
+  const [isPopupLoading, setIsPopupLoading] = useState(false);
+  const [moveHistory, setMoveHistory] = useState([gameLogicRef.current.getFen()]); // Store FEN strings
+  const [currentMoveIndex, setCurrentMoveIndex] = useState(0); // Track current move index
+
+  const [isWhiteTurn, setIsWhiteTurn] = useState(true); // Start with White's turn
 
   // Initialize the engine when the component mounts
   useEffect(() => {
@@ -209,6 +216,21 @@ const ChessTutorApp = () => {
           paddingVertical: 0,
           backgroundColor: '#191d24',
         },
+        navigationButton: {
+          backgroundColor: 'transparent',
+          borderRadius: 10,
+          padding: 5,
+          borderWidth: 1,
+          borderColor: 'white',
+          marginHorizontal: 5,
+        },
+        navigationButtonText: {
+          color: 'white',
+          fontWeight: 'bold',
+        },
+        navigationButtonDisabled: {
+          opacity: 0.5, // Dim the button when disabled
+        },
         tableFooter: {
           paddingVertical: 10,
           alignItems: 'center',
@@ -221,6 +243,39 @@ const ChessTutorApp = () => {
           fontStyle: 'italic',
           fontWeight: 'bold',
         },
+        spinnerContainer: {
+          marginTop: 10, // Space above the spinner
+          alignSelf: 'center', // Center the spinner
+          justifyContent: 'center',
+          alignItems: 'center',
+        },
+        popupSpinner: {
+          marginTop: 20, // Space between description and spinner
+          alignSelf: 'center',
+        },
+        bottomSpinnerContainer: {
+          alignSelf: 'center',
+          marginTop: 10, // Position under analysis
+        },
+        popupDescription: {
+          fontSize: 18,
+          color: '#ffffff',
+          marginBottom: 10, // Add some space below the text
+          textAlign: 'center',
+        },
+        popupContainer: {
+          padding: 20,
+          backgroundColor: 'rgba(0, 0, 0, 0.9)',
+          borderRadius: 10,
+          alignItems: 'center',
+        },
+        popupCloseText: {
+          marginTop: 10,
+          color: '#aec4e8',
+          fontSize: 16,
+          textDecorationLine: 'underline',
+        },
+        
       }),
     [windowWidth]
   );
@@ -273,24 +328,54 @@ const ChessTutorApp = () => {
       }
     }
   };
+// In your main app component
+
+const handleBackPress = () => {
+  if (currentMoveIndex >= 2) { // Ensure there are at least two moves to undo
+    const newIndex = currentMoveIndex - 2;
+    setCurrentMoveIndex(newIndex);
+    const previousFen = moveHistory[newIndex];
+    gameLogicRef.current.loadFen(previousFen);
+    setBoardState(gameLogicRef.current.getBoardState());
+    setIsWhiteTurn(true); // After undoing, it's White's turn
+  }
+};
+
+const handleForwardPress = () => {
+  if (currentMoveIndex + 2 < moveHistory.length) { // Ensure there are two moves to redo
+    const newIndex = currentMoveIndex + 2;
+    setCurrentMoveIndex(newIndex);
+    const nextFen = moveHistory[newIndex];
+    gameLogicRef.current.loadFen(nextFen);
+    setBoardState(gameLogicRef.current.getBoardState());
+    setIsWhiteTurn(false); // After redoing, it's Black's turn
+  }
+};
   
-
-
   const handleReload = () => {
     gameLogicRef.current = new GameLogic();
     gameLogicRef.current.initializeEngine();
     setBoardState(gameLogicRef.current.getBoardState());
+
     setSelectedSquare(null);
     setIllegalMoveSquares(null);
+
     setAdvisedMove(null);
     setPositionAnalysis('');
     setRecommendedNextMoves([]);
     setDisplayedArrows([]);
     setPossibleMoves([]);
+ 
     textOpacity.setValue(1);
     thinkingOpacity.setValue(0);
+
     setIsThinking(false);
     analysisComplete.current = false;
+    setMoveHistory([gameLogicRef.current.getFen()]); // Replace 'initial_fen' with your actual starting FEN
+    setCurrentMoveIndex(0);
+    
+    // Reset Turn to White
+    setIsWhiteTurn(true);
     setMovesLeft(12);
     // fetchAdviceAfterBlackMove();
   };
@@ -339,34 +424,34 @@ const ChessTutorApp = () => {
         }
         setBoardState([...gameLogicRef.current.getBoardState()]);
         console.log('made white move');
-
-        // Decrease move counter
-        setMovesLeft((prevMoves) => prevMoves - 1);
-
-        // Checkmate handling
+        const playerFen = gameLogicRef.current.getFen();
+      // Update move history, truncating any future moves if we're adding a new move
+      const updatedHistory = [...moveHistory.slice(0, currentMoveIndex + 1), playerFen];
+      setMoveHistory([...updatedHistory, playerFen]);
+      setCurrentMoveIndex(currentMoveIndex+1); // Move to the new move
         if (gameLogicRef.current.chess.isCheckmate()) {
             Alert.alert('Game Over', 'Checkmate! The game has ended.', [{ text: 'OK', onPress: () => handleReload() }]);
             return;
         }
-
-        // Pause for 500ms
         await new Promise((resolve) => setTimeout(resolve, 500));
-
-        // Make Black's move
+        //await gameLogicRef.current.engine.setBoard(this.chess.fen());
         console.log('making black move');
         const blackMoveResult = gameLogicRef.current.makeMove_Black(playerMove.san);
         setBoardState([...gameLogicRef.current.getBoardState()]);
+
+        const engineFen = gameLogicRef.current.getFen();
+        setMoveHistory([...updatedHistory, engineFen]);
+        setCurrentMoveIndex(currentMoveIndex + 2);
+
         console.log('made black move');
-
-        // Show "thinking" animation
         setIsThinking(true);
-
-        // Fetch advice concurrently during animation
         fetchMovesAfterBlackMove();
-        //fetchReasoningAfterBlackMove();
+
+        setIsWhiteTurn(true); // After moves, it's Black's turn    ???????
+
+        // await fetchReasoningAfterBlackMove();
         // Hide thinking animation after advice is retrieved
         setIsThinking(false);
-
     } catch (error) {
         console.log('Error during move:', error);
         Alert.alert('Error', 'Error processing move, please try again.', [{ text: 'OK' }]);
@@ -376,7 +461,7 @@ const ChessTutorApp = () => {
 
 
   const fetchMovesAfterBlackMove = () => {
-    console.log(`getting table data`);
+    // console.log(`getting table data`);
     const tableData = gameLogicRef.current.getTableData();
     console.log(`table data: ${JSON.stringify(tableData, null, 2)}`);
 
@@ -424,35 +509,51 @@ const ChessTutorApp = () => {
   };
 
   const fetchReasoningAfterBlackMove = async () => {
-    const apiName = 'Claude';
-    const advisedMoves = gameLogicRef.current.latestAdvice;
-    if (!advisedMoves) {
-      console.log('No advised moves available for reasoning.');
-      return;
-    }
-    const reasoningData = await gameLogicRef.current.getReasoningFromAI(apiName,advisedMoves);
-    console.log(`fetchReasoningAfterBlackMove.reasoningdata: ${JSON.stringify(reasoningData)}`);
-    if (!reasoningData) {
-      console.log('Failed to fetch reasoning from AI.');
-      return;
-    }
-    // Update the advice with reasoning
-    const updatedAdvice = {
-      ...gameLogicRef.current.latestAdvice,
-      positionAnalysis: reasoningData.positionAnalysis,
-      recommendedNextMoves: gameLogicRef.current.latestAdvice.recommendedNextMoves.map((move, index) => ({
+    try {
+      setIsPopupLoading(true); // Show spinner in popup
+      const apiName = 'Claude';
+      const advisedMoves = gameLogicRef.current.latestAdvice;
+  
+      if (!advisedMoves) {
+        console.log('No advised moves available for reasoning.');
+        setIsPopupLoading(false); // Ensure spinner stops if no advice
+        return;
+      }
+  
+      const reasoningData = await gameLogicRef.current.getReasoningFromAI(apiName, advisedMoves);
+  
+      // Hide spinner and update popup
+      setPopupDescription(reasoningData.positionAnalysis || 'Reasoning returned.');
+      setIsPopupLoading(false);
+  
+      // Update advice with reasoning
+      const updatedAdvice = advisedMoves.map((move, index) => ({
         ...move,
         reasoning: reasoningData.reasoning[index] || move.reasoning,
-      })),
-    };
-    gameLogicRef.current.latestAdvice = updatedAdvice;
-    // Re-process the advice to include reasoning
-    const processedAdvice = renderAdvisedMoves(updatedAdvice);
-    setRecommendedNextMoves(processedAdvice);
-    setPositionAnalysis(updatedAdvice.positionAnalysis);
-    analysisComplete.current = true;
+      }));
+  
+      gameLogicRef.current.latestAdvice = updatedAdvice;
+  
+      // Re-process advice
+      const processedAdvice = renderAdvisedMoves(updatedAdvice);
+      setRecommendedNextMoves(processedAdvice);
+      setPositionAnalysis(reasoningData.positionAnalysis);
+      analysisComplete.current = true;
+    } catch (error) {
+      console.error('Error fetching reasoning:', error);
+      setIsPopupLoading(false); // Ensure spinner stops on error
+    }
   };
+  
 
+  function attachReasoningToAdvice(advice, reasoningData) {
+    const { reasoning } = reasoningData;
+    return advice.map((move, index) => ({
+      ...move,
+          reasoning: reasoning[index] || 'No reasoning provided'
+    }));
+  }
+  
   function renderAdvisedMoves(advice) {
       console.log('advice ', advice);
     return advice.map((move) => {
@@ -504,17 +605,20 @@ const ChessTutorApp = () => {
     <SafeAreaView style={styles.safeArea}>
       {/* Top bar with move counter and reload button */}
       <View style={styles.topBar}>
-        <View style={styles.moveCounterContainer}>
-          <Text style={styles.moveCounterText}>Moves Left: {movesLeft}</Text>
-        </View>
 
+      <NavigationArrows
+  onBackPress={handleBackPress}
+  onForwardPress={handleForwardPress}
+  disableBack={currentMoveIndex < 2 || !isWhiteTurn}
+  disableForward={currentMoveIndex + 2 >= moveHistory.length || !isWhiteTurn}
+/>  
         <View style={styles.reloadButtonContainer}>
           <TouchableOpacity style={styles.reloadButton} onPress={handleReload}>
             <Text style={styles.reloadButtonText}>Reload</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> 
         </View>
       </View>
-
+  
       {/* Main content */}
       <View style={styles.container}>
         <View style={styles.contentContainer}>
@@ -532,7 +636,7 @@ const ChessTutorApp = () => {
               recommendedMoves={displayedArrows}
             />
           </View>
-
+  
           {/* Analysis texts */}
           <ScrollView ref={scrollViewRef} contentContainerStyle={styles.textContainer}>
             <Animated.View style={[styles.analysisContainer, { opacity: textOpacity }]}>
@@ -544,7 +648,7 @@ const ChessTutorApp = () => {
                       <Text style={[styles.tableCell, styles.tableHeader, styles.adviceColumn]}>Advice</Text>
                       <Text style={[styles.tableCell, styles.tableHeader, styles.responseColumn]}>
                         Likely Responses
-                      </Text> 
+                      </Text>
                     </View>
                     {recommendedNextMoves.map((move, index) => (
                       <View key={index} style={styles.tableRow}>
@@ -556,7 +660,7 @@ const ChessTutorApp = () => {
                           </TouchableOpacity>
                         </View>
                         <View style={[styles.tableCell, { flexDirection: 'row', flexWrap: 'wrap' }]}>
-                        {move.likelyResponses.map((response, idx) => (
+                          {move.likelyResponses.map((response, idx) => (
                             <TouchableOpacity
                               key={idx}
                               onPress={() =>
@@ -589,28 +693,29 @@ const ChessTutorApp = () => {
             </Animated.View>
           </ScrollView>
         </View>
+  
+        {/* Spinner Below Game Analysis */}
         {isThinking && (
-          <View style={styles.overlay} pointerEvents="none">
-            <Text style={styles.overlayText}>Thinking...</Text>
+          <View style={styles.bottomSpinnerContainer}>
+            <ActivityIndicator size="large" color="#ffffff" />
           </View>
         )}
       </View>
+  
+      {/* Popups */}
       <SANPopup
-        visible={popupVisible}
-        description={popupDescription}
-        onClose={() => {
-          setPopupVisible(false);
-          setDisplayedArrows(
-            recommendedNextMoves.map((move) => ({
-              from: move.from,
-              to: move.to,
-              arrowOpacity: move.arrowOpacity,
-            }))
-          );
-        }}
-      />
+  visible={popupVisible}
+  description={popupDescription}
+  onClose={() => {
+    setPopupVisible(false);
+    setDisplayedArrows([]);
+  }}
+  isLoading={isPopupLoading}
+/>
     </SafeAreaView>
   );
+  
+  
 };
 
 export default ChessTutorApp;

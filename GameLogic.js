@@ -71,12 +71,12 @@ class GameLogic {
 
     encodeMove(move)
     {
-      console.log('encoding');
+      // console.log('encoding');
       let promotedPiece = (this.engine.getSide() ? (5 + 6): 5) // queen promotion only for now
       let validMove = move.from + move.to + this.engine.promotedToString(promotedPiece);
-      console.log('validMove ',validMove);
+      // console.log('validMove ',validMove);
       let encodedMove = this.engine.moveFromString(validMove);
-      console.log('encodedMove ', encodedMove);
+      // console.log('encodedMove ', encodedMove);
       return this.encodeMove;
     }
 
@@ -138,8 +138,8 @@ class GameLogic {
             // this.engine.printBoard();
             const decodedbestmove = this.decodeMove(searchResult.bestMove);
              this.chess.move(decodedbestmove);
-             console.log('decodedbestmove ',decodedbestmove );
-             console.log('bestMove.move ',searchResult.bestMove.move );
+            //  console.log('decodedbestmove ',decodedbestmove );
+            //  console.log('bestMove.move ',searchResult.bestMove.move );
             return {
                 move: decodedbestmove,
                 boardState: this.getBoardState(),
@@ -172,7 +172,7 @@ class GameLogic {
 
     getTableData() {
       const originalFEN = this.chess.fen();
-      console.log('----fen at start of gettabledata-----', this.chess.fen());
+      // console.log('----fen at start of gettabledata-----', this.chess.fen());
       // this.engine.printBoard();
       const advisedMoves = [];
       const maxAdvisedMoves = 5;
@@ -208,10 +208,10 @@ class GameLogic {
           // this.engine.takeBack();
         }
       }
-      console.log('-black responses-');
+      // console.log('-black responses-');
       advisedMoves.forEach((advisedMove) => {
         const originalFen = this.chess.fen();
-        console.log('making white advised move:',advisedMove.move);
+        // console.log('making white advised move:',advisedMove.move);
         this.chess.move(advisedMove.move);
         // console.log('white encoded:',advisedMove.encoded);
         this.engine.makeMove(advisedMove.encoded);
@@ -220,8 +220,8 @@ class GameLogic {
 
         const responseresult = this.engine.search(3, this.chess.fen())
         const primaryVariant = responseresult.info.match(/pv (.+)/)[1].split(' ');
-        console.log(`pv afer ${advisedMove.move} : ${primaryVariant}`);
-        console.log('pushing pv[1] if unique', primaryVariant[0]);
+        // console.log(`pv afer ${advisedMove.move} : ${primaryVariant}`);
+        // console.log('pushing pv[1] if unique', primaryVariant[0]);
         likelyResponses.push(advisedMove.likelyResponses[0]);
         if (primaryVariant[0] !== advisedMove.likelyResponses[0]) 
           likelyResponses.push(primaryVariant[0]);
@@ -237,12 +237,12 @@ class GameLogic {
           loopsforresponses++;
         }
         advisedMove.likelyResponses = likelyResponses.map((response) => {
-          console.log('black move ',response);
+          // console.log('black move ',response);
           const sanresponse = this.convertFromSquareToSan(response, advisedMove.fenAfterMove);
-          console.log('black san ', sanresponse);
+          // console.log('black san ', sanresponse);
           return {
             move: response,
-            san: sanresponse
+            san: sanresponse,
           };
         });
         //this.chess.undo();
@@ -251,6 +251,18 @@ class GameLogic {
         this.engine.takeBack();
          
       });
+
+//       // After advisedMoves are fully populated
+advisedMoves.forEach((advisedMove) => {
+  // White move description
+  advisedMove.description = this.convertMoveToDescription(advisedMove.san, 'w');
+
+  // Black move descriptions
+  advisedMove.likelyResponses.forEach((response) => {
+    response.description = this.convertMoveToDescription(response.san, 'b');
+  });
+});
+console.log(advisedMoves)
      return advisedMoves; 
 
     }
@@ -517,8 +529,8 @@ class GameLogic {
           // });
 
 
-          const apiKey = this.apiKey || await this.retrieveApiKey(); 
-          //const apiKey = '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';
+          //const apiKey = this.apiKey || await this.retrieveApiKey(); 
+          const apiKey = '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';
           if (!apiKey) {
             console.error('API key not found');
             return;
@@ -656,14 +668,14 @@ class GameLogic {
   // }
     async getReasoningFromAI(apiName, advisedMoves) {
       const fen = this.chess.fen();
-      const moveHistory = this.chess.history().map((move) => move);
+      const moveHistory = this.chess.history();
       const system_prompt =`
       You are a chess tutor specializing in accurate, move-by-move analysis.  
       You are playing Black. I am playing as White, and it's my turn to move.
       Instructions:
       - Analyze the given chess position thoroughly.
       - Double-check all tactical motifs and threats for accuracy.
-      - Given a list of 3 moves, explain the benefits and risks of each
+      - Given a list of potential moves, explain the benefits and risks of each
 
       Constraints:
       - Do not include move numbers, opening names, or acronyms.
@@ -711,13 +723,14 @@ class GameLogic {
       }
     }  
     formatAdvisedMoves(advisedMoves) {
-      console.log('format.advised moves ', advisedMoves);
-      const moves = advisedMoves.recommendedNextMoves;
+      //  console.log('format.advised moves ', advisedMoves);
+      // const moves = advisedMoves.recommendedNextMoves;
+      //console.log('advisedMoves',advisedMoves);
       let movesDescription = '';
-      for (let i = 0; i < moves.length; i++) {
-        const move = moves[i];
+      for (let i = 0; i < advisedMoves.length; i++) {
+        const move = advisedMoves[i];
         const moveNumber = i + 1;
-        movesDescription += `move ${moveNumber}. ${move.move} (${move.priority.toLowerCase()} move), `;
+        movesDescription += move.description + ', ';
       }
     
       // Remove the trailing comma and space at the end
@@ -778,8 +791,8 @@ class GameLogic {
       // Create a new chess instance with the modified FEN
       const tempChess = new Chess(modifiedFEN);
       const moves = tempChess.moves({ verbose: true });
-      console.log('Available moves:', moves.map((m) => m.san));
-      console.log('SAN move passed:', sanMove);
+      // console.log('Available moves:', moves.map((m) => m.san));
+      // console.log('SAN move passed:', sanMove);
       const move = moves.find((m) => m.san === sanMove);
       if (move) {
         if (move.flags.includes('k') || move.flags.includes('q')) {
@@ -849,10 +862,20 @@ class GameLogic {
       const sanMove = legalMoves.find(
         (m) => `${m.from}${m.to}` === move
       )?.san;
-    console.log('san:',sanMove);
+    // console.log('san:',sanMove);
       // Return the SAN move or fallback to the original move
       return sanMove || move;
     }
+      // Method to get the current FEN string
+  getFen() {
+    return this.chess.fen();
+  }
+
+  // Method to load a FEN string
+  loadFen(fen) {
+    this.chess.load(fen);
+    this.engine.setBoard(fen);
+  }
     
 }
 

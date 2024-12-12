@@ -377,36 +377,40 @@ const ChessTutorApp = () => {
   };
   
   const handleForwardPress = () => {
+    console.log('forward');
     if (currentAdviceIndex < adviceHistory.length - 1) {
+      console.log('Advice History FENs:', adviceHistory.map(e => e.fen));
+      console.log('isCurrentlyDisplayed states:', adviceHistory.map(e => e.isCurrentlyDisplayed));
+      console.log(currentAdviceIndex);
+  
       const newIndex = currentAdviceIndex + 1;
       
-      // Update all flags and log current state
+      // Create a new array with updated flags
       const updatedHistory = adviceHistory.map((entry, index) => ({
         ...entry,
         isCurrentlyDisplayed: index === newIndex
       }));
+      
+      // Update state with the new array
       setAdviceHistory(updatedHistory);
-      
-      // Log the state for debugging
-      console.log('Advice History FENs:', updatedHistory.map(e => e.fen));
-      console.log('isCurrentlyDisplayed states:', updatedHistory.map(e => e.isCurrentlyDisplayed));
-      
-      // Update the current index
       setCurrentAdviceIndex(newIndex);
       
-      // Load the next board state
+      // Load the next position
       gameLogicRef.current.loadFen(updatedHistory[newIndex].fen);
       setBoardState(gameLogicRef.current.getBoardState());
-      
+  
       // Update the advice display
-      const processedAdvice = renderAdvisedMoves(updatedHistory[newIndex].advisedMoves);
-      setRecommendedNextMoves(processedAdvice);
-      setDisplayedArrows(processedAdvice.map(move => ({
-        from: move.from,
-        to: move.to,
-        arrowOpacity: move.arrowOpacity,
-      })));
-      setPositionAnalysis('Game analysis based on table data.');
+      const advice = updatedHistory[newIndex];
+      if (advice) {
+        const processedAdvice = renderAdvisedMoves(advice.advisedMoves);
+        setRecommendedNextMoves(processedAdvice);
+        setDisplayedArrows(processedAdvice.map(move => ({
+          from: move.from,
+          to: move.to,
+          arrowOpacity: move.arrowOpacity,
+        })));
+        setPositionAnalysis('Game analysis based on table data.');
+      }
     }
   };
   
@@ -692,8 +696,8 @@ const fetchMovesAfterBlackMove = () => {
       <NavigationArrows
   onBackPress={handleBackPress}
   onForwardPress={handleForwardPress}
-  disableBack={currentMoveIndex < 2 || !isWhiteTurn}
-  disableForward={currentMoveIndex + 2 >= adviceHistory.length || !isWhiteTurn}
+  disableBack={currentAdviceIndex < 0}  // Disable only when we're at the start
+  disableForward={currentAdviceIndex >= adviceHistory.length - 1}  // Disable only when we're at the end
 />  
         <View style={styles.reloadButtonContainer}>
           <TouchableOpacity style={styles.reloadButton} onPress={handleReload}>

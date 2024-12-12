@@ -21,6 +21,7 @@ const ChessTutorApp = () => {
   useEffect(() => {
     SplashScreen.hide();
   }, []);
+
   const gameLogicRef = useRef(new GameLogic);
   const [boardState, setBoardState] = useState(gameLogicRef.current.getBoardState());
   const [selectedSquare, setSelectedSquare] = useState(null);
@@ -44,9 +45,11 @@ const ChessTutorApp = () => {
   const [popupDescription, setPopupDescription] = useState('');
   const [displayedArrows, setDisplayedArrows] = useState([]);
   const [isPopupLoading, setIsPopupLoading] = useState(false);
-  const [moveHistory, setMoveHistory] = useState([gameLogicRef.current.getFen()]); // Store FEN strings
-  const [currentMoveIndex, setCurrentMoveIndex] = useState(0); // Track current move index
 
+  const [currentAdviceIndex, setCurrentAdviceIndex] = useState(0);
+  const [adviceHistory, setAdviceHistory] = useState([]);
+  const [currentMoveIndex, setCurrentMoveIndex] = useState(0); // Track current move index
+  const [currentAdvice, setCurrentAdvice] = useState(null); // Current advice to display
   const [isWhiteTurn, setIsWhiteTurn] = useState(true); // Start with White's turn
 
   // Initialize the engine when the component mounts
@@ -55,6 +58,11 @@ const ChessTutorApp = () => {
     gameLogicRef.current.initializeEngine();
     // fetchAdviceAfterBlackMove();
   }, []);
+
+    // Log adviceHistory whenever it changes
+    // useEffect(() => {
+    //   console.log('Updated Advice History:', adviceHistory.fen);
+    // }, [adviceHistory]);
 
   const styles = useMemo(
     () =>
@@ -328,30 +336,81 @@ const ChessTutorApp = () => {
       }
     }
   };
-// In your main app component
 
-const handleBackPress = () => {
-  if (currentMoveIndex >= 2) { // Ensure there are at least two moves to undo
-    const newIndex = currentMoveIndex - 2;
-    setCurrentMoveIndex(newIndex);
-    const previousFen = moveHistory[newIndex];
-    gameLogicRef.current.loadFen(previousFen);
-    setBoardState(gameLogicRef.current.getBoardState());
-    setIsWhiteTurn(true); // After undoing, it's White's turn
-  }
-};
-
-const handleForwardPress = () => {
-  if (currentMoveIndex + 2 < moveHistory.length) { // Ensure there are two moves to redo
-    const newIndex = currentMoveIndex + 2;
-    setCurrentMoveIndex(newIndex);
-    const nextFen = moveHistory[newIndex];
-    gameLogicRef.current.loadFen(nextFen);
-    setBoardState(gameLogicRef.current.getBoardState());
-    setIsWhiteTurn(false); // After redoing, it's Black's turn
-  }
-};
+  const handleBackPress = () => {
+    console.log('back');
+    if (currentAdviceIndex >= 0) { 
+      console.log('Advice History FENs:', adviceHistory.map(e => e.fen));
+      console.log('isCurrentlyDisplayed states:', adviceHistory.map(e => e.isCurrentlyDisplayed));
+      console.log(currentAdviceIndex);
   
+      const newIndex = currentAdviceIndex - 1;
+      if (newIndex >= 0) {
+        // Create a new array with updated flags
+        const updatedHistory = adviceHistory.map((entry, index) => ({
+          ...entry,
+          isCurrentlyDisplayed: index === newIndex
+        }));
+        
+        // Update state with the new array
+        setAdviceHistory(updatedHistory);
+        setCurrentAdviceIndex(newIndex);
+        
+        // Load the previous position
+        gameLogicRef.current.loadFen(updatedHistory[newIndex].fen);
+        setBoardState(gameLogicRef.current.getBoardState());
+    
+        // Update the advice display
+        const advice = updatedHistory[newIndex];
+        if (advice) {
+          const processedAdvice = renderAdvisedMoves(advice.advisedMoves);
+          setRecommendedNextMoves(processedAdvice);
+          setDisplayedArrows(processedAdvice.map(move => ({
+            from: move.from,
+            to: move.to,
+            arrowOpacity: move.arrowOpacity,
+          })));
+          setPositionAnalysis('Game analysis based on table data.');
+        }
+      }
+    }
+  };
+  
+  const handleForwardPress = () => {
+    if (currentAdviceIndex < adviceHistory.length - 1) {
+      const newIndex = currentAdviceIndex + 1;
+      
+      // Update all flags and log current state
+      const updatedHistory = adviceHistory.map((entry, index) => ({
+        ...entry,
+        isCurrentlyDisplayed: index === newIndex
+      }));
+      setAdviceHistory(updatedHistory);
+      
+      // Log the state for debugging
+      console.log('Advice History FENs:', updatedHistory.map(e => e.fen));
+      console.log('isCurrentlyDisplayed states:', updatedHistory.map(e => e.isCurrentlyDisplayed));
+      
+      // Update the current index
+      setCurrentAdviceIndex(newIndex);
+      
+      // Load the next board state
+      gameLogicRef.current.loadFen(updatedHistory[newIndex].fen);
+      setBoardState(gameLogicRef.current.getBoardState());
+      
+      // Update the advice display
+      const processedAdvice = renderAdvisedMoves(updatedHistory[newIndex].advisedMoves);
+      setRecommendedNextMoves(processedAdvice);
+      setDisplayedArrows(processedAdvice.map(move => ({
+        from: move.from,
+        to: move.to,
+        arrowOpacity: move.arrowOpacity,
+      })));
+      setPositionAnalysis('Game analysis based on table data.');
+    }
+  };
+  
+    
   const handleReload = () => {
     gameLogicRef.current = new GameLogic();
     gameLogicRef.current.initializeEngine();
@@ -371,12 +430,14 @@ const handleForwardPress = () => {
 
     setIsThinking(false);
     analysisComplete.current = false;
-    setMoveHistory([gameLogicRef.current.getFen()]); // Replace 'initial_fen' with your actual starting FEN
+
+    // setMoveHistory([gameLogicRef.current.getFen()]); // Replace 'initial_fen' with your actual starting FEN
     setCurrentMoveIndex(0);
-    
+    setAdviceHistory([]);
+    setCurrentAdvice(null);
     // Reset Turn to White
     setIsWhiteTurn(true);
-    setMovesLeft(12);
+
     // fetchAdviceAfterBlackMove();
   };
 
@@ -414,7 +475,7 @@ const handleForwardPress = () => {
 
   const onMove = async (fromSquare, toSquare) => {
     try {
-        console.log('making white move');
+        // console.log('making white move');
 
         // Make the white move and update UI immediately
         const playerMove = gameLogicRef.current.makeMove_White({ from: fromSquare, to: toSquare });
@@ -423,34 +484,55 @@ const handleForwardPress = () => {
             return;
         }
         setBoardState([...gameLogicRef.current.getBoardState()]);
-        console.log('made white move');
+        // console.log('made white move');
         const playerFen = gameLogicRef.current.getFen();
-      // Update move history, truncating any future moves if we're adding a new move
-      const updatedHistory = [...moveHistory.slice(0, currentMoveIndex + 1), playerFen];
-      setMoveHistory([...updatedHistory, playerFen]);
-      setCurrentMoveIndex(currentMoveIndex+1); // Move to the new move
-        if (gameLogicRef.current.chess.isCheckmate()) {
+
+                  // Truncate moveHistory and adviceHistory if not at the end
+  // const truncatedMoveHistory = moveHistory.slice(0, currentMoveIndex + 1);
+  const truncatedAdviceHistory = adviceHistory.slice(0, Math.floor(currentMoveIndex / 2));
+  
+  // const updatedMoveHistory = [...truncatedMoveHistory, playerFen];
+  // setMoveHistory(updatedMoveHistory);
+  setCurrentMoveIndex(currentMoveIndex + 1);
+
+  if (gameLogicRef.current.chess.isCheckmate()) {
             Alert.alert('Game Over', 'Checkmate! The game has ended.', [{ text: 'OK', onPress: () => handleReload() }]);
             return;
         }
         await new Promise((resolve) => setTimeout(resolve, 500));
         //await gameLogicRef.current.engine.setBoard(this.chess.fen());
-        console.log('making black move');
+        // console.log('making black move');
         const blackMoveResult = gameLogicRef.current.makeMove_Black(playerMove.san);
         setBoardState([...gameLogicRef.current.getBoardState()]);
-
         const engineFen = gameLogicRef.current.getFen();
-        setMoveHistory([...updatedHistory, engineFen]);
-        setCurrentMoveIndex(currentMoveIndex + 2);
 
-        console.log('made black move');
+        // const finalMoveHistory = [...updatedMoveHistory, engineFen];
+      // setMoveHistory(finalMoveHistory);
+      setCurrentMoveIndex(currentMoveIndex + 2);
+
+        // console.log('made black move');
+
         setIsThinking(true);
         fetchMovesAfterBlackMove();
-
-        setIsWhiteTurn(true); // After moves, it's Black's turn    ???????
-
         // await fetchReasoningAfterBlackMove();
+
+
         // Hide thinking animation after advice is retrieved
+        // const updatedAdviceHistory = [...adviceHistory.slice(0, Math.floor(currentMoveIndex / 2)), ...advice];
+        // setAdviceHistory(updatedAdviceHistory);
+        // setCurrentAdvice(advice[0]); // Assuming latest advice is first
+        // setIsWhiteTurn(true);
+
+
+  // Append new moves and advice
+  //  finalMoveHistory = [...truncatedMoveHistory, playerFen, engineFen];
+  // const finalAdviceHistory = [...truncatedAdviceHistory, ...advice];
+  
+  // setMoveHistory(finalMoveHistory);
+  // setAdviceHistory(finalAdviceHistory);
+  // setCurrentMoveIndex(truncatedMoveHistory.length + 2);
+  // setCurrentAdvice(advice[0]);
+        
         setIsThinking(false);
     } catch (error) {
         console.log('Error during move:', error);
@@ -460,53 +542,54 @@ const handleForwardPress = () => {
 };
 
 
-  const fetchMovesAfterBlackMove = () => {
-    // console.log(`getting table data`);
-    const tableData = gameLogicRef.current.getTableData();
-    console.log(`table data: ${JSON.stringify(tableData, null, 2)}`);
+const fetchMovesAfterBlackMove = () => {
+  const adviceEntry = gameLogicRef.current.getTableData();
 
-    if (!tableData || tableData.length === 0) {
-        console.log('Error: Table data is empty or undefined.');
-        setPositionAnalysis('');
-        setRecommendedNextMoves([]);
-        setDisplayedArrows([]);
-        analysisComplete.current = false;
-        return;
+  if (!adviceEntry || adviceEntry.length === 0) {
+    console.log('Error: Table data is empty or undefined.');
+    setPositionAnalysis('');
+    setRecommendedNextMoves([]);
+    setDisplayedArrows([]);
+    analysisComplete.current = false;
+    return;
+  }
+
+  const moveNumber = adviceEntry.moveIndex;
+
+  // Update advice history with current FEN and set isCurrentlyDisplayed
+  const updatedAdviceHistory = [
+    ...adviceHistory.slice(0, moveNumber).map(entry => ({
+      ...entry,
+      isCurrentlyDisplayed: false
+    })),
+    {
+      ...adviceEntry,
+      fen: gameLogicRef.current.getFen(),
+      isCurrentlyDisplayed: true
     }
+  ];
+  
+  setAdviceHistory(updatedAdviceHistory);
+  setCurrentAdvice(adviceEntry);
+  setCurrentAdviceIndex(moveNumber);
 
-    // Save the latest advice in GameLogic
-    gameLogicRef.current.latestAdvice = tableData;
-// console.log('calling render');
-    // Use renderMoveAdvice to process the tableData
-    const processedAdvice = renderAdvisedMoves(tableData);
-// console.log('called render');
+  // Log the state for debugging
+  console.log('Advice History FENs:', updatedAdviceHistory.map(e => e.fen));
+  console.log('isCurrentlyDisplayed states:', updatedAdviceHistory.map(e => e.isCurrentlyDisplayed));
 
-    // Update the state with processed advice
-// console.log('calling setrecommended');
+  // Process and display the advice
+  const processedAdvice = renderAdvisedMoves(adviceEntry.advisedMoves);
+  setRecommendedNextMoves(processedAdvice);
+  setDisplayedArrows(processedAdvice.map(move => ({
+    from: move.from,
+    to: move.to,
+    arrowOpacity: move.arrowOpacity,
+  })));
 
-    setRecommendedNextMoves(processedAdvice);
-    // console.log('called setrecommended');
-
-    // console.log('calling display arrows');
-
-    setDisplayedArrows(
-      processedAdvice.map((move) => ({
-        from: move.from,
-        to: move.to,
-        arrowOpacity: move.arrowOpacity,
-      }))
-    );
-    // console.log('called display arrows');
-
-// console.log('calling set pos analysis');
-
-    setPositionAnalysis('Game analysis based on table data.');
-// console.log('called set pos analysis');
-
-    analysisComplete.current = true;
-
-    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-  };
+  setPositionAnalysis('Game analysis based on table data.');
+  analysisComplete.current = true;
+  scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+};
 
   const fetchReasoningAfterBlackMove = async () => {
     try {
@@ -555,7 +638,7 @@ const handleForwardPress = () => {
   }
   
   function renderAdvisedMoves(advice) {
-      console.log('advice ', advice);
+      // console.log('advice ', advice);
     return advice.map((move) => {
       let arrowOpacity = 1.0;
       const moveSan = move.san;
@@ -610,7 +693,7 @@ const handleForwardPress = () => {
   onBackPress={handleBackPress}
   onForwardPress={handleForwardPress}
   disableBack={currentMoveIndex < 2 || !isWhiteTurn}
-  disableForward={currentMoveIndex + 2 >= moveHistory.length || !isWhiteTurn}
+  disableForward={currentMoveIndex + 2 >= adviceHistory.length || !isWhiteTurn}
 />  
         <View style={styles.reloadButtonContainer}>
           <TouchableOpacity style={styles.reloadButton} onPress={handleReload}>

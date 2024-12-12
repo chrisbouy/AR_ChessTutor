@@ -1759,7 +1759,7 @@ var Engine = function(boardSize, lightSquare, darkSquare, selectColor) {
     }
 
     let bestMove = timing.stopped == 1 ? lastBestMove : pvTable[0];
-    console.log('bestmove ' + moveToString(bestMove) + ' fen: ' + fen);
+    // console.log('bestmove ' + moveToString(bestMove) + ' fen: ' + fen);
 
     return {
         bestMove: bestMove,

@@ -9,6 +9,7 @@ class GameLogic {
       this.chess = new Chess();   
       this.latestAdvice = null; 
       this.engine = null; 
+      this.moveCount = -1;
     }
 
     initializeEngine() {
@@ -27,7 +28,7 @@ class GameLogic {
         return board.map((row, rowIndex) => {
             return row.map((piece, colIndex) => {
                 const position = files[colIndex] + (8 - rowIndex);
-                const squareColor = (rowIndex + colIndex) % 2 === 0 ? '#111111' : '#5c5d5e';
+                const squareColor = (rowIndex + colIndex) % 2 === 0 ? '#4287f5' : '#5c5d5e';
                 return {
                     position,
                     color: squareColor,
@@ -132,7 +133,7 @@ class GameLogic {
         } else {
              let searchResult = this.engine.search(1, this.chess.fen()); 
             //  let bestMove =this.engine.searchTime(500);
-            console.log('best black move ', searchResult)
+            // console.log('best black move ', searchResult)
              this.engine.makeMove(searchResult.bestMove);
              // this.engine.setBoard(this.chess.fen());
             // this.engine.printBoard();
@@ -226,7 +227,7 @@ class GameLogic {
         if (primaryVariant[0] !== advisedMove.likelyResponses[0]) 
           likelyResponses.push(primaryVariant[0]);
         else
-          console.log('not unique');
+          // console.log('not unique');
         loopsforresponses=0;
         while (likelyResponses.length < maxLikelyResponses && loopsforresponses <= maxsearchforresponses) {
           const response = this.engine.search(2, this.chess.fen());
@@ -252,19 +253,34 @@ class GameLogic {
          
       });
 
-//       // After advisedMoves are fully populated
-advisedMoves.forEach((advisedMove) => {
-  // White move description
-  advisedMove.description = this.convertMoveToDescription(advisedMove.san, 'w');
+      //       // After advisedMoves are fully populated
+      advisedMoves.forEach((advisedMove) => {
+        // White move description
+        advisedMove.description = this.convertMoveToDescription(advisedMove.san, 'w');
 
-  // Black move descriptions
-  advisedMove.likelyResponses.forEach((response) => {
-    response.description = this.convertMoveToDescription(response.san, 'b');
-  });
-});
-console.log(advisedMoves)
-     return advisedMoves; 
+        // Black move descriptions
+        advisedMove.likelyResponses.forEach((response) => {
+          response.description = this.convertMoveToDescription(response.san, 'b');
+        });
+      });
 
+      // Calculate moveIndex based on full moves (each full move has White and Black)
+      const moveNumber = Math.floor(this.chess.history().length / 2) + 1;
+
+      if (!this.moveCount) {
+        this.moveCount = 0;
+      }
+      this.moveCount++; // Increment on each black move
+    
+      const adviceEntry = {
+        isCurrentlyDisplayed: true,
+          moveIndex: this.moveCount, // Add moveIndex here  
+          fen: this.chess.fen(), // FEN after Black's move
+          advisedMoves,
+      };
+
+      // console.log(adviceEntry);
+      return adviceEntry; 
     }
     
 

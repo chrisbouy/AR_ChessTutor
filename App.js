@@ -14,7 +14,9 @@ import { LogBox } from 'react-native';
 const Stack = createStackNavigator();
 
 export default function App() {
-  LogBox.ignoreAllLogs(true);
+  LogBox.ignoreLogs([
+    'RCTImageView has a shadow set',
+  ]);
 
   
   

@@ -63,10 +63,10 @@ const Square = ({ square,
       height: squareSize * 0.9,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: isWhitePiece ? '#000000' : '#FFFFFF', // Black for white pieces, white for black
-      shadowOpacity: 1,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 0 },
+      // shadowColor: isWhitePiece ? '#000000' : '#FFFFFF', // Black for white pieces, white for black
+      // shadowOpacity: 1,
+      // shadowRadius: 10,
+      // shadowOffset: { width: 0, height: 0 },
       elevation: 5, // Android support
       backgroundColor: square.color, // Ensure no solid background blocks the shadow
     },
@@ -80,10 +80,10 @@ const Square = ({ square,
       borderColor: 'yellow',
     },
         glowEffect: {
-          shadowColor: isWhitePiece ? '#FFFFFF' : '#FFFFFF', // Black glow for white pieces, white glow for black pieces
-          shadowOpacity: 1,
-          shadowRadius: 5,
-          shadowOffset: { width: 0, height: 0 },
+          // shadowColor: isWhitePiece ? '#FFFFFF' : '#FFFFFF', // Black glow for white pieces, white glow for black pieces
+          // shadowOpacity: 1,
+          // shadowRadius: 5,
+          // shadowOffset: { width: 0, height: 0 },
           elevation: 5, // Android equivalent of shadow
         },
     possibleMoveIndicator: {

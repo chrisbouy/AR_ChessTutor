@@ -28,7 +28,7 @@ class GameLogic {
         return board.map((row, rowIndex) => {
             return row.map((piece, colIndex) => {
                 const position = files[colIndex] + (8 - rowIndex);
-                const squareColor = (rowIndex + colIndex) % 2 === 0 ? '#4287f5' : '#5c5d5e';
+                const squareColor = (rowIndex + colIndex) % 2 === 0 ? '#111111' : '#5c5d5e';
                 return {
                     position,
                     color: squareColor,
@@ -46,7 +46,6 @@ class GameLogic {
           const result = this.chess.move(move); 
           this.engine.makeMove(this.encodeMove(move));
            this.engine.setBoard(this.chess.fen());
-          // this.engine.printBoard();
           return result;
         } 
         catch (error) {
@@ -115,16 +114,16 @@ class GameLogic {
       }
     }
 
-    makeMove_Black(whiteMove) {
+    makeMove_Black(whiteMove) {  
         const originalFEN = this.chess.fen();
-        const advisedMove = this.latestAdvice?.find(advice => advice.san === whiteMove);
+        const advisedMoves = this.latestAdvice?.advisedMoves || [];
+        const advisedMove = advisedMoves.find(advice => advice.san === whiteMove);
         if (advisedMove) {
             const blackResponses = advisedMove.likelyResponses;
             const selectedMove = blackResponses[Math.floor(Math.random() * blackResponses.length)];
             this.chess.move(selectedMove.move); // Make Black's response
             this.engine.makeMove(selectedMove.move);
              this.engine.setBoard(this.chess.fen());
-            // this.engine.printBoard();
             return {
                 move: selectedMove.move,
                 boardState: this.getBoardState(),
@@ -132,15 +131,9 @@ class GameLogic {
             };
         } else {
              let searchResult = this.engine.search(1, this.chess.fen()); 
-            //  let bestMove =this.engine.searchTime(500);
-            // console.log('best black move ', searchResult)
              this.engine.makeMove(searchResult.bestMove);
-             // this.engine.setBoard(this.chess.fen());
-            // this.engine.printBoard();
             const decodedbestmove = this.decodeMove(searchResult.bestMove);
              this.chess.move(decodedbestmove);
-            //  console.log('decodedbestmove ',decodedbestmove );
-            //  console.log('bestMove.move ',searchResult.bestMove.move );
             return {
                 move: decodedbestmove,
                 boardState: this.getBoardState(),
@@ -175,7 +168,7 @@ class GameLogic {
       const originalFEN = this.chess.fen();
       // console.log('----fen at start of gettabledata-----', this.chess.fen());
       // this.engine.printBoard();
-      const advisedMoves = [];
+      let advisedMoves = [];
       const maxAdvisedMoves = 5;
       const maxLikelyResponses = 2;
       const maxsearchforresponses = 10;
@@ -185,6 +178,12 @@ class GameLogic {
         if (advisedMoves.length >= maxAdvisedMoves) break;
         const searchResult = this.engine.search(depth, this.chess.fen());
         const primaryVariant = searchResult.info.match(/pv (.+)/)[1].split(' ');
+        const infoParts = searchResult.info.split(' ');
+        const cpIndex = infoParts.indexOf('cp');
+        let score = 0;
+        if (cpIndex !== -1 && cpIndex + 1 < infoParts.length) {
+          score = parseInt(infoParts[cpIndex + 1], 10);
+        }
         const advisedMove = primaryVariant[0];
         if (!advisedMoves.some((move) => move.move === advisedMove)) {
           const fenBeforeMove = this.chess.fen();  
@@ -203,12 +202,23 @@ class GameLogic {
             san: sanMove,
             move: advisedMove,
             encoded: searchResult.bestMove,
+            score:score,
             fenAfterMove,
             likelyResponses: [primaryVariant[1]],
           });
           // this.engine.takeBack();
         }
       }
+      const uniqueMap = new Map();
+      advisedMoves.forEach(item => {
+        if (!uniqueMap.has(item.move) || uniqueMap.get(item.move).score < item.score) {
+          uniqueMap.set(item.move, item);
+        }
+      });
+      advisedMoves = Array.from(uniqueMap.values());
+
+      // Then, sort advisedMoves by score (descending)
+      advisedMoves.sort((a, b) => b.score - a.score);
       // console.log('-black responses-');
       advisedMoves.forEach((advisedMove) => {
         const originalFen = this.chess.fen();
@@ -256,11 +266,17 @@ class GameLogic {
       //       // After advisedMoves are fully populated
       advisedMoves.forEach((advisedMove) => {
         // White move description
+        // console.log('advisedMove.san ',advisedMove.san);
         advisedMove.description = this.convertMoveToDescription(advisedMove.san, 'w');
+        // console.log('advisedMove.description ',advisedMove.description);
+
 
         // Black move descriptions
         advisedMove.likelyResponses.forEach((response) => {
+          // console.log('response.san ',response.san);
           response.description = this.convertMoveToDescription(response.san, 'b');
+          // console.log('response.description ',response.description);
+
         });
       });
 
@@ -279,7 +295,8 @@ class GameLogic {
           advisedMoves,
       };
 
-      // console.log(adviceEntry);
+       // console.log(JSON.stringify(adviceEntry, null, 2));
+      // this.latestAdvice = adviceEntry; 
       return adviceEntry; 
     }
     
@@ -535,11 +552,11 @@ class GameLogic {
           // console.log('Request Body:', {
           //     model: "claude-3-5-sonnet-20241022",
           //     max_tokens: 1000,
-          console.log('claude system_prompt ',system_prompt);
+         // console.log('claude system_prompt ',system_prompt);
           //     messages: [
           //         {
           //             role: "user",
-          console.log('claude user_prompt ',user_prompt);
+         // console.log('claude user_prompt ',user_prompt);
           //         },
           //     ]
           // });
@@ -551,7 +568,7 @@ class GameLogic {
             console.error('API key not found');
             return;
           }
-          // console.log(apiKey);
+           console.log(apiKey);
           const response = await fetch('https://api.anthropic.com/v1/messages', {
               method: 'POST',
               headers: {
@@ -579,7 +596,7 @@ class GameLogic {
             return null;
           }
 
-          //  console.log('Claude API Response:', JSON.stringify(data, null, 2));
+            console.log('Claude API Response:', JSON.stringify(data, null, 2));
           if (data && data.content && data.content[0] && data.content[0].text) {
               let explanation = data.content[0].text;
               const advice = this.extractReasoningFromResponse(explanation);
@@ -701,7 +718,7 @@ class GameLogic {
       `;
       //const advisedMovesString = JSON.stringify(advisedMoves);
       const advisedMovesString = this.formatAdvisedMoves(advisedMoves);
-      // console.log('advisedMovesString ', advisedMovesString);
+       console.log('getreasoningfromai.advisedMovesString ', advisedMovesString);
       const user_prompt = `
         - Current FEN: 
         ${fen}

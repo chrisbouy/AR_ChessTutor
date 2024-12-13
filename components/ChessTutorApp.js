@@ -45,7 +45,6 @@ const ChessTutorApp = () => {
   const [popupDescription, setPopupDescription] = useState('');
   const [displayedArrows, setDisplayedArrows] = useState([]);
   const [isPopupLoading, setIsPopupLoading] = useState(false);
-
   const [currentAdviceIndex, setCurrentAdviceIndex] = useState(0);
   const [adviceHistory, setAdviceHistory] = useState([]);
   const [currentMoveIndex, setCurrentMoveIndex] = useState(0); // Track current move index
@@ -58,11 +57,6 @@ const ChessTutorApp = () => {
     gameLogicRef.current.initializeEngine();
     // fetchAdviceAfterBlackMove();
   }, []);
-
-    // Log adviceHistory whenever it changes
-    // useEffect(() => {
-    //   console.log('Updated Advice History:', adviceHistory.fen);
-    // }, [adviceHistory]);
 
   const styles = useMemo(
     () =>
@@ -160,10 +154,12 @@ const ChessTutorApp = () => {
           borderColor: 'white',
         },
         adviceColumn: {
-          width: '40%',
+           width: '70%',
+          //flex: 3,
         },
         responseColumn: {
-          width: '60%',
+           width: '30%',
+          //flex: 2.5,
         },
         tableHeader: {
           fontWeight: 'bold',
@@ -293,10 +289,8 @@ const ChessTutorApp = () => {
     const displayText = respondingTo
       ? `Response to White's ${respondingTo}:\n\n${description}`
       : `${description}\n\n${reasoning}`;
-  
     setPopupDescription(displayText);
     setPopupVisible(true);
-  
     if (color === 'w') {
       const moveObj = recommendedNextMoves.find((move) => move.move === sanMove);
   
@@ -338,29 +332,17 @@ const ChessTutorApp = () => {
   };
 
   const handleBackPress = () => {
-    console.log('back');
     if (currentAdviceIndex >= 0) { 
-      console.log('Advice History FENs:', adviceHistory.map(e => e.fen));
-      console.log('isCurrentlyDisplayed states:', adviceHistory.map(e => e.isCurrentlyDisplayed));
-      console.log(currentAdviceIndex);
-  
       const newIndex = currentAdviceIndex - 1;
       if (newIndex >= 0) {
-        // Create a new array with updated flags
         const updatedHistory = adviceHistory.map((entry, index) => ({
           ...entry,
           isCurrentlyDisplayed: index === newIndex
         }));
-        
-        // Update state with the new array
         setAdviceHistory(updatedHistory);
         setCurrentAdviceIndex(newIndex);
-        
-        // Load the previous position
         gameLogicRef.current.loadFen(updatedHistory[newIndex].fen);
         setBoardState(gameLogicRef.current.getBoardState());
-    
-        // Update the advice display
         const advice = updatedHistory[newIndex];
         if (advice) {
           const processedAdvice = renderAdvisedMoves(advice.advisedMoves);
@@ -368,7 +350,7 @@ const ChessTutorApp = () => {
           setDisplayedArrows(processedAdvice.map(move => ({
             from: move.from,
             to: move.to,
-            arrowOpacity: move.arrowOpacity,
+            arrowSize: move.arrowSize,
           })));
           setPositionAnalysis('Game analysis based on table data.');
         }
@@ -382,24 +364,15 @@ const ChessTutorApp = () => {
       console.log('Advice History FENs:', adviceHistory.map(e => e.fen));
       console.log('isCurrentlyDisplayed states:', adviceHistory.map(e => e.isCurrentlyDisplayed));
       console.log(currentAdviceIndex);
-  
       const newIndex = currentAdviceIndex + 1;
-      
-      // Create a new array with updated flags
       const updatedHistory = adviceHistory.map((entry, index) => ({
         ...entry,
         isCurrentlyDisplayed: index === newIndex
       }));
-      
-      // Update state with the new array
       setAdviceHistory(updatedHistory);
       setCurrentAdviceIndex(newIndex);
-      
-      // Load the next position
       gameLogicRef.current.loadFen(updatedHistory[newIndex].fen);
       setBoardState(gameLogicRef.current.getBoardState());
-  
-      // Update the advice display
       const advice = updatedHistory[newIndex];
       if (advice) {
         const processedAdvice = renderAdvisedMoves(advice.advisedMoves);
@@ -407,7 +380,7 @@ const ChessTutorApp = () => {
         setDisplayedArrows(processedAdvice.map(move => ({
           from: move.from,
           to: move.to,
-          arrowOpacity: move.arrowOpacity,
+          arrowSize: move.arrowSize,
         })));
         setPositionAnalysis('Game analysis based on table data.');
       }
@@ -419,30 +392,21 @@ const ChessTutorApp = () => {
     gameLogicRef.current = new GameLogic();
     gameLogicRef.current.initializeEngine();
     setBoardState(gameLogicRef.current.getBoardState());
-
     setSelectedSquare(null);
     setIllegalMoveSquares(null);
-
     setAdvisedMove(null);
     setPositionAnalysis('');
     setRecommendedNextMoves([]);
     setDisplayedArrows([]);
     setPossibleMoves([]);
- 
     textOpacity.setValue(1);
     thinkingOpacity.setValue(0);
-
     setIsThinking(false);
     analysisComplete.current = false;
-
-    // setMoveHistory([gameLogicRef.current.getFen()]); // Replace 'initial_fen' with your actual starting FEN
     setCurrentMoveIndex(0);
     setAdviceHistory([]);
     setCurrentAdvice(null);
-    // Reset Turn to White
     setIsWhiteTurn(true);
-
-    // fetchAdviceAfterBlackMove();
   };
 
   const onSquarePress = (position) => {
@@ -464,13 +428,11 @@ const ChessTutorApp = () => {
         setPossibleMoves([]);
       } else if (selectedPiece && selectedPiece.color === 'w') {
         setSelectedSquare(position);
-
         const legalMoves = gameLogicRef.current.getLegalMoves(position);
         const targetSquares = legalMoves.map((move) => move.to);
         setPossibleMoves(targetSquares);
       } else {
         onMove(selectedSquare, position);
-        // console.log('called onmove')
         setSelectedSquare(null);
         setPossibleMoves([]);
       }
@@ -479,148 +441,100 @@ const ChessTutorApp = () => {
 
   const onMove = async (fromSquare, toSquare) => {
     try {
-        // console.log('making white move');
-
-        // Make the white move and update UI immediately
         const playerMove = gameLogicRef.current.makeMove_White({ from: fromSquare, to: toSquare });
         if (!playerMove) {
             setIllegalMoveSquares({ from: fromSquare, to: toSquare });
             return;
         }
         setBoardState([...gameLogicRef.current.getBoardState()]);
-        // console.log('made white move');
+        setDisplayedArrows([]);
         const playerFen = gameLogicRef.current.getFen();
-
-                  // Truncate moveHistory and adviceHistory if not at the end
-  // const truncatedMoveHistory = moveHistory.slice(0, currentMoveIndex + 1);
-  const truncatedAdviceHistory = adviceHistory.slice(0, Math.floor(currentMoveIndex / 2));
-  
-  // const updatedMoveHistory = [...truncatedMoveHistory, playerFen];
-  // setMoveHistory(updatedMoveHistory);
-  setCurrentMoveIndex(currentMoveIndex + 1);
-
-  if (gameLogicRef.current.chess.isCheckmate()) {
+        const truncatedAdviceHistory = adviceHistory.slice(0, Math.floor(currentMoveIndex / 2));
+        setCurrentMoveIndex(currentMoveIndex + 1);
+        if (gameLogicRef.current.chess.isCheckmate()) {
             Alert.alert('Game Over', 'Checkmate! The game has ended.', [{ text: 'OK', onPress: () => handleReload() }]);
             return;
         }
         await new Promise((resolve) => setTimeout(resolve, 500));
-        //await gameLogicRef.current.engine.setBoard(this.chess.fen());
-        // console.log('making black move');
         const blackMoveResult = gameLogicRef.current.makeMove_Black(playerMove.san);
         setBoardState([...gameLogicRef.current.getBoardState()]);
         const engineFen = gameLogicRef.current.getFen();
-
-        // const finalMoveHistory = [...updatedMoveHistory, engineFen];
-      // setMoveHistory(finalMoveHistory);
-      setCurrentMoveIndex(currentMoveIndex + 2);
-
-        // console.log('made black move');
-
+        setCurrentMoveIndex(currentMoveIndex + 2);
         setIsThinking(true);
         fetchMovesAfterBlackMove();
-        // await fetchReasoningAfterBlackMove();
-
-
-        // Hide thinking animation after advice is retrieved
-        // const updatedAdviceHistory = [...adviceHistory.slice(0, Math.floor(currentMoveIndex / 2)), ...advice];
-        // setAdviceHistory(updatedAdviceHistory);
-        // setCurrentAdvice(advice[0]); // Assuming latest advice is first
-        // setIsWhiteTurn(true);
-
-
-  // Append new moves and advice
-  //  finalMoveHistory = [...truncatedMoveHistory, playerFen, engineFen];
-  // const finalAdviceHistory = [...truncatedAdviceHistory, ...advice];
-  
-  // setMoveHistory(finalMoveHistory);
-  // setAdviceHistory(finalAdviceHistory);
-  // setCurrentMoveIndex(truncatedMoveHistory.length + 2);
-  // setCurrentAdvice(advice[0]);
-        
+        //await fetchReasoningAfterBlackMove();
         setIsThinking(false);
     } catch (error) {
         console.log('Error during move:', error);
         Alert.alert('Error', 'Error processing move, please try again.', [{ text: 'OK' }]);
         setIllegalMoveSquares({ from: fromSquare, to: toSquare });
     }
-};
+  };
 
 
-const fetchMovesAfterBlackMove = () => {
-  const adviceEntry = gameLogicRef.current.getTableData();
-
-  if (!adviceEntry || adviceEntry.length === 0) {
-    console.log('Error: Table data is empty or undefined.');
-    setPositionAnalysis('');
-    setRecommendedNextMoves([]);
-    setDisplayedArrows([]);
-    analysisComplete.current = false;
-    return;
-  }
-
-  const moveNumber = adviceEntry.moveIndex;
-
-  // Update advice history with current FEN and set isCurrentlyDisplayed
-  const updatedAdviceHistory = [
-    ...adviceHistory.slice(0, moveNumber).map(entry => ({
-      ...entry,
-      isCurrentlyDisplayed: false
-    })),
-    {
-      ...adviceEntry,
-      fen: gameLogicRef.current.getFen(),
-      isCurrentlyDisplayed: true
+  const fetchMovesAfterBlackMove = () => {
+    const adviceEntry = gameLogicRef.current.getTableData();
+    gameLogicRef.current.latestAdvice=adviceEntry; 
+    if (!adviceEntry || adviceEntry.length === 0) {
+      console.log('Error: Table data is empty or undefined.');
+      setPositionAnalysis('');
+      setRecommendedNextMoves([]);
+      setDisplayedArrows([]);
+      analysisComplete.current = false;
+      return;
     }
-  ];
-  
-  setAdviceHistory(updatedAdviceHistory);
-  setCurrentAdvice(adviceEntry);
-  setCurrentAdviceIndex(moveNumber);
-
-  // Log the state for debugging
-  console.log('Advice History FENs:', updatedAdviceHistory.map(e => e.fen));
-  console.log('isCurrentlyDisplayed states:', updatedAdviceHistory.map(e => e.isCurrentlyDisplayed));
-
-  // Process and display the advice
-  const processedAdvice = renderAdvisedMoves(adviceEntry.advisedMoves);
-  setRecommendedNextMoves(processedAdvice);
-  setDisplayedArrows(processedAdvice.map(move => ({
-    from: move.from,
-    to: move.to,
-    arrowOpacity: move.arrowOpacity,
-  })));
-
-  setPositionAnalysis('Game analysis based on table data.');
-  analysisComplete.current = true;
-  scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-};
+    const moveNumber = adviceEntry.moveIndex;
+    const updatedAdviceHistory = [
+      ...adviceHistory.slice(0, moveNumber).map(entry => ({
+        ...entry,
+        isCurrentlyDisplayed: false
+      })),
+      {
+        ...adviceEntry,
+        fen: gameLogicRef.current.getFen(),
+        isCurrentlyDisplayed: true
+      }
+    ];
+    setAdviceHistory(updatedAdviceHistory);
+    setCurrentAdvice(adviceEntry);
+    setCurrentAdviceIndex(moveNumber);
+    const processedAdvice = renderAdvisedMoves(adviceEntry.advisedMoves);
+    setRecommendedNextMoves(processedAdvice);
+    setDisplayedArrows(processedAdvice.map(move => ({
+      from: move.from,
+      to: move.to,
+      arrowSize: move.arrowSize,
+    })));
+    setPositionAnalysis('Game analysis based on table data.');
+    analysisComplete.current = true;
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  };
 
   const fetchReasoningAfterBlackMove = async () => {
     try {
       setIsPopupLoading(true); // Show spinner in popup
       const apiName = 'Claude';
-      const advisedMoves = gameLogicRef.current.latestAdvice;
-  
+
+      // const adviceEntry = gameLogicRef.current.getTableData();
+      // gameLogicRef.current.latestAdvice=adviceEntry; 
+      const advisedMoves = gameLogicRef.current.latestAdvice?.advisedMoves || [];
+      //const advisedMoves = gameLogicRef.current.getTableData();
+      //  const advisedMoves = gameLogicRef.current.latestAdvice;
+console.log('fetchReasoningAfterBlackMove.advisedMoves ',advisedMoves);
+
       if (!advisedMoves) {
         console.log('No advised moves available for reasoning.');
         setIsPopupLoading(false); // Ensure spinner stops if no advice
         return;
       }
-  
-      const reasoningData = await gameLogicRef.current.getReasoningFromAI(apiName, advisedMoves);
-  
-      // Hide spinner and update popup
+      const reasoningData =  gameLogicRef.current.getReasoningFromAI(apiName, advisedMoves);
       setPopupDescription(reasoningData.positionAnalysis || 'Reasoning returned.');
       setIsPopupLoading(false);
-  
-      // Update advice with reasoning
       const updatedAdvice = advisedMoves.map((move, index) => ({
         ...move,
         reasoning: reasoningData.reasoning[index] || move.reasoning,
       }));
-  
       gameLogicRef.current.latestAdvice = updatedAdvice;
-  
       // Re-process advice
       const processedAdvice = renderAdvisedMoves(updatedAdvice);
       setRecommendedNextMoves(processedAdvice);
@@ -632,7 +546,6 @@ const fetchMovesAfterBlackMove = () => {
     }
   };
   
-
   function attachReasoningToAdvice(advice, reasoningData) {
     const { reasoning } = reasoningData;
     return advice.map((move, index) => ({
@@ -641,39 +554,55 @@ const fetchMovesAfterBlackMove = () => {
     }));
   }
   
-  function renderAdvisedMoves(advice) {
-      // console.log('advice ', advice);
-    return advice.map((move) => {
-      let arrowOpacity = 1.0;
-      const moveSan = move.san;
-      let moveLabel = moveSan;
-      // if (move.reasoning.includes('Significant')) {
-      //     arrowOpacity = 1.0; // Strongest
-      //     moveLabel = `${moveSan} (STRONGEST)`;
-      // } else if (move.reasoning.includes('Controls')) {
-      //     arrowOpacity = 0.8; // Stronger
-      //     moveLabel = `${moveSan} (STRONGER)`;
-      // } else {
-          arrowOpacity = 1; // Strong
-          moveLabel = `${moveSan} (STRONG)`;
-      // }
-      const blackResponses = move.likelyResponses.map((response) => ({
-          
-          move: response.san, // Black's likely response
-          from: response.move.slice(0, 2),
-          to: response.move.slice(2),
-          arrowOpacity: 0.6, // Default arrow opacity for responses
-      }));
+  function renderAdvisedMoves(advisedMoves) {
+    return advisedMoves.map((move, index) => {
+      let label = '(STRONG)';
+      if (advisedMoves.length === 1) {
+        label = '(STRONGEST)';
+      } else if (advisedMoves.length === 2) {
+        label = index === 0 ? '(STRONGER)' : '(STRONG)';
+      } else if (advisedMoves.length >= 3) {
+        if (index === 0) label = '(STRONGEST)';
+        else if (index === 1) label = '(STRONGER)';
+      }
+      const fromSquare = move.move.slice(0, 2);
+      const toSquare = move.move.slice(2, 4);
+      let arrowSize;
+      switch (label) {
+        case '(STRONGEST)':
+          arrowSize = 7; 
+          break;
+        case '(STRONGER)':
+          arrowSize = 5; 
+          break;
+        default:
+          arrowSize = 3;
+      }
+  
       return {
-          move: moveLabel,
-          reasoning: move.reasoning || 'No reasoning provided',
-          likelyResponses: blackResponses,
-          arrowOpacity,
-          from: move.move.slice(0, 2), // Extract "from"
-          to: move.move.slice(2), // Extract "to"
-          originalMove: moveSan,
+        ...move,
+        move: `${move.san} ${label}`,
+        from: fromSquare,
+        to: toSquare,
+        arrowSize: arrowSize,
       };
     });
+    const blackResponses = move.likelyResponses.map((response) => ({
+        move: response.san, // Black's likely response
+        from: response.move.slice(0, 2),
+        to: response.move.slice(2),
+        arrowOpacity: 0.6, // Default arrow opacity for responses
+    }));
+    return {
+        move: moveLabel,
+        reasoning: move.reasoning || 'No reasoning provided',
+        likelyResponses: blackResponses,
+        arrowOpacity,
+        from: move.move.slice(0, 2), // Extract "from"
+        to: move.move.slice(2), // Extract "to"
+        originalMove: moveSan,
+    };
+
   }
 
   useEffect(() => {
@@ -705,7 +634,6 @@ const fetchMovesAfterBlackMove = () => {
           </TouchableOpacity> 
         </View>
       </View>
-  
       {/* Main content */}
       <View style={styles.container}>
         <View style={styles.contentContainer}>
@@ -723,7 +651,6 @@ const fetchMovesAfterBlackMove = () => {
               recommendedMoves={displayedArrows}
             />
           </View>
-  
           {/* Analysis texts */}
           <ScrollView ref={scrollViewRef} contentContainerStyle={styles.textContainer}>
             <Animated.View style={[styles.analysisContainer, { opacity: textOpacity }]}>
@@ -732,17 +659,13 @@ const fetchMovesAfterBlackMove = () => {
                   <View style={styles.tableContainer}>
                     {/* Table Header */}
                     <View style={styles.tableRow}>
-                      <Text style={[styles.tableCell, styles.tableHeader, styles.adviceColumn]}>Advice</Text>
-                      <Text style={[styles.tableCell, styles.tableHeader, styles.responseColumn]}>
-                        Likely Responses
-                      </Text>
+                      <Text style={[styles.tableCell, styles.tableHeader]}>Advice</Text>
+                      <Text style={[styles.tableCell, styles.tableHeader]}>Responses</Text>
                     </View>
                     {recommendedNextMoves.map((move, index) => (
                       <View key={index} style={styles.tableRow}>
                         <View style={[styles.tableCell, styles.adviceColumn]}>
-                          <TouchableOpacity
-                            onPress={() => handleMovePress(move.originalMove, 'w', move.reasoning)}
-                          >
+                          <TouchableOpacity onPress={() => handleMovePress(move.san, 'w', move.reasoning)}>
                             <Text style={styles.tappableMove}>{move.move}</Text>
                           </TouchableOpacity>
                         </View>
@@ -751,10 +674,10 @@ const fetchMovesAfterBlackMove = () => {
                             <TouchableOpacity
                               key={idx}
                               onPress={() =>
-                                handleMovePress(response.move, 'b', response.threat, move.originalMove)
+                                handleMovePress(response.san, 'b', response.threat, move.originalMove)
                               }
                             >
-                              <Text style={styles.tappableMove}>{response.move}</Text>
+                              <Text style={styles.tappableMove}>{response.san}</Text>
                             </TouchableOpacity>
                           ))}
                         </View>
@@ -781,7 +704,6 @@ const fetchMovesAfterBlackMove = () => {
           </ScrollView>
         </View>
   
-        {/* Spinner Below Game Analysis */}
         {isThinking && (
           <View style={styles.bottomSpinnerContainer}>
             <ActivityIndicator size="large" color="#ffffff" />
@@ -789,16 +711,15 @@ const fetchMovesAfterBlackMove = () => {
         )}
       </View>
   
-      {/* Popups */}
       <SANPopup
-  visible={popupVisible}
-  description={popupDescription}
-  onClose={() => {
-    setPopupVisible(false);
-    setDisplayedArrows([]);
-  }}
-  isLoading={isPopupLoading}
-/>
+        visible={popupVisible}
+        description={popupDescription}
+        onClose={() => {
+          setPopupVisible(false);
+          setDisplayedArrows([]);
+        }}
+        isLoading={isPopupLoading}
+      />
     </SafeAreaView>
   );
   

@@ -146,67 +146,48 @@ const ChessBoard2D = ({
 
       {/* Arrow Layer */}
       <View style={styles.arrowLayer}>
-      {/* Check if recommendedMoves is a non-empty array */}
       {Array.isArray(recommendedMoves) && recommendedMoves.length > 0 && (
         <Svg height={boardSize} width={boardSize}>
           <Defs>
-            {/* Marker for opacity 1.0 */}
             <Marker
-  id="arrowheadOpacity1"
-  markerWidth="4" // Smaller width
-  markerHeight="4" // Smaller height
-  refX="2" // Adjust this to align with the line
-  refY="2"
-  orient="auto"
-  markerUnits="strokeWidth"
->
-  <Path d="M0,0 L0,4 L4,2 z" fill="red" fillOpacity="1.0" />
-</Marker>
-
-            {/* Marker for opacity 0.8 */}
-            <Marker
-  id="arrowheadOpacity0_8"
-  markerWidth="4"
-  markerHeight="4"
-  refX="2"
-  refY="2"
-  orient="auto"
-  markerUnits="strokeWidth"
->
-  <Path d="M0,0 L0,4 L4,2 z" fill="red" fillOpacity="0.8" />
-</Marker>
-
-
-            {/* Marker for opacity 0.4 */}
-            <Marker
-  id="arrowheadOpacity0_4"
-  markerWidth="4"
-  markerHeight="4"
-  refX="2"
-  refY="2"
-  orient="auto"
-  markerUnits="strokeWidth"
->
-  <Path d="M0,0 L0,4 L4,2 z" fill="red" fillOpacity="0.4" />
-</Marker>
+              id="arrowhead"
+              markerWidth="4"
+              markerHeight="4"
+              refX="2"
+              refY="2"
+              orient="auto"
+              markerUnits="strokeWidth"
+            >
+              <Path d="M0,0 L0,4 L4,2 z" fill="red" />
+            </Marker>
           </Defs>
-   {/* Render arrows */}
-   {recommendedMoves.map((arrow, index) => (
-        <Line
-          key={index}
-          x1={getSquareCoordinates(arrow.from).x}
-          y1={getSquareCoordinates(arrow.from).y}
-          x2={getSquareCoordinates(arrow.to).x}
-          y2={getSquareCoordinates(arrow.to).y}
-          stroke="red"
-          strokeWidth={2} // Adjust thickness as needed
-          strokeOpacity={arrow.arrowOpacity}
-          markerEnd="url(#arrowheadOpacity1)"
-        />
-      ))}
+
+          {recommendedMoves.map((arrow, index) => {
+            // Determine thickness based on rank (STRONG, STRONGER, STRONGEST)
+            // let strokeWidth = 2;
+            // if (arrow.rank === 'STRONG') strokeWidth = 2;
+            // else if (arrow.rank === 'STRONGER') strokeWidth = 20;
+            // else if (arrow.rank === 'STRONGEST') strokeWidth = 4;
+
+// console.log('arrow ', arrow);
+// console.log('index ',index);
+            return (
+              <Line
+                key={index}
+                x1={getSquareCoordinates(arrow.from).x}
+                y1={getSquareCoordinates(arrow.from).y}
+                x2={getSquareCoordinates(arrow.to).x}
+                y2={getSquareCoordinates(arrow.to).y}
+                stroke="red"
+                strokeWidth={arrow.arrowSize}
+                markerEnd="url(#arrowhead)"
+              />
+            );
+          })}
         </Svg>
       )}
       </View>
+
       {/* Thinking Overlay */}
       {isThinking && (
         <View style={styles.overlay} pointerEvents="none">

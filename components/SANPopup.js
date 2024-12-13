@@ -30,9 +30,7 @@ const SANPopup = ({ visible, description, onClose, isLoading }) => {
                   style={styles.popupSpinner}
                 />
               )}
-              <TouchableOpacity onPress={onClose}>
-                <Text style={styles.popupCloseText}>Close</Text>
-              </TouchableOpacity>
+
             </View>
           </TouchableWithoutFeedback>
         </View>

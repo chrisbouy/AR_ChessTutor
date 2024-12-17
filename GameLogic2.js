@@ -31,7 +31,7 @@ class GameLogic {
     return board.map((row, rowIndex) => {
       return row.map((piece, colIndex) => {
         const position = files[colIndex] + (8 - rowIndex);
-        const squareColor = (rowIndex + colIndex) % 2 === 0 ? '#c0dae6' : '#1594da';
+        const squareColor = (rowIndex + colIndex) % 2 === 0 ? '#FFFFFF' : '#1594da';
         return {
           position,
           color: squareColor,

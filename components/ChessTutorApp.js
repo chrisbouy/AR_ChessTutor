@@ -22,9 +22,9 @@ import SplashScreen from 'react-native-splash-screen';
 import { checkSubscriptionStatus, subscribeToAI } from '../services/Subscriptions';
 
 const ChessTutorApp = () => {
-  useEffect(() => {
-    SplashScreen.hide();
-  }, []);
+  // useEffect(() => {
+  //   SplashScreen.hide();
+  // }, []);
 
   const gameLogicRef = useRef(new GameLogic);
   const [boardState, setBoardState] = useState(gameLogicRef.current.getBoardState());
@@ -190,7 +190,7 @@ const ChessTutorApp = () => {
         },
         tableCell: {
           flex: 1,
-          padding: 3,
+          padding: 0,
           fontSize: 18,
           color: '#aec4e8',
           textAlign: 'center',
@@ -199,12 +199,12 @@ const ChessTutorApp = () => {
           borderColor: 'white',
         },
         adviceColumn: {
-           width: '70%',
-          //flex: 3,
+           //width: '70%',
+          flex: 1.4,
         },
         responseColumn: {
-           width: '30%',
-          //flex: 2.5,
+           //width: '30%',
+          flex: 2.75,
         },
         tableHeader: {
           fontWeight: 'bold',
@@ -346,11 +346,11 @@ const ChessTutorApp = () => {
           marginHorizontal: 2,
         },
         glowEffect: {
-          // shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
-          // shadowOpacity: 1,
-          // shadowRadius: 5,
-          // shadowOffset: { width: 0, height: 0 },
-          // elevation: 5, // Android equivalent of shadow
+          shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
+          shadowOpacity: 1,
+          shadowRadius: 5,
+          shadowOffset: { width: 0, height: 0 },
+          elevation: 5, // Android equivalent of shadow
         },
         recentMovesContainer: {
           alignItems: 'center', 

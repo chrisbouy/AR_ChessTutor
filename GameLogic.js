@@ -32,7 +32,7 @@ class GameLogic {
         return board.map((row, rowIndex) => {
             return row.map((piece, colIndex) => {
                 const position = files[colIndex] + (8 - rowIndex);
-                const squareColor = (rowIndex + colIndex) % 2 === 0 ? '#1324a8' : '#5c5d5e';
+                const squareColor = (rowIndex + colIndex) % 2 === 0 ? '#080100' : '#5c5d5e';
                 return {
                     position,
                     color: squareColor,
@@ -884,29 +884,29 @@ class GameLogic {
       return this.getLastMoveByColor('b'); // 'b' for Black
     }
     
-    getRecentMoves() {
-      const history = this.chess.history({ verbose: true });
-      
-      // Safeguard: Return empty array if no history exists
-      if (!history || history.length === 0) {
-        console.log('getRecentMoves: No moves yet');
-        return [];
-      }
-    
-      const moves = [];
-      const moveIndex = Math.max(0, history.length - 2); // Get last 2 moves
-    
-      for (let i = moveIndex; i < history.length; i++) {
-        const move = history[i];
-        const moveNumber = Math.ceil((i + 1) / 2); // Calculate full-move number
-        const player = i % 2 === 0 ? 'White' : 'Black';
-        moves.push(`${moveNumber}) ${player} ${this.describeMove(move)}`);
-      }
-    
-      console.log('getRecentMoves.moves', moves);
-      return moves; // Always return an array
-    }
-    
+ getRecentMoves() {
+  const history = this.chess.history({ verbose: true });
+  
+  // Safeguard: Return empty array if no history exists
+  if (!history || history.length === 0) {
+    console.log('getRecentMoves: No moves yet');
+    return [];
+  }
+
+  const moves = [];
+  const moveIndex = Math.max(0, history.length - 2); // Get last 2 moves
+
+  for (let i = moveIndex; i < history.length; i++) {
+    const move = history[i];
+    const moveNumber = Math.ceil((i + 1) / 2); // Calculate full-move number
+    const player = i % 2 === 0 ? 'White' : 'Black';
+    moves.push(`${moveNumber}) ${player} ${this.describeMove(move)}`);
+  }
+
+  console.log('getRecentMoves.moves', moves);
+  return moves; // Always return an array
+}
+
     describeMove(move) {
       const piece = move.piece.toUpperCase();
       const from = move.from;

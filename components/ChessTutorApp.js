@@ -9,13 +9,17 @@ import {
   ScrollView,
   SafeAreaView,
   Alert,
+  ActivityIndicator,
+  Linking, 
+  Platform,
+  Image
 } from 'react-native';
 import ChessBoard2D from './ChessBoard2D';
 import NavigationArrows from './NavigationArrows.js';
 import GameLogic from '../GameLogic';
 import SANPopup from './SANPopup.js';
 import SplashScreen from 'react-native-splash-screen';
-import { ActivityIndicator } from 'react-native';
+import { checkSubscriptionStatus, subscribeToAI } from '../services/Subscriptions';
 
 const ChessTutorApp = () => {
   useEffect(() => {
@@ -31,7 +35,8 @@ const ChessTutorApp = () => {
   const [advisedMove, setAdvisedMove] = useState(null);
   const scrollViewRef = useRef(null);
   const textOpacity = useRef(new Animated.Value(1)).current;
-  const thinkingOpacity = useRef(new Animated.Value(0)).current;
+  const thinkingMovesOpacity = useRef(new Animated.Value(0)).current;
+  const thinkingAnalysisOpacity = useRef(new Animated.Value(0)).current;
   const analysisComplete = useRef(false);
   const [possibleMoves, setPossibleMoves] = useState([]);
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
@@ -40,7 +45,8 @@ const ChessTutorApp = () => {
   const guidelineBaseWidth = 350;
   const scaleFont = (size) => (windowWidth / guidelineBaseWidth) * size;
   const [movesLeft, setMovesLeft] = useState(12);
-  const [isThinking, setIsThinking] = useState(false);
+  const [isThinkingMoves, setIsThinkingMoves] = useState(false);
+  const [isThinkingAnalysis, setIsThinkingAnalysis] = useState(false);
   const [popupVisible, setPopupVisible] = useState(false);
   const [popupDescription, setPopupDescription] = useState('');
   const [displayedArrows, setDisplayedArrows] = useState([]);
@@ -50,17 +56,56 @@ const ChessTutorApp = () => {
   const [currentMoveIndex, setCurrentMoveIndex] = useState(0); // Track current move index
   const [currentAdvice, setCurrentAdvice] = useState(null); // Current advice to display
   const [isWhiteTurn, setIsWhiteTurn] = useState(true); // Start with White's turn
-
-  // Initialize the engine when the component mounts
+  const [hasAIFeature, setHasAIFeature] = useState(false);
+  const pieceAssets = {
+    P: require('../assets/images/2d_chess_pieces/white-pawn.png'),
+    N: require('../assets/images/2d_chess_pieces/white-knight.png'),
+    B: require('../assets/images/2d_chess_pieces/white-bishop.png'),
+    R: require('../assets/images/2d_chess_pieces/white-rook.png'),
+    Q: require('../assets/images/2d_chess_pieces/white-queen.png'),
+    p: require('../assets/images/2d_chess_pieces/black-pawn.png'),
+    n: require('../assets/images/2d_chess_pieces/black-knight.png'),
+    b: require('../assets/images/2d_chess_pieces/black-bishop.png'),
+    r: require('../assets/images/2d_chess_pieces/black-rook.png'),
+    q: require('../assets/images/2d_chess_pieces/black-queen.png'),
+  };
+  const [capturedMaterial, setCapturedMaterial] = useState({
+    white: {}, // Initialize with an empty object for white pieces
+    black: {}, // Initialize with an empty object for black pieces
+  });
+  const [recentMoves, setRecentMoves] = useState([]);
+ 
   useEffect(() => {
-    // gameLogicRef.current = new GameLogic();
-    gameLogicRef.current.initializeEngine();
-    // fetchAdviceAfterBlackMove();
+    const initializeApp = async () => {
+      // Initialize the chess engine
+      gameLogicRef.current.initializeEngine();
+  
+      // Check subscription status
+      const hasSubscription = await checkSubscriptionStatus();
+      setHasAIFeature(hasSubscription);
+      if (hasSubscription) {
+        console.log('AI feature is enabled');
+      } else {
+        console.log('AI feature is disabled');
+      }
+    };
+  
+    initializeApp();
   }, []);
+  
+  useEffect(() => {
+    const moves = gameLogicRef.current.getRecentMoves();
+    setRecentMoves(moves); // Store moves in state
+  }, [boardState]);
+ 
+  useEffect(() => {
+    const captured = gameLogicRef.current.getCapturedMaterial();
+    setCapturedMaterial(captured);
+  }, [/* Add dependencies like current FEN or moves */]);
 
   const styles = useMemo(
     () =>
-      StyleSheet.create({
+      StyleSheet.create({ 
         safeArea: {
           flex: 1,
           backgroundColor: '#191d24',
@@ -258,8 +303,11 @@ const ChessTutorApp = () => {
           alignSelf: 'center',
         },
         bottomSpinnerContainer: {
-          alignSelf: 'center',
-          marginTop: 10, // Position under analysis
+          position: 'absolute',
+          bottom: '20%', // Move the spinner upward to approximately the correct spot
+          alignSelf: 'center', // Center horizontally
+          transform: [{ translateY: -10 }], // Optional: fine-tune vertical positioning
+          marginTop: 10, // Space below Game Analysis
         },
         popupDescription: {
           fontSize: 18,
@@ -279,10 +327,63 @@ const ChessTutorApp = () => {
           fontSize: 16,
           textDecorationLine: 'underline',
         },
+        capturedContainer: {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          marginTop: 5,
+          width: '85%',
+          marginLeft: 35,
+            
         
+        },
+        capturedSide: {
+          flexDirection: 'row',
+          alignItems: 'center',
+        },
+        capturedPiece: {
+          width: 20, // Smaller size for captured pieces
+          height: 20,
+          marginHorizontal: 2,
+        },
+        glowEffect: {
+          // shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
+          // shadowOpacity: 1,
+          // shadowRadius: 5,
+          // shadowOffset: { width: 0, height: 0 },
+          // elevation: 5, // Android equivalent of shadow
+        },
+        recentMovesContainer: {
+          alignItems: 'center', 
+          marginVertical: 10,
+        },
+        recentMovesText: {
+          fontSize: 18,
+          fontWeight: 'bold',
+          color: '#ffffff',
+        },
       }),
     [windowWidth]
   );
+
+  const openSystemSubscriptionPage = () => {
+    const url = Platform.OS === 'ios'
+      ? 'https://apps.apple.com/account/subscriptions'
+      : 'https://play.google.com/store/account/subscriptions';
+      Linking.openURL(url).catch((err) =>
+        console.error('Failed to open subscription management:', err)
+      );
+  };
+
+  const handleInAppSubscription = async (plan) => {
+    const subscribed = await subscribeToAI(plan); // 'monthly', 'yearly', etc.
+    if (subscribed) {
+      console.log('Subscription activated');
+    } else {
+      console.log('Subscription failed');
+    }
+  };
+
+
 
   const handleMovePress = (sanMove, color, reasoning, respondingTo = null) => {
     const description = gameLogicRef.current.convertMoveToDescription(sanMove, color);
@@ -343,16 +444,18 @@ const ChessTutorApp = () => {
         setCurrentAdviceIndex(newIndex);
         gameLogicRef.current.loadFen(updatedHistory[newIndex].fen);
         setBoardState(gameLogicRef.current.getBoardState());
+        updateCapturedMaterial();
         const advice = updatedHistory[newIndex];
         if (advice) {
           const processedAdvice = renderAdvisedMoves(advice.advisedMoves);
           setRecommendedNextMoves(processedAdvice);
+          setPositionAnalysis(advice.positionAnalysis);
           setDisplayedArrows(processedAdvice.map(move => ({
             from: move.from,
             to: move.to,
             arrowSize: move.arrowSize,
           })));
-          setPositionAnalysis('Game analysis based on table data.');
+          //setPositionAnalysis('Game analysis based on table data.');
         }
       }
     }
@@ -361,7 +464,7 @@ const ChessTutorApp = () => {
   const handleForwardPress = () => {
     console.log('forward');
     if (currentAdviceIndex < adviceHistory.length - 1) {
-      console.log('Advice History FENs:', adviceHistory.map(e => e.fen));
+      // console.log('Advice History FENs:', adviceHistory.map(e => e.fen));
       console.log('isCurrentlyDisplayed states:', adviceHistory.map(e => e.isCurrentlyDisplayed));
       console.log(currentAdviceIndex);
       const newIndex = currentAdviceIndex + 1;
@@ -373,10 +476,12 @@ const ChessTutorApp = () => {
       setCurrentAdviceIndex(newIndex);
       gameLogicRef.current.loadFen(updatedHistory[newIndex].fen);
       setBoardState(gameLogicRef.current.getBoardState());
+      updateCapturedMaterial();
       const advice = updatedHistory[newIndex];
       if (advice) {
         const processedAdvice = renderAdvisedMoves(advice.advisedMoves);
         setRecommendedNextMoves(processedAdvice);
+        setPositionAnalysis(advice.positionAnalysis);
         setDisplayedArrows(processedAdvice.map(move => ({
           from: move.from,
           to: move.to,
@@ -387,7 +492,6 @@ const ChessTutorApp = () => {
     }
   };
   
-    
   const handleReload = () => {
     gameLogicRef.current = new GameLogic();
     gameLogicRef.current.initializeEngine();
@@ -398,10 +502,16 @@ const ChessTutorApp = () => {
     setPositionAnalysis('');
     setRecommendedNextMoves([]);
     setDisplayedArrows([]);
+    setCapturedMaterial({
+      white: {}, // Empty object for white pieces
+      black: {}, // Empty object for black pieces
+    });
     setPossibleMoves([]);
     textOpacity.setValue(1);
-    thinkingOpacity.setValue(0);
-    setIsThinking(false);
+    thinkingMovesOpacity.setValue(0);
+    thinkingAnalysisOpacity.setValue(0);
+    setIsThinkingMoves(false);
+    setIsThinkingAnalysis(false);
     analysisComplete.current = false;
     setCurrentMoveIndex(0);
     setAdviceHistory([]);
@@ -410,7 +520,7 @@ const ChessTutorApp = () => {
   };
 
   const onSquarePress = (position) => {
-    if (isThinking) {
+    if (isThinkingMoves) {
       return;
     }
     const selectedPiece = gameLogicRef.current.getPieceAt(position);
@@ -448,29 +558,39 @@ const ChessTutorApp = () => {
         }
         setBoardState([...gameLogicRef.current.getBoardState()]);
         setDisplayedArrows([]);
+        setPositionAnalysis('');
         const playerFen = gameLogicRef.current.getFen();
+        updateCapturedMaterial();
         const truncatedAdviceHistory = adviceHistory.slice(0, Math.floor(currentMoveIndex / 2));
         setCurrentMoveIndex(currentMoveIndex + 1);
         if (gameLogicRef.current.chess.isCheckmate()) {
             Alert.alert('Game Over', 'Checkmate! The game has ended.', [{ text: 'OK', onPress: () => handleReload() }]);
             return;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        } 
+        setIsThinkingMoves(true);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         const blackMoveResult = gameLogicRef.current.makeMove_Black(playerMove.san);
         setBoardState([...gameLogicRef.current.getBoardState()]);
         const engineFen = gameLogicRef.current.getFen();
         setCurrentMoveIndex(currentMoveIndex + 2);
-        setIsThinking(true);
-        fetchMovesAfterBlackMove();
-        //await fetchReasoningAfterBlackMove();
-        setIsThinking(false);
+        updateCapturedMaterial();
+        fetchMovesAfterBlackMove();       
+        setIsThinkingMoves(false);
+
+        // if (hasAIFeature) {
+        //   setIsThinkingAnalysis(true);
+        //   await fetchReasoningAfterBlackMove();
+        //   setIsThinkingAnalysis(false);
+        // } else {
+        //   setPositionAnalysis('Subscribe to unlock AI-powered analysis.');
+        // }
+
     } catch (error) {
         console.log('Error during move:', error);
         Alert.alert('Error', 'Error processing move, please try again.', [{ text: 'OK' }]);
         setIllegalMoveSquares({ from: fromSquare, to: toSquare });
     }
   };
-
 
   const fetchMovesAfterBlackMove = () => {
     const adviceEntry = gameLogicRef.current.getTableData();
@@ -491,8 +611,10 @@ const ChessTutorApp = () => {
       })),
       {
         ...adviceEntry,
+        reasoning: adviceEntry.reasoning || [],
+        positionAnalysis: adviceEntry.positionAnalysis || '',
         fen: gameLogicRef.current.getFen(),
-        isCurrentlyDisplayed: true
+        isCurrentlyDisplayed: true,
       }
     ];
     setAdviceHistory(updatedAdviceHistory);
@@ -505,7 +627,7 @@ const ChessTutorApp = () => {
       to: move.to,
       arrowSize: move.arrowSize,
     })));
-    setPositionAnalysis('Game analysis based on table data.');
+    //setPositionAnalysis('Game analysis based on table data.');
     analysisComplete.current = true;
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
@@ -527,19 +649,34 @@ console.log('fetchReasoningAfterBlackMove.advisedMoves ',advisedMoves);
         setIsPopupLoading(false); // Ensure spinner stops if no advice
         return;
       }
-      const reasoningData =  gameLogicRef.current.getReasoningFromAI(apiName, advisedMoves);
+      const reasoningData =  await gameLogicRef.current.getReasoningFromAI(apiName, advisedMoves);
       setPopupDescription(reasoningData.positionAnalysis || 'Reasoning returned.');
       setIsPopupLoading(false);
       const updatedAdvice = advisedMoves.map((move, index) => ({
         ...move,
         reasoning: reasoningData.reasoning[index] || move.reasoning,
       }));
-      gameLogicRef.current.latestAdvice = updatedAdvice;
+      const adviceEntry = {
+        ...gameLogicRef.current.latestAdvice,
+        advisedMoves: updatedAdvice,
+        positionAnalysis: reasoningData.positionAnalysis,
+      };
+      gameLogicRef.current.latestAdvice = adviceEntry;
+      setAdviceHistory(prev => {
+        const updated = [...prev];
+        updated[adviceEntry.moveIndex] = {
+          ...adviceEntry,
+          isCurrentlyDisplayed: true,
+        };
+        return updated;
+      });
+      setCurrentAdvice(adviceEntry);
       // Re-process advice
       const processedAdvice = renderAdvisedMoves(updatedAdvice);
       setRecommendedNextMoves(processedAdvice);
       setPositionAnalysis(reasoningData.positionAnalysis);
       analysisComplete.current = true;
+      setIsPopupLoading(false); // Hide spinner
     } catch (error) {
       console.error('Error fetching reasoning:', error);
       setIsPopupLoading(false); // Ensure spinner stops on error
@@ -605,6 +742,12 @@ console.log('fetchReasoningAfterBlackMove.advisedMoves ',advisedMoves);
 
   }
 
+  const updateCapturedMaterial = () => {
+    const captured = gameLogicRef.current.getCapturedMaterial();
+    setCapturedMaterial(captured);
+  };
+
+  
   useEffect(() => {
     setIsLandscape(windowWidth > windowHeight);
   }, [windowWidth, windowHeight]);
@@ -623,11 +766,11 @@ console.log('fetchReasoningAfterBlackMove.advisedMoves ',advisedMoves);
       <View style={styles.topBar}>
 
       <NavigationArrows
-  onBackPress={handleBackPress}
-  onForwardPress={handleForwardPress}
-  disableBack={currentAdviceIndex < 0}  // Disable only when we're at the start
-  disableForward={currentAdviceIndex >= adviceHistory.length - 1}  // Disable only when we're at the end
-/>  
+        onBackPress={handleBackPress}
+        onForwardPress={handleForwardPress}
+        disableBack={currentAdviceIndex < 0}  // Disable only when we're at the start
+        disableForward={currentAdviceIndex >= adviceHistory.length - 1}  // Disable only when we're at the end
+      />  
         <View style={styles.reloadButtonContainer}>
           <TouchableOpacity style={styles.reloadButton} onPress={handleReload}>
             <Text style={styles.reloadButtonText}>Reload</Text>
@@ -637,6 +780,11 @@ console.log('fetchReasoningAfterBlackMove.advisedMoves ',advisedMoves);
       {/* Main content */}
       <View style={styles.container}>
         <View style={styles.contentContainer}>
+        <View style={styles.recentMovesContainer}>
+      <Text style={styles.recentMovesText}>
+        {recentMoves.join('\n')}
+      </Text>
+  </View>
           {/* Chessboard */}
           <View style={styles.chessboardContainer}>
             <ChessBoard2D
@@ -647,9 +795,36 @@ console.log('fetchReasoningAfterBlackMove.advisedMoves ',advisedMoves);
               illegalMoveSquares={illegalMoveSquares}
               advisedMove={analysisComplete.current ? advisedMove : null}
               possibleMoves={possibleMoves}
-              isThinking={isThinking}
+              isThinkingMoves={isThinkingMoves}
               recommendedMoves={displayedArrows}
             />
+          </View>
+
+
+          <View style={[styles.capturedContainer, styles.glowEffect]}>
+            <View style={styles.capturedSide}>
+              {Object.entries(capturedMaterial.black).map(([piece, count]) =>
+                [...Array(count)].map((_, index) => (
+                  <Image
+                    key={`black-${piece}-${index}`}
+                    source={pieceAssets[piece]}
+                    style={styles.capturedPiece}
+                  />
+                ))
+              )}
+            </View>
+
+            <View style={styles.capturedSide}>
+              {Object.entries(capturedMaterial.white).map(([piece, count]) =>
+                [...Array(count)].map((_, index) => (
+                  <Image
+                    key={`white-${piece}-${index}`}
+                    source={pieceAssets[piece]}
+                    style={styles.capturedPiece}
+                  />
+                ))
+              )}
+            </View>
           </View>
           {/* Analysis texts */}
           <ScrollView ref={scrollViewRef} contentContainerStyle={styles.textContainer}>
@@ -660,7 +835,7 @@ console.log('fetchReasoningAfterBlackMove.advisedMoves ',advisedMoves);
                     {/* Table Header */}
                     <View style={styles.tableRow}>
                       <Text style={[styles.tableCell, styles.tableHeader]}>Advice</Text>
-                      <Text style={[styles.tableCell, styles.tableHeader]}>Responses</Text>
+                      <Text style={[styles.tableCell, styles.tableHeader]}>Likely Responses</Text>
                     </View>
                     {recommendedNextMoves.map((move, index) => (
                       <View key={index} style={styles.tableRow}>
@@ -692,33 +867,43 @@ console.log('fetchReasoningAfterBlackMove.advisedMoves ',advisedMoves);
               ) : (
                 <Text style={styles.noDataText}>Make your move.</Text>
               )}
-              {positionAnalysis ? (
-                <View>
+                {hasAIFeature ? (
+                  positionAnalysis ? (
+                      <View>
+                        <Text style={styles.analysisTitle}>Game Analysis:</Text>
+                        <Text style={styles.analysisText}>{positionAnalysis}</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.noDataText}></Text>
+                    )
+                ) : (
                   <View>
-                    <Text style={styles.analysisTitle}>Game Analysis:</Text>
-                    <Text style={styles.analysisText}>{positionAnalysis}</Text>
+                    <Text style={styles.noDataText}>
+                      Subscribe to unlock AI-powered analysis and reasoning!
+                    </Text>
+                    <TouchableOpacity onPress={openSystemSubscriptionPage}>
+                      <Text style={styles.subscribeButton}>Subscribe Now</Text>
+                    </TouchableOpacity>
                   </View>
-                </View>
-              ) : null}
+                )}
             </Animated.View>
           </ScrollView>
-        </View>
+
   
-        {isThinking && (
+        {isThinkingAnalysis && (
           <View style={styles.bottomSpinnerContainer}>
             <ActivityIndicator size="large" color="#ffffff" />
           </View>
         )}
+        </View>
       </View>
-  
       <SANPopup
         visible={popupVisible}
         description={popupDescription}
-        onClose={() => {
-          setPopupVisible(false);
-          setDisplayedArrows([]);
-        }}
-        isLoading={isPopupLoading}
+        onClose={() => setPopupVisible(false)}
+        isLoading = {isPopupLoading}
+        hasAIFeature = {hasAIFeature}
+        openSystemSubscriptionPage = {openSystemSubscriptionPage}
       />
     </SafeAreaView>
   );

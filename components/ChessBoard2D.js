@@ -12,7 +12,7 @@ const ChessBoard2D = ({
   illegalMoveSquares,
   advisedMove,
   possibleMoves,
-  isThinking,
+  isThinkingMoves,
   recommendedMoves = [],
 }) => {
   const blinkAnimation = useRef(new Animated.Value(0)).current;
@@ -137,7 +137,7 @@ const ChessBoard2D = ({
                 blinkAnimation={blinkAnimation}
                 squareSize={squareSize}
                 possibleMoves={possibleMoves}
-                isThinking={isThinking}
+                isThinkingMoves={isThinkingMoves}
               />
             ))}
           </View>
@@ -189,7 +189,7 @@ const ChessBoard2D = ({
       </View>
 
       {/* Thinking Overlay */}
-      {isThinking && (
+      {isThinkingMoves && (
         <View style={styles.overlay} pointerEvents="none">
           <ActivityIndicator size="large" color="#ffffff" />
         </View>

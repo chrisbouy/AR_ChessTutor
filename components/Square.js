@@ -44,7 +44,7 @@ const Square = ({ square,
   squareSize, 
   blinkAnimation,
   possibleMoves,
-  isThinking,
+  isThinkingMoves,
  }) => {
   if (!square) return null;
         
@@ -82,11 +82,11 @@ const Square = ({ square,
         glowEffect: {
           // shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
           // shadowOpacity: 1,
-          // shadowRadius: 5,
+          // shadowRadius: 3,
           // shadowOffset: { width: 0, height: 0 },
           // elevation: 5, // Android equivalent of shadow
         },
-    possibleMoveIndicator: {
+    possibleMoveIndicator: { 
       position: 'absolute',
       width: squareSize * 0.3,
       height: squareSize * 0.3,
@@ -130,7 +130,7 @@ const Square = ({ square,
   return (
     <TouchableOpacity 
     onPress={() => onSquarePress(square.position)}
-    disabled={isThinking}
+    disabled={isThinkingMoves}
     >
       <Animated.View style={[styles.square, { backgroundColor }, shadowStyle]}>
       <View style={styles.pieceContainer}>

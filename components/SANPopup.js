@@ -6,10 +6,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   TouchableWithoutFeedback,
-  ActivityIndicator,
+  ActivityIndicator, 
 } from 'react-native';
 
-const SANPopup = ({ visible, description, onClose, isLoading }) => {
+const SANPopup = ({ visible, description, onClose, isLoading, hasAIFeature,   openSystemSubscriptionPage,}) => {
   if (!visible) return null;
 
   return (
@@ -18,11 +18,20 @@ const SANPopup = ({ visible, description, onClose, isLoading }) => {
         <View style={styles.overlay}>
           <TouchableWithoutFeedback>
             <View style={styles.popupContainer}>
-              {description.split('\n').map((text, index) => (
-                <Text key={index} style={styles.descriptionText}>
-                  {text}
-                </Text>
-              ))}
+              {hasAIFeature ? (
+                description.split('\n').map((text, index) => (
+                    <Text key={index} style={styles.descriptionText}>{text}</Text>
+                ))   
+              ) : (
+              <View>
+                  <Text style={styles.descriptionText}>
+                      Subscribe to unlock detailed move analysis!
+                  </Text>
+                  <TouchableOpacity onPress={openSystemSubscriptionPage}>
+                      <Text style={styles.subscribeButton}>Subscribe Now</Text>
+                  </TouchableOpacity>
+              </View>
+              )}
               {isLoading && (
                 <ActivityIndicator
                   size="large"
@@ -30,7 +39,6 @@ const SANPopup = ({ visible, description, onClose, isLoading }) => {
                   style={styles.popupSpinner}
                 />
               )}
-
             </View>
           </TouchableWithoutFeedback>
         </View>

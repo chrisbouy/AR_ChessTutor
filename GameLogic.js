@@ -3,6 +3,10 @@ import { validateFen } from "chess.js";
 import { ToastAndroid } from 'react-native';
 const { Engine } = require('./engines/wukong');
 
+const STARTING_PIECES = {
+  white: { P: 8, N: 2, B: 2, R: 2, Q: 1, K: 1 },
+  black: { p: 8, n: 2, b: 2, r: 2, q: 1, k: 1 },
+};
 
 class GameLogic {
     constructor() {
@@ -28,7 +32,7 @@ class GameLogic {
         return board.map((row, rowIndex) => {
             return row.map((piece, colIndex) => {
                 const position = files[colIndex] + (8 - rowIndex);
-                const squareColor = (rowIndex + colIndex) % 2 === 0 ? '#111111' : '#5c5d5e';
+                const squareColor = (rowIndex + colIndex) % 2 === 0 ? '#1324a8' : '#5c5d5e';
                 return {
                     position,
                     color: squareColor,
@@ -299,9 +303,6 @@ class GameLogic {
       // this.latestAdvice = adviceEntry; 
       return adviceEntry; 
     }
-    
-
-
     async storeApiKey(key) {
       try {
         await EncryptedStorage.setItem('apiKey', key);
@@ -337,34 +338,13 @@ class GameLogic {
     }
     async getDataFromGPT(system_prompt, user_prompt) {
       try {
-        // Log the request headers (mask the API key)
-      //   console.log('Request Headers:', {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': '***MASKED_API_KEY***' // Masked for security
-      //   });
-    
-      //   // Log the request body
-        // console.log('Request Body:', {
-      //       model: "gpt-4o-mini",
-      //       messages: [
-      //         {
-      //           role: 'system',
-                console.log('gpt system_prompt ',system_prompt);
-      //         },
-      //         {
-      //           role: 'user',
-                  console.log('gpt user_prompt ', user_prompt);
-      //         },
-      //       ],
-      //       max_tokens: 1000,
-      //       temperature: 0,
-      //     });
-      
-        const apiKey = this.apiKey || await this.retrieveApiKey(); 
-        if (!apiKey) {
-          console.error('API key not found');
-          return;
-        }
+        // console.log('gpt system_prompt ',system_prompt);
+        // console.log('gpt user_prompt ', user_prompt);
+        // const apiKey = this.apiKey || await this.retrieveApiKey(); 
+        // if (!apiKey) {
+        //   console.error('API key not found');
+        //   return;
+        // }
         const response = await fetch(`https://api.openai.com/v1/chat/completions`, {
           method: 'POST',
           headers: {
@@ -372,7 +352,7 @@ class GameLogic {
             Authorization:`Bearer ${'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'}`
           },
           body: JSON.stringify({
-            model: 'gpt-4o',
+            model: 'gpt-4o-mini',
             //model: 'ft:gpt-4o-mini-2024-07-18:personal:second:AThf4LoS',
             messages: [
               {
@@ -391,15 +371,13 @@ class GameLogic {
             presence_penalty: 0
           }),
         });
-
         const jsonResponse = await response.json();
         if (jsonResponse.error) {
           console.log('API Error:', jsonResponse.error);
           return null;
         }      
         const responseText = jsonResponse.choices[0].message.content;
-
-        const advice = this.extractMovesFromResponse(responseText);
+        const advice = this.extractReasoningFromResponse(responseText);
         //  console.log(`getDataFromGpt.advice ${JSON.stringify(advice,null,2)}`)
         return advice;
       } catch (error) {
@@ -407,6 +385,50 @@ class GameLogic {
         return null;
       }
     }
+    async getDataFromGPTo1(system_prompt, user_prompt) {
+      try {
+        // console.log('gpt system_prompt ',system_prompt);
+        // console.log('gpt user_prompt ', user_prompt);
+        const combinedPrompt = `${system_prompt}\n\n${user_prompt}`;
+        // const apiKey = this.apiKey || await this.retrieveApiKey(); 
+        // if (!apiKey) {
+        //   console.error('API key not found');
+        //   return;
+        // }
+        const response = await fetch(`https://api.openai.com/v1/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization:`Bearer ${'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'}`
+          },
+          body: JSON.stringify({
+            model: 'o1-preview',
+            //model: 'ft:gpt-4o-mini-2024-07-18:personal:second:AThf4LoS',
+            messages: [
+              {
+                role: 'user',
+                content: combinedPrompt,
+              },
+            ],
+
+          }),
+        });
+        const jsonResponse = await response.json();
+        if (jsonResponse.error) {
+          console.log('API Error:', jsonResponse.error);
+          return null;
+        }      
+        // console.log(jsonResponse);
+        const responseText = jsonResponse.choices[0].message.content;
+        // console.log(`getDataFromGpt.responseText ${JSON.stringify(responseText,null,2)}`)
+        const advice = this.extractReasoningFromResponse(responseText);
+        // console.log(`getDataFromGpt.advice ${JSON.stringify(advice,null,2)}`)
+        return advice;
+      } catch (error) {
+        console.log('Error fetching analysis from AI:', error);
+        return null;
+      }
+    }    
   //   async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
 
   //           // Combine system_prompt and user_prompt
@@ -542,26 +564,8 @@ class GameLogic {
   //   }
     async getDataFromClaude(system_prompt, user_prompt) {
       try {
-          //   // Log the request headers (mask the API key)
-          //   console.log('Request Headers:', {
-          //     'Content-Type': 'application/json',
-          //     'anthropic-version': '2023-06-01',
-          //     'x-api-key': '***MASKED_API_KEY***' // Masked for security
-          // });
-          // // Log the request body
-          // console.log('Request Body:', {
-          //     model: "claude-3-5-sonnet-20241022",
-          //     max_tokens: 1000,
          // console.log('claude system_prompt ',system_prompt);
-          //     messages: [
-          //         {
-          //             role: "user",
          // console.log('claude user_prompt ',user_prompt);
-          //         },
-          //     ]
-          // });
-
-
           //const apiKey = this.apiKey || await this.retrieveApiKey(); 
           const apiKey = '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';
           if (!apiKey) {
@@ -577,11 +581,10 @@ class GameLogic {
                   'x-api-key': apiKey
               },
               body: JSON.stringify({
-                  model: "claude-3-5-sonnet-20241022",
+                  model: "claude-3-5-haiku-20241022",
                   max_tokens: 300,
                   system: system_prompt,
                   messages: [
-
                       {
                         role: "user",
                         content: user_prompt
@@ -589,20 +592,17 @@ class GameLogic {
                   ]
               })
           });
-
           const data = await response.json();
           if (data.error) {
             console.log('AI API Error:', data.error);
             return null;
           }
-
-            console.log('Claude API Response:', JSON.stringify(data, null, 2));
+          console.log('Claude API Response:', JSON.stringify(data, null, 2));
           if (data && data.content && data.content[0] && data.content[0].text) {
               let explanation = data.content[0].text;
               const advice = this.extractReasoningFromResponse(explanation);
               // console.log(`after extracton ${advice}`)
               // console.log(`after extracton ${advice.recommendedNextMoves}`)
-
               // console.log(`after extracton ${advice.positionAnalysis}`)
               return advice;
           }
@@ -701,24 +701,26 @@ class GameLogic {
   // }
     async getReasoningFromAI(apiName, advisedMoves) {
       const fen = this.chess.fen();
-      const moveHistory = this.chess.history();
+      const moveHistory = this.chess.history().map((move) => move);
       const system_prompt =`
       You are a chess tutor specializing in accurate, move-by-move analysis.  
       You are playing Black. I am playing as White, and it's my turn to move.
       Instructions:
       - Analyze the given chess position thoroughly.
       - Double-check all tactical motifs and threats for accuracy.
-      - Given a list of potential moves, explain the benefits and risks of each
+      - Given a list of potential moves, use chain-of-thought reasoning and explain the benefits and risks of each
+      - Try to think a few moves ahead.
 
       Constraints:
       - Do not include move numbers, opening names, or acronyms.
       - Responses must strictly follow the specified JSON format.
-      - Avoid referring to bishops by square colors
+      - Avoid referring to bishops by square colors.
+      - After producing the response, use the current FEN to double-check for accuracy and remove anything you aren't 100% sure of. 
       - Do not include any additional text or explanations outside the JSON.
       `;
       //const advisedMovesString = JSON.stringify(advisedMoves);
       const advisedMovesString = this.formatAdvisedMoves(advisedMoves);
-       console.log('getreasoningfromai.advisedMovesString ', advisedMovesString);
+      //  console.log('getreasoningfromai.advisedMovesString ', advisedMovesString);
       const user_prompt = `
         - Current FEN: 
         ${fen}
@@ -741,6 +743,8 @@ class GameLogic {
       switch (apiName) {
         case 'GPT':
           return await this.getDataFromGPT(system_prompt, user_prompt);
+        case 'GPTo1':
+          return await this.getDataFromGPTo1(system_prompt, user_prompt);          
       //   case 'Gemini':
       //     return await this.getAdviceFromGemini(system_prompt, user_prompt);
       //   case 'Perplexity':
@@ -756,21 +760,36 @@ class GameLogic {
       }
     }  
     formatAdvisedMoves(advisedMoves) {
-      //  console.log('format.advised moves ', advisedMoves);
-      // const moves = advisedMoves.recommendedNextMoves;
-      //console.log('advisedMoves',advisedMoves);
+      // console.log('advisedMoves', advisedMoves);
+    
       let movesDescription = '';
+    
       for (let i = 0; i < advisedMoves.length; i++) {
         const move = advisedMoves[i];
         const moveNumber = i + 1;
-        movesDescription += move.description + ', ';
+    
+        // Add the advised move description
+        movesDescription += `${moveNumber}) ${move.description}, Likely responses to this move are: `;
+    
+        // Loop through the likely responses (limit to the first 2 if available)
+        for (let j = 0; j < Math.min(move.likelyResponses.length, 2); j++) {
+          const response = move.likelyResponses[j];
+          movesDescription += `${response.san}`;
+          if (j < Math.min(move.likelyResponses.length, 2) - 1) {
+            movesDescription += 'or '; // Add a comma between responses
+          }
+        }
+    
+        // Add a period at the end of the likely responses for this move
+        movesDescription += '.\n';
       }
     
-      // Remove the trailing comma and space at the end
-      movesDescription = movesDescription.trim().replace(/,$/, '');
+      // Remove the trailing space and ensure clean formatting
+      movesDescription = movesDescription.trim();
     
       return movesDescription;
     }
+    
     extractPositionAnalysis(result) {
       try {
         const regex = /"positionAnalysis":\s*(\{[^}]*\})/;
@@ -864,6 +883,37 @@ class GameLogic {
     getLastBlackMove() {
       return this.getLastMoveByColor('b'); // 'b' for Black
     }
+    
+    getRecentMoves() {
+      const history = this.chess.history({ verbose: true });
+      
+      // Safeguard: Return empty array if no history exists
+      if (!history || history.length === 0) {
+        console.log('getRecentMoves: No moves yet');
+        return [];
+      }
+    
+      const moves = [];
+      const moveIndex = Math.max(0, history.length - 2); // Get last 2 moves
+    
+      for (let i = moveIndex; i < history.length; i++) {
+        const move = history[i];
+        const moveNumber = Math.ceil((i + 1) / 2); // Calculate full-move number
+        const player = i % 2 === 0 ? 'White' : 'Black';
+        moves.push(`${moveNumber}) ${player} ${this.describeMove(move)}`);
+      }
+    
+      console.log('getRecentMoves.moves', moves);
+      return moves; // Always return an array
+    }
+    
+    describeMove(move) {
+      const piece = move.piece.toUpperCase();
+      const from = move.from;
+      const to = move.to;
+      const isCapture = move.flags.includes('c') ? 'captures on' : 'to';
+      return `${piece} from ${from} ${isCapture} ${to}`;
+    }
     getLegalMoves(position) {
       return this.chess.moves({ square: position, verbose: true });
     }
@@ -909,7 +959,48 @@ class GameLogic {
     this.chess.load(fen);
     this.engine.setBoard(fen);
   }
-    
+    //deduce captured pieces
+    getCapturedMaterial() {
+      const fen = this.chess.fen();
+      const pieceCount = {
+        white: { P: 0, N: 0, B: 0, R: 0, Q: 0, K: 0 },
+        black: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 },
+      };
+  
+      // Extract the board part of the FEN string
+      const board = fen.split(' ')[0];
+  
+      // Count pieces currently on the board
+      for (const char of board) {
+        if (STARTING_PIECES.white[char] !== undefined) {
+          pieceCount.white[char]++;
+        } else if (STARTING_PIECES.black[char] !== undefined) {
+          pieceCount.black[char]++;
+        }
+      }
+  
+      // Deduce captured pieces
+      const capturedPieces = {
+        white: {},
+        black: {},
+      };
+  
+      Object.keys(STARTING_PIECES.white).forEach((piece) => {
+        const captured = STARTING_PIECES.white[piece] - pieceCount.white[piece];
+        if (captured > 0) {
+          capturedPieces.white[piece] = captured;
+        }
+      });
+  
+      Object.keys(STARTING_PIECES.black).forEach((piece) => {
+        const captured = STARTING_PIECES.black[piece] - pieceCount.black[piece];
+        if (captured > 0) {
+          capturedPieces.black[piece] = captured;
+        }
+      });
+  
+      return capturedPieces;
+    }
 }
 
 export default GameLogic;

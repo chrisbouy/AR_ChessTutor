@@ -7,38 +7,43 @@ import {
   StyleSheet,
   TouchableWithoutFeedback,
   ActivityIndicator, 
+  ScrollView,
 } from 'react-native';
 
-const SANPopup = ({ visible, description, onClose, isLoading, hasAIFeature,   openSystemSubscriptionPage,}) => {
+const SANPopup = ({ visible, description, onClose, isLoading, hasAIFeature, openSystemSubscriptionPage }) => {
   if (!visible) return null;
 
   return (
     <Modal transparent visible={visible} animationType="fade">
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.overlay}>
-          <TouchableWithoutFeedback>
-            <View style={styles.popupContainer}>
-              {hasAIFeature ? (
-                description.split('\n').map((text, index) => (
-                    <Text key={index} style={styles.descriptionText}>{text}</Text>
-                ))   
-              ) : (
-              <View>
-                  <Text style={styles.descriptionText}>
+          <TouchableWithoutFeedback onPress={() => {}}>
+            <View style={[styles.popupContainer, { marginBottom: 20 }]}>
+              {/* <ScrollView contentContainerStyle={styles.scrollViewContent}> */}
+                {hasAIFeature ? (
+                  description.split('\n').map((text, index) => (
+                    <Text key={index} style={styles.descriptionText}>
+                      {text}
+                    </Text>
+                  ))
+                ) : (
+                  <View>
+                    <Text style={styles.descriptionText}>
                       Subscribe to unlock detailed move analysis!
-                  </Text>
-                  <TouchableOpacity onPress={openSystemSubscriptionPage}>
+                    </Text>
+                    <TouchableOpacity onPress={openSystemSubscriptionPage}>
                       <Text style={styles.subscribeButton}>Subscribe Now</Text>
-                  </TouchableOpacity>
-              </View>
-              )}
-              {isLoading && (
-                <ActivityIndicator
-                  size="large"
-                  color="#ffffff"
-                  style={styles.popupSpinner}
-                />
-              )}
+                    </TouchableOpacity>
+                  </View>
+                )}
+                {isLoading && (
+                  <ActivityIndicator
+                    size="large"
+                    color="#ffffff"
+                    style={styles.popupSpinner}
+                  />
+                )}
+              {/* </ScrollView> */}
             </View>
           </TouchableWithoutFeedback>
         </View>
@@ -50,9 +55,7 @@ const SANPopup = ({ visible, description, onClose, isLoading, hasAIFeature,   op
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    paddingTop: 630,
+    justifyContent: 'flex-end', 
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   descriptionText: {
@@ -70,12 +73,11 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     marginHorizontal: 20,
-},
-  popupCloseText: {
-    marginTop: 10,
-    color: '#aec4e8',
-    fontSize: 16,
-    textDecorationLine: 'underline',
+    // maxHeight: 300, // Limit height so ScrollView can scroll if content exceeds
+  },
+  scrollViewContent: {
+    flexGrow: 1,
+    justifyContent: 'flex-start',
   },
 });
 

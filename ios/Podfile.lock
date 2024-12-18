@@ -1551,6 +1551,8 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - RNIap (12.15.7):
+    - React-Core
   - RNPermissions (4.1.5):
     - React-Core
   - RNReanimated (3.16.1):
@@ -1662,8 +1664,29 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - RNSVG (15.8.0):
+  - RNSVG (15.10.1):
     - React-Core
+  - RNVectorIcons (10.2.0):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.01.01.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - SocketRocket (0.7.0)
   - Yoga (0.0.0)
 
@@ -1738,10 +1761,12 @@ DEPENDENCIES:
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - "RNCMaskedView (from `../node_modules/@react-native-community/masked-view`)"
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
+  - RNIap (from `../node_modules/react-native-iap`)
   - RNPermissions (from `../node_modules/react-native-permissions`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSVG (from `../node_modules/react-native-svg`)
+  - RNVectorIcons (from `../node_modules/react-native-vector-icons`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
@@ -1887,6 +1912,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-community/masked-view"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
+  RNIap:
+    :path: "../node_modules/react-native-iap"
   RNPermissions:
     :path: "../node_modules/react-native-permissions"
   RNReanimated:
@@ -1895,6 +1922,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-screens"
   RNSVG:
     :path: "../node_modules/react-native-svg"
+  RNVectorIcons:
+    :path: "../node_modules/react-native-vector-icons"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
@@ -1968,10 +1997,12 @@ SPEC CHECKSUMS:
   ReactCommon: 6ef348087d250257c44c0204461c03f036650e9b
   RNCMaskedView: 0e1bc4bfa8365eba5fbbb71e07fbdc0555249489
   RNGestureHandler: 1b7c5ed637e02f6898d08bffb701d378be5e091d
+  RNIap: f3ca6e7597afccb2c1631de97d88f2e33b10dafd
   RNPermissions: 294531ede5a64d1528463e88fffef05675842042
   RNReanimated: f42a5044d121d68e91680caacb0293f4274228eb
   RNScreens: 19719a9c326e925498ac3b2d35c4e50fe87afc06
-  RNSVG: 8b1a777d54096b8c2a0fd38fc9d5a454332bbb4d
+  RNSVG: 7ff26379b2d1871b8571e6f9bc9630de6baf9bdf
+  RNVectorIcons: 6382277afab3c54658e9d555ee0faa7a37827136
   SocketRocket: abac6f5de4d4d62d24e11868d7a2f427e0ef940d
   Yoga: a1d7895431387402a674fd0d1c04ec85e87909b8
 

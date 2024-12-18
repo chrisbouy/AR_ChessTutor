@@ -900,20 +900,34 @@ class GameLogic {
     const move = history[i];
     const moveNumber = Math.ceil((i + 1) / 2); // Calculate full-move number
     const player = i % 2 === 0 ? 'White' : 'Black';
-    moves.push(`${moveNumber}) ${player} ${this.describeMove(move)}`);
+    moves.push(`${player} ${this.describeMove(move)}`);
   }
 
   console.log('getRecentMoves.moves', moves);
   return moves; // Always return an array
 }
 
-    describeMove(move) {
-      const piece = move.piece.toUpperCase();
-      const from = move.from;
-      const to = move.to;
-      const isCapture = move.flags.includes('c') ? 'captures on' : 'to';
-      return `${piece} from ${from} ${isCapture} ${to}`;
+describeMove(move) {
+  // Map chess piece abbreviations to full names
+  const getFullPieceName = (piece) => {
+    switch (piece.toLowerCase()) {
+      case 'p': return 'Pawn';
+      case 'r': return 'Rook';
+      case 'n': return 'Knight';
+      case 'b': return 'Bishop';
+      case 'q': return 'Queen';
+      case 'k': return 'King';
+      default: return 'Unknown';
     }
+  };
+
+  const piece = getFullPieceName(move.piece); // Convert piece abbreviation to full name
+  const from = move.from; // Starting square
+  const to = move.to; // Ending square
+  const isCapture = move.flags.includes('c') ? 'captures on' : 'to'; // Check for capture flag
+
+  return `${piece} from ${from} ${isCapture} ${to}`;
+}
     getLegalMoves(position) {
       return this.chess.moves({ square: position, verbose: true });
     }

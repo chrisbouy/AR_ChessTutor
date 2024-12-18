@@ -94,8 +94,17 @@ const ChessTutorApp = () => {
   }, []);
   
   useEffect(() => {
-    const moves = gameLogicRef.current.getRecentMoves();
-    setRecentMoves(moves); // Store moves in state
+    // Ensure gameLogicRef and chess object are available
+    if (!gameLogicRef.current || !gameLogicRef.current.chess) return;
+  
+    // Check whose turn it is
+    const isBlackTurn = gameLogicRef.current.chess.turn() === 'b';
+  
+    // Only update recent moves when it's White's turn (after Black has moved)
+    if (!isBlackTurn) {
+      const moves = gameLogicRef.current.getRecentMoves();
+      setRecentMoves(moves);
+    }
   }, [boardState]);
  
   useEffect(() => {
@@ -261,7 +270,7 @@ const ChessTutorApp = () => {
           flexDirection: 'row',
           justifyContent: 'space-between',
           alignItems: 'center',
-          paddingHorizontal: 10,
+          paddingHorizontal: 0,
           paddingVertical: 0,
           backgroundColor: '#191d24',
         },
@@ -304,7 +313,8 @@ const ChessTutorApp = () => {
         },
         bottomSpinnerContainer: {
           position: 'absolute',
-          bottom: '20%', // Move the spinner upward to approximately the correct spot
+          bottom: '5%', // Move the spinner upward to approximately the correct spot
+          //top: 20,
           alignSelf: 'center', // Center horizontally
           transform: [{ translateY: -10 }], // Optional: fine-tune vertical positioning
           marginTop: 10, // Space below Game Analysis
@@ -351,6 +361,10 @@ const ChessTutorApp = () => {
           shadowRadius: 5,
           shadowOffset: { width: 0, height: 0 },
           elevation: 5, // Android equivalent of shadow
+        },
+        disabledText: {
+          color: 'gray', // Dim text color for disabled state
+          textDecorationLine: 'line-through', // Optional: Add a visual cue
         },
         recentMovesContainer: {
           alignItems: 'center', 
@@ -577,13 +591,13 @@ const ChessTutorApp = () => {
         fetchMovesAfterBlackMove();       
         setIsThinkingMoves(false);
 
-        // if (hasAIFeature) {
-        //   setIsThinkingAnalysis(true);
-        //   await fetchReasoningAfterBlackMove();
-        //   setIsThinkingAnalysis(false);
-        // } else {
-        //   setPositionAnalysis('Subscribe to unlock AI-powered analysis.');
-        // }
+        if (hasAIFeature) {
+          setIsThinkingAnalysis(true);
+          await fetchReasoningAfterBlackMove();
+          setIsThinkingAnalysis(false);
+        } else {
+          setPositionAnalysis('Subscribe to unlock AI-powered analysis.');
+        }
 
     } catch (error) {
         console.log('Error during move:', error);
@@ -770,7 +784,8 @@ console.log('fetchReasoningAfterBlackMove.advisedMoves ',advisedMoves);
         onForwardPress={handleForwardPress}
         disableBack={currentAdviceIndex < 0}  // Disable only when we're at the start
         disableForward={currentAdviceIndex >= adviceHistory.length - 1}  // Disable only when we're at the end
-      />  
+      />
+            
         <View style={styles.reloadButtonContainer}>
           <TouchableOpacity style={styles.reloadButton} onPress={handleReload}>
             <Text style={styles.reloadButtonText}>Reload</Text>
@@ -780,12 +795,11 @@ console.log('fetchReasoningAfterBlackMove.advisedMoves ',advisedMoves);
       {/* Main content */}
       <View style={styles.container}>
         <View style={styles.contentContainer}>
-        <View style={styles.recentMovesContainer}>
-      <Text style={styles.recentMovesText}>
-        {recentMoves.join('\n')}
-      </Text>
-  </View>
-          {/* Chessboard */}
+    <View style={styles.recentMovesContainer}>
+        <Text style={styles.recentMovesText}>
+          {recentMoves.join('\n')}
+        </Text>
+          </View> 
           <View style={styles.chessboardContainer}>
             <ChessBoard2D
               boardSize={chessboardSize}
@@ -799,8 +813,6 @@ console.log('fetchReasoningAfterBlackMove.advisedMoves ',advisedMoves);
               recommendedMoves={displayedArrows}
             />
           </View>
-
-
           <View style={[styles.capturedContainer, styles.glowEffect]}>
             <View style={styles.capturedSide}>
               {Object.entries(capturedMaterial.black).map(([piece, count]) =>
@@ -840,8 +852,8 @@ console.log('fetchReasoningAfterBlackMove.advisedMoves ',advisedMoves);
                     {recommendedNextMoves.map((move, index) => (
                       <View key={index} style={styles.tableRow}>
                         <View style={[styles.tableCell, styles.adviceColumn]}>
-                          <TouchableOpacity onPress={() => handleMovePress(move.san, 'w', move.reasoning)}>
-                            <Text style={styles.tappableMove}>{move.move}</Text>
+                          <TouchableOpacity disabled={isPopupLoading}  onPress={() => handleMovePress(move.san, 'w', move.reasoning)}>
+                            <Text style={[styles.tappableMove, isPopupLoading && styles.disabledText]}>{move.move}</Text>
                           </TouchableOpacity>
                         </View>
                         <View style={[styles.tableCell, { flexDirection: 'row', flexWrap: 'wrap' }]}>

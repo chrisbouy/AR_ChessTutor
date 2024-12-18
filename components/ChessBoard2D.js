@@ -87,7 +87,7 @@ const ChessBoard2D = ({
       left: 0,
       width: boardSize,
       height: boardSize,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      backgroundColor: 'rgba(0, 0, 0, 0)',
       justifyContent: 'center',
       alignItems: 'center',
     },

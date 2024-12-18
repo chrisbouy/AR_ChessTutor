@@ -15,6 +15,7 @@ const SANPopup = ({ visible, description, onClose, isLoading, hasAIFeature, open
 
   return (
     <Modal transparent visible={visible} animationType="fade">
+      
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.overlay}>
           <TouchableWithoutFeedback onPress={() => {}}>

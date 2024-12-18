@@ -363,8 +363,8 @@ const ChessTutorApp = () => {
           elevation: 5, // Android equivalent of shadow
         },
         disabledText: {
-          color: 'gray', // Dim text color for disabled state
-          textDecorationLine: 'line-through', // Optional: Add a visual cue
+          // color: 'gray', // Dim text color for disabled state
+          // textDecorationLine: 'line-through', // Optional: Add a visual cue
         },
         recentMovesContainer: {
           alignItems: 'center', 
@@ -400,51 +400,46 @@ const ChessTutorApp = () => {
 
 
   const handleMovePress = (sanMove, color, reasoning, respondingTo = null) => {
+
     const description = gameLogicRef.current.convertMoveToDescription(sanMove, color);
     const displayText = respondingTo
       ? `Response to White's ${respondingTo}:\n\n${description}`
       : `${description}\n\n${reasoning}`;
+  
     setPopupDescription(displayText);
     setPopupVisible(true);
     if (color === 'w') {
-      const moveObj = recommendedNextMoves.find((move) => move.move === sanMove);
-  
+      const moveObj = recommendedNextMoves.find((move) => move.san === sanMove);
       if (moveObj && moveObj.from && moveObj.to) {
         setDisplayedArrows([
           {
             from: moveObj.from,
             to: moveObj.to,
-            arrowOpacity: moveObj.arrowOpacity,
+            arrowSize: moveObj.arrowSize,
           },
         ]);
       }
     } else if (color === 'b') {
-      const responseMoveObj = recommendedNextMoves
-        .flatMap((move) => move.likelyResponses)
-        .find((response) => response.move === sanMove);
-  
-      if (responseMoveObj && responseMoveObj.from && responseMoveObj.to) {
-        const advisingMove = recommendedNextMoves.find(
-          (move) => move.move === respondingTo
-        );
-  
+      const advisingMove = recommendedNextMoves.find((move) => move.san === respondingTo);
+      if (!advisingMove) return;
+      const responseMoveObj = advisingMove.likelyResponses.find((response) => response.san === sanMove);
+      if (responseMoveObj) {
         setDisplayedArrows([
           {
-            from: responseMoveObj.from,
-            to: responseMoveObj.to,
-            arrowOpacity: 0.6, // Arrow opacity for Black's move
+            from: responseMoveObj.move.slice(0, 2),
+            to: responseMoveObj.move.slice(2, 4),
+            arrowSize: 3,
           },
-          advisingMove && advisingMove.from && advisingMove.to
-            ? {
-                from: advisingMove.from,
-                to: advisingMove.to,
-                arrowOpacity: 1.0, // Arrow opacity for White's advised move
-              }
-            : null,
-        ].filter(Boolean)); // Remove any null entries
+          {
+            from: advisingMove.from,
+            to: advisingMove.to,
+            arrowSize: advisingMove.arrowSize,
+          },
+        ]);
       }
     }
   };
+  
 
   const handleBackPress = () => {
     if (currentAdviceIndex >= 0) { 
@@ -647,7 +642,11 @@ const ChessTutorApp = () => {
   };
 
   const fetchReasoningAfterBlackMove = async () => {
-    try {
+  
+    const MAX_RETRIES = 2; // Number of retry attempts
+  let attempt = 0; // Start retry counter
+  let reasoningData = null; // Placeholder for the response
+  try {
       setIsPopupLoading(true); // Show spinner in popup
       const apiName = 'Claude';
 
@@ -663,8 +662,35 @@ console.log('fetchReasoningAfterBlackMove.advisedMoves ',advisedMoves);
         setIsPopupLoading(false); // Ensure spinner stops if no advice
         return;
       }
-      const reasoningData =  await gameLogicRef.current.getReasoningFromAI(apiName, advisedMoves);
-      setPopupDescription(reasoningData.positionAnalysis || 'Reasoning returned.');
+      while (attempt < MAX_RETRIES) {
+        try {
+      
+      
+          reasoningData =  await gameLogicRef.current.getReasoningFromAI(apiName, advisedMoves);
+              // Check if response is valid
+              if (
+                reasoningData &&
+                reasoningData.positionAnalysis &&
+                Array.isArray(reasoningData.reasoning)
+              ) {
+                break; // Exit the retry loop if response is valid
+              } else {
+                throw new Error('Invalid response structure');
+              }
+            } catch (error) {
+              // console.warn(`Attempt ${attempt + 1} failed:`, error.message);
+              attempt++; // Increment retry counter
+            }
+          }
+          // Handle failure after retries
+    if (!reasoningData) {
+      // console.warn('Failed to fetch valid reasoning after retries.');
+      setPopupDescription('Reasoning is currently unavailable. Please try again later.');
+      setIsPopupLoading(false);
+      return;
+    }
+      
+          setPopupDescription(reasoningData.positionAnalysis || 'Reasoning returned.');
       setIsPopupLoading(false);
       const updatedAdvice = advisedMoves.map((move, index) => ({
         ...move,
@@ -692,7 +718,7 @@ console.log('fetchReasoningAfterBlackMove.advisedMoves ',advisedMoves);
       analysisComplete.current = true;
       setIsPopupLoading(false); // Hide spinner
     } catch (error) {
-      console.error('Error fetching reasoning:', error);
+      // console.error('Error fetching reasoning:', error);
       setIsPopupLoading(false); // Ensure spinner stops on error
     }
   };
@@ -861,7 +887,7 @@ console.log('fetchReasoningAfterBlackMove.advisedMoves ',advisedMoves);
                             <TouchableOpacity
                               key={idx}
                               onPress={() =>
-                                handleMovePress(response.san, 'b', response.threat, move.originalMove)
+                                handleMovePress(response.san, 'b', response.threat, move.san)
                               }
                             >
                               <Text style={styles.tappableMove}>{response.san}</Text>
@@ -910,13 +936,24 @@ console.log('fetchReasoningAfterBlackMove.advisedMoves ',advisedMoves);
         </View>
       </View>
       <SANPopup
-        visible={popupVisible}
-        description={popupDescription}
-        onClose={() => setPopupVisible(false)}
-        isLoading = {isPopupLoading}
-        hasAIFeature = {hasAIFeature}
-        openSystemSubscriptionPage = {openSystemSubscriptionPage}
-      />
+  visible={popupVisible}
+  description={popupDescription}
+  onClose={() => {
+    setPopupVisible(false); // Close the popup
+    
+    // Reset displayed arrows based on processedAdvice
+    setDisplayedArrows(
+      recommendedNextMoves.map((move) => ({
+        from: move.from,
+        to: move.to,
+        arrowSize: move.arrowSize || 0.6, // Default arrow size if not provided
+      }))
+    );
+  }}
+  isLoading={isPopupLoading}
+  hasAIFeature={hasAIFeature}
+  openSystemSubscriptionPage={openSystemSubscriptionPage}
+/>
     </SafeAreaView>
   );
   

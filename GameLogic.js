@@ -2,11 +2,26 @@ import { Chess } from 'chess.js';
 import { validateFen } from "chess.js";
 import { ToastAndroid } from 'react-native';
 const { Engine } = require('./engines/wukong');
+import EncryptedStorage from 'react-native-encrypted-storage';
+
 
 const STARTING_PIECES = {
   white: { P: 8, N: 2, B: 2, R: 2, Q: 1, K: 1 },
   black: { p: 8, n: 2, b: 2, r: 2, q: 1, k: 1 },
 };
+const part1 = 'sk-proj-3nacw91YfJnezTJi_nxA_G';
+const part2 = 'YTXPDGbDOLzswtyDQQAik6XLlV5';
+const part3 = '7S_Zo2gQE_AeJJ1p9Mab3dqznT3Blbk';
+const part4 = 'FJJ_Wg27V6_hApCNv7VUqMlHCk7Q-ap';
+const part5 = 'BSLmSN_iO-9DdstJS3ISvN86pmNjGsukYYD23sYbiH_UA';
+
+
+
+const part6 = 'sk-ant-api03-ddL-rMD4K';
+const part7 = 'VfdbLD85KcTdmfAny';
+const part8 = 'XybwRHAL9uLrY9sC9v4D-J';
+const part9 = 'D5a0YE1fvPAdV26E75hk';
+const part0 = 'oDzaOSTkIrPd-3Shzw-4I-2ogAA';
 
 class GameLogic {
     constructor() {
@@ -43,19 +58,21 @@ class GameLogic {
     }
 
     makeMove_White(move) {
-        try {
-          if (!this.engine) {
-            return null;
-          }
-          const result = this.chess.move(move); 
-          this.engine.makeMove(this.encodeMove(move));
-           this.engine.setBoard(this.chess.fen());
-          return result;
-        } 
-        catch (error) {
-          console.error('Error making move:', error);
-          return null;
-        }
+      try {
+      if (!this.engine) {
+        return null;
+      }
+      const result = this.chess.move(move); 
+      if (result) {
+        this.engine.makeMove(this.encodeMove(move));
+        this.engine.setBoard(this.chess.fen());
+        return result;
+      }
+    }
+    catch {
+        console.log('Error making move');
+        return null;
+      }
     }
 
     getPieceAt(position) {
@@ -305,22 +322,22 @@ class GameLogic {
     }
     async storeApiKey(key) {
       try {
-        await EncryptedStorage.setItem('apiKey', key);
-        this.apiKey = key; // Optionally update the instance variable
-        // console.log('API key stored successfully.');
+        //const obfuscatedKey = btoa(part1 + part2 + part3 + part4 + part5);
+        const obfuscatedKey = btoa(part6 + part7 + part8 + part9 + part0);
+        await EncryptedStorage.setItem('apiKey', obfuscatedKey);
+        this.apiKey = obfuscatedKey; // Optionally update the instance variable
       } catch (error) {
         console.error('Error storing the API key:', error);
       }
     }
     async retrieveApiKey() {
       try {
-        const key = await EncryptedStorage.getItem('apiKey');
-        if (key) {
-          this.apiKey = key; // Store it in the instance variable
-          // console.log('API key retrieved:', key); // Be cautious with logging sensitive data
-          return key;
+        const obfuscatedKey = await EncryptedStorage.getItem('apiKey');
+        if (obfuscatedKey) {
+          const decodedKey = atob(obfuscatedKey); 
+          this.apiKey = decodedKey; // Store it in the instance variable
+          return decodedKey;
         } else {
-          console.error('API key not found in storage.');
           return null;
         }
       } catch (error) {
@@ -564,15 +581,15 @@ class GameLogic {
   //   }
     async getDataFromClaude(system_prompt, user_prompt) {
       try {
-         // console.log('claude system_prompt ',system_prompt);
-         // console.log('claude user_prompt ',user_prompt);
-          //const apiKey = this.apiKey || await this.retrieveApiKey(); 
-          const apiKey = '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';
+        
+          console.log('claude system_prompt ',system_prompt);
+          console.log('claude user_prompt ',user_prompt);
+          const apiKey = this.apiKey || await this.retrieveApiKey(); 
+          //const apiKey = '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';
           if (!apiKey) {
             console.error('API key not found');
             return;
           }
-           console.log(apiKey);
           const response = await fetch('https://api.anthropic.com/v1/messages', {
               method: 'POST',
               headers: {
@@ -597,7 +614,7 @@ class GameLogic {
             console.log('AI API Error:', data.error);
             return null;
           }
-          console.log('Claude API Response:', JSON.stringify(data, null, 2));
+          // console.log('Claude API Response:', JSON.stringify(data, null, 2));
           if (data && data.content && data.content[0] && data.content[0].text) {
               let explanation = data.content[0].text;
               const advice = this.extractReasoningFromResponse(explanation);
@@ -865,7 +882,7 @@ class GameLogic {
       }
       // If move not found, return the SAN notation
       return sanMove;
-  }
+    }
   
     getLastMoveByColor(color) {
       const history = this.chess.history({ verbose: true });
@@ -884,50 +901,50 @@ class GameLogic {
       return this.getLastMoveByColor('b'); // 'b' for Black
     }
     
- getRecentMoves() {
-  const history = this.chess.history({ verbose: true });
-  
-  // Safeguard: Return empty array if no history exists
-  if (!history || history.length === 0) {
-    console.log('getRecentMoves: No moves yet');
-    return [];
-  }
+    getRecentMoves() {
+      const history = this.chess.history({ verbose: true });
+      
+      // Safeguard: Return empty array if no history exists
+      if (!history || history.length === 0) {
+        // console.log('getRecentMoves: No moves yet');
+        return [];
+      }
 
-  const moves = [];
-  const moveIndex = Math.max(0, history.length - 2); // Get last 2 moves
+      const moves = [];
+      const moveIndex = Math.max(0, history.length - 2); // Get last 2 moves
 
-  for (let i = moveIndex; i < history.length; i++) {
-    const move = history[i];
-    const moveNumber = Math.ceil((i + 1) / 2); // Calculate full-move number
-    const player = i % 2 === 0 ? 'White' : 'Black';
-    moves.push(`${player} ${this.describeMove(move)}`);
-  }
+      for (let i = moveIndex; i < history.length; i++) {
+        const move = history[i];
+        const moveNumber = Math.ceil((i + 1) / 2); // Calculate full-move number
+        const player = i % 2 === 0 ? 'White' : 'Black';
+        moves.push(`${player} ${this.describeMove(move)}`);
+      }
 
-  console.log('getRecentMoves.moves', moves);
-  return moves; // Always return an array
-}
-
-describeMove(move) {
-  // Map chess piece abbreviations to full names
-  const getFullPieceName = (piece) => {
-    switch (piece.toLowerCase()) {
-      case 'p': return 'Pawn';
-      case 'r': return 'Rook';
-      case 'n': return 'Knight';
-      case 'b': return 'Bishop';
-      case 'q': return 'Queen';
-      case 'k': return 'King';
-      default: return 'Unknown';
+      // console.log('getRecentMoves.moves', moves);
+      return moves; // Always return an array
     }
-  };
 
-  const piece = getFullPieceName(move.piece); // Convert piece abbreviation to full name
-  const from = move.from; // Starting square
-  const to = move.to; // Ending square
-  const isCapture = move.flags.includes('c') ? 'captures on' : 'to'; // Check for capture flag
+    describeMove(move) {
+      // Map chess piece abbreviations to full names
+      const getFullPieceName = (piece) => {
+        switch (piece.toLowerCase()) {
+          case 'p': return 'Pawn';
+          case 'r': return 'Rook';
+          case 'n': return 'Knight';
+          case 'b': return 'Bishop';
+          case 'q': return 'Queen';
+          case 'k': return 'King';
+          default: return 'Unknown';
+        }
+      };
 
-  return `${piece} from ${from} ${isCapture} ${to}`;
-}
+      const piece = getFullPieceName(move.piece); // Convert piece abbreviation to full name
+      const from = move.from; // Starting square
+      const to = move.to; // Ending square
+      const isCapture = move.flags.includes('c') ? 'captures on' : 'to'; // Check for capture flag
+
+      return `${piece} from ${from} ${isCapture} ${to}`;
+    }
     getLegalMoves(position) {
       return this.chess.moves({ square: position, verbose: true });
     }
@@ -964,15 +981,15 @@ describeMove(move) {
       return sanMove || move;
     }
       // Method to get the current FEN string
-  getFen() {
-    return this.chess.fen();
-  }
+    getFen() {
+      return this.chess.fen();
+    }
 
-  // Method to load a FEN string
-  loadFen(fen) {
-    this.chess.load(fen);
-    this.engine.setBoard(fen);
-  }
+    // Method to load a FEN string
+    loadFen(fen) {
+      this.chess.load(fen);
+      this.engine.setBoard(fen);
+    }
     //deduce captured pieces
     getCapturedMaterial() {
       const fen = this.chess.fen();

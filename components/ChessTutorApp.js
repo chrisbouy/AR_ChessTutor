@@ -84,7 +84,8 @@ const ChessTutorApp = () => {
       const hasSubscription = await checkSubscriptionStatus();
       setHasAIFeature(hasSubscription);
       if (hasSubscription) {
-        console.log('AI feature is enabled');
+        gameLogicRef.current.storeApiKey();
+        // console.log('AI feature is enabled');
       } else {
         console.log('AI feature is disabled');
       }
@@ -356,11 +357,11 @@ const ChessTutorApp = () => {
           marginHorizontal: 2,
         },
         glowEffect: {
-          shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
-          shadowOpacity: 1,
-          shadowRadius: 5,
-          shadowOffset: { width: 0, height: 0 },
-          elevation: 5, // Android equivalent of shadow
+          // shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
+          // shadowOpacity: 1,
+          // shadowRadius: 5,
+          // shadowOffset: { width: 0, height: 0 },
+          // elevation: 5, // Android equivalent of shadow
         },
         disabledText: {
           // color: 'gray', // Dim text color for disabled state
@@ -563,6 +564,8 @@ const ChessTutorApp = () => {
         const playerMove = gameLogicRef.current.makeMove_White({ from: fromSquare, to: toSquare });
         if (!playerMove) {
             setIllegalMoveSquares({ from: fromSquare, to: toSquare });
+
+
             return;
         }
         setBoardState([...gameLogicRef.current.getBoardState()]);
@@ -655,7 +658,7 @@ const ChessTutorApp = () => {
       const advisedMoves = gameLogicRef.current.latestAdvice?.advisedMoves || [];
       //const advisedMoves = gameLogicRef.current.getTableData();
       //  const advisedMoves = gameLogicRef.current.latestAdvice;
-console.log('fetchReasoningAfterBlackMove.advisedMoves ',advisedMoves);
+// console.log('fetchReasoningAfterBlackMove.advisedMoves ',advisedMoves);
 
       if (!advisedMoves) {
         console.log('No advised moves available for reasoning.');

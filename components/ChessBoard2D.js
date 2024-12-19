@@ -19,6 +19,7 @@ const ChessBoard2D = ({
   const squareSize = boardSize / 9;
 
   useEffect(() => {
+    console.log('illecalMoveSquares ',illegalMoveSquares);
     if (illegalMoveSquares) {
       Animated.sequence([
         Animated.timing(blinkAnimation, {

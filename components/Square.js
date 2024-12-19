@@ -52,6 +52,8 @@ const Square = ({ square,
   const isDarkSquare = square.color === '#080100'; // Assuming dark square color
   const isSelected = selectedSquare === square.position;
 
+  const isIllegalMove = illegalMoveSquares === square.position;
+
   const styles = StyleSheet.create({
     square: {
       position: 'relative',
@@ -59,17 +61,20 @@ const Square = ({ square,
       height: squareSize,
       justifyContent: 'center',
       alignItems: 'center',
+      backgroundColor: isIllegalMove
+      ? 'rgba(255, 0, 0, 0.8)' // Red flash for illegal moves
+      : square.color,
     },
     pieceContainer: {
       width: squareSize * 0.9,
       height: squareSize * 0.9,
       justifyContent: 'center', 
       alignItems: 'center',
-      shadowColor:'#FFFFFF', // Black for white pieces, white for black
-      shadowOpacity: 1,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 0 },
-      elevation: 5, // Android support
+      // shadowColor:'#FFFFFF', // Black for white pieces, white for black
+      // shadowOpacity: 1,
+      // shadowRadius: 10,
+      // shadowOffset: { width: 0, height: 0 },
+      // elevation: 5, // Android support
 
     },
     pieceImage: {
@@ -87,18 +92,18 @@ const Square = ({ square,
       top: squareSize * 0.35,
     },
     glowEffect: {
-      shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
-      shadowOpacity: 1,
-      shadowRadius: 3,
-      shadowOffset: { width: 0, height: 0 },
-      elevation: 5, // Android equivalent of shadow
+      // shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
+      // shadowOpacity: 1,
+      // shadowRadius: 3,
+      // shadowOffset: { width: 0, height: 0 },
+      // elevation: 5, // Android equivalent of shadow
     },
     glowEffect2: {
-      shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
-      shadowOpacity: 1,
-      shadowRadius: 3,
-      shadowOffset: { width: 0, height: 0 },
-      elevation: 5, // Android equivalent of shadow
+      // shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
+      // shadowOpacity: 1,
+      // shadowRadius: 3,
+      // shadowOffset: { width: 0, height: 0 },
+      // elevation: 5, // Android equivalent of shadow
     }
   });
   //  const isSelected = selectedSquare === square.position;
@@ -121,10 +126,14 @@ const Square = ({ square,
     };  }
 
   if (isIllegalFromSquare || isIllegalToSquare) {
-    backgroundColor = blinkAnimation.interpolate({
-      inputRange: [0, 1],
-      outputRange: [square.color, 'rgba(255, 0, 0, 0.8)'], // Red blink for illegal move
-    });
+    console.log('square ', isIllegalFromSquare);
+    
+    // backgroundColor = blinkAnimation.interpolate({
+    //   inputRange: [0, 1],
+    //   outputRange: [square.color, 'rgba(255, 0, 0, 0.8)'], // Red blink for illegal move
+    // });
+    // blinkAnimation.addListener(({ value }) => console.log('Blink Animation Value:', value));
+
   }
 
 //   if (isAdvisedFromSquare || isAdvisedToSquare) {

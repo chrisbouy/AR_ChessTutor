@@ -70,11 +70,11 @@ const Square = ({ square,
       height: squareSize * 0.9,
       justifyContent: 'center', 
       alignItems: 'center',
-      // shadowColor:'#FFFFFF', // Black for white pieces, white for black
-      // shadowOpacity: 1,
-      // shadowRadius: 10,
-      // shadowOffset: { width: 0, height: 0 },
-      // elevation: 5, // Android support
+      shadowColor:'#FFFFFF', // Black for white pieces, white for black
+      shadowOpacity: 1,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 0 },
+      elevation: 5, // Android support
 
     },
     pieceImage: {
@@ -92,18 +92,18 @@ const Square = ({ square,
       top: squareSize * 0.35,
     },
     glowEffect: {
-      // shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
-      // shadowOpacity: 1,
-      // shadowRadius: 3,
-      // shadowOffset: { width: 0, height: 0 },
-      // elevation: 5, // Android equivalent of shadow
+      shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
+      shadowOpacity: 1,
+      shadowRadius: 3,
+      shadowOffset: { width: 0, height: 0 },
+      elevation: 5, // Android equivalent of shadow
     },
     glowEffect2: {
-      // shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
-      // shadowOpacity: 1,
-      // shadowRadius: 3,
-      // shadowOffset: { width: 0, height: 0 },
-      // elevation: 5, // Android equivalent of shadow
+      shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
+      shadowOpacity: 1,
+      shadowRadius: 2,
+      shadowOffset: { width: 0, height: 0 },
+      elevation: 5, // Android equivalent of shadow
     }
   });
   //  const isSelected = selectedSquare === square.position;

@@ -369,7 +369,7 @@ class GameLogic {
             Authorization:`Bearer ${'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'}`
           },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
+            model: 'gpt-4o',
             //model: 'ft:gpt-4o-mini-2024-07-18:personal:second:AThf4LoS',
             messages: [
               {
@@ -419,7 +419,7 @@ class GameLogic {
             Authorization:`Bearer ${'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'}`
           },
           body: JSON.stringify({
-            model: 'o1-preview',
+            model: 'o1-mini',
             //model: 'ft:gpt-4o-mini-2024-07-18:personal:second:AThf4LoS',
             messages: [
               {
@@ -598,7 +598,7 @@ class GameLogic {
                   'x-api-key': apiKey
               },
               body: JSON.stringify({
-                  model: "claude-3-5-haiku-20241022",
+                  model: "claude-3-5-sonnet-20241022",
                   max_tokens: 300,
                   system: system_prompt,
                   messages: [
@@ -722,17 +722,17 @@ class GameLogic {
       const system_prompt =`
       You are a chess tutor specializing in accurate, move-by-move analysis.  
       You are playing Black. I am playing as White, and it's my turn to move.
+
+
+
       Instructions:
-      - Analyze the given chess position thoroughly.
-      - Double-check all tactical motifs and threats for accuracy.
       - Given a list of potential moves, use chain-of-thought reasoning and explain the benefits and risks of each
-      - Try to think a few moves ahead.
+
 
       Constraints:
       - Do not include move numbers, opening names, or acronyms.
       - Responses must strictly follow the specified JSON format.
-      - Avoid referring to bishops by square colors.
-      - After producing the response, use the current FEN to double-check for accuracy and remove anything you aren't 100% sure of. 
+      - When discussing bishops, use their starting squares (f1 bishop, c8 bishop) or their position on the board
       - Do not include any additional text or explanations outside the JSON.
       `;
       //const advisedMovesString = JSON.stringify(advisedMoves);
@@ -744,12 +744,12 @@ class GameLogic {
         - Current game move history: 
         ${moveHistory}
         - Current board setup: 
-        ${this.chess.ascii()}
-        - Respond in the following JSON format:
-        Advised Moves:
+        ${this.chess.ascii()}        
+        - Advised Moves:
         ${advisedMovesString}
+        - Respond in the following JSON format:
         {
-          "positionAnalysis": "Brief analysis of the game.",
+          "positionAnalysis": "A 20 word analysis of the game.",
           "reasoning": [
             "Explanation for move 1.",
             "Explanation for move 2.",

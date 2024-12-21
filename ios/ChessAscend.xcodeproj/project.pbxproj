@@ -9,12 +9,12 @@
 /* Begin PBXBuildFile section */
 		00E356F31AD99517003FC87E /* ChessAscendTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E356F21AD99517003FC87E /* ChessAscendTests.m */; };
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
-		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
-		B10387B72C30290994393959 /* libPods-ChessAscend-ChessAscendTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BC51A3BC9A043EC31DEC5161 /* libPods-ChessAscend-ChessAscendTests.a */; };
-		BAFD695C2CD17EC600506B6C /* Launch Screen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = BAFD695B2CD17EC600506B6C /* Launch Screen.storyboard */; };
-		C294EEE71DE77193FA11350C /* libPods-ChessAscend.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 89BAF1318505DB51A55A42CA /* libPods-ChessAscend.a */; };
+		68CFAE29318560FA1B69D123 /* libPods-ChessAscend-ChessAscendTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B521177DD8A3F65296E9B158 /* libPods-ChessAscend-ChessAscendTests.a */; };
+		BAB5034C2D1686F500D6AD7B /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = BAB5034B2D1686F500D6AD7B /* LaunchScreen.storyboard */; };
+		BAFC42CC2D16736600F408D3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BAFC42CB2D16736600F408D3 /* Assets.xcassets */; };
 		CA7582EB42693D6BC65A7223 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8A4C8C3F2D3682FCD6C42F42 /* PrivacyInfo.xcprivacy */; };
+		D2A13BA58BBEE697309FFADE /* libPods-ChessAscend.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C98ABBCC31000B7E64F24961 /* libPods-ChessAscend.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -23,29 +23,29 @@
 			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 13B07F861A680F5B00A75B9A;
-			remoteInfo = "ChessAscend";
+			remoteInfo = ChessAscend;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		00E356EE1AD99517003FC87E /* ChessAscendTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "ChessAscendTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		00E356EE1AD99517003FC87E /* ChessAscendTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChessAscendTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		00E356F11AD99517003FC87E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		00E356F21AD99517003FC87E /* ChessAscendTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "ChessAscendTests.m"; sourceTree = "<group>"; };
-		03E54346911794114664D8C4 /* Pods-ChessAscend-ChessAscendTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ChessAscend-ChessAscendTests.release.xcconfig"; path = "Target Support Files/Pods-ChessAscend-ChessAscendTests/Pods-ChessAscend-ChessAscendTests.release.xcconfig"; sourceTree = "<group>"; };
-		13B07F961A680F5B00A75B9A /* ChessAscend.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ChessAscend.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = "ChessAscend/AppDelegate.h"; sourceTree = "<group>"; };
-		13B07FB01A68108700A75B9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AppDelegate.mm; path = "ChessAscend/AppDelegate.mm"; sourceTree = "<group>"; };
-		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = "ChessAscend/Images.xcassets"; sourceTree = "<group>"; };
-		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = "ChessAscend/Info.plist"; sourceTree = "<group>"; };
-		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = "ChessAscend/main.m"; sourceTree = "<group>"; };
+		00E356F21AD99517003FC87E /* ChessAscendTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChessAscendTests.m; sourceTree = "<group>"; };
+		13B07F961A680F5B00A75B9A /* ChessAscend.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ChessAscend.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = ChessAscend/AppDelegate.h; sourceTree = "<group>"; };
+		13B07FB01A68108700A75B9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AppDelegate.mm; path = ChessAscend/AppDelegate.mm; sourceTree = "<group>"; };
+		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = ChessAscend/Info.plist; sourceTree = "<group>"; };
+		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = ChessAscend/main.m; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = ChessAscend/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		315159CC180D31355FBFF733 /* Pods-ChessAscend.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ChessAscend.debug.xcconfig"; path = "Target Support Files/Pods-ChessAscend/Pods-ChessAscend.debug.xcconfig"; sourceTree = "<group>"; };
-		823ABCA1EBC7D3FA3332014A /* Pods-ChessAscend-ChessAscendTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ChessAscend-ChessAscendTests.debug.xcconfig"; path = "Target Support Files/Pods-ChessAscend-ChessAscendTests/Pods-ChessAscend-ChessAscendTests.debug.xcconfig"; sourceTree = "<group>"; };
-		89BAF1318505DB51A55A42CA /* libPods-ChessAscend.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ChessAscend.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		3F5F6E06862A3CA05F704DCA /* Pods-ChessAscend-ChessAscendTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ChessAscend-ChessAscendTests.release.xcconfig"; path = "Target Support Files/Pods-ChessAscend-ChessAscendTests/Pods-ChessAscend-ChessAscendTests.release.xcconfig"; sourceTree = "<group>"; };
+		4EAF2BCF7749E47C3890D156 /* Pods-ChessAscend-ChessAscendTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ChessAscend-ChessAscendTests.debug.xcconfig"; path = "Target Support Files/Pods-ChessAscend-ChessAscendTests/Pods-ChessAscend-ChessAscendTests.debug.xcconfig"; sourceTree = "<group>"; };
+		7B60A0236BD7C29B4E5E438E /* Pods-ChessAscend.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ChessAscend.release.xcconfig"; path = "Target Support Files/Pods-ChessAscend/Pods-ChessAscend.release.xcconfig"; sourceTree = "<group>"; };
 		8A4C8C3F2D3682FCD6C42F42 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = ChessAscend/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		9B6934D5A6336AD9F23AE82E /* Pods-ChessAscend.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ChessAscend.release.xcconfig"; path = "Target Support Files/Pods-ChessAscend/Pods-ChessAscend.release.xcconfig"; sourceTree = "<group>"; };
-		BAFD695B2CD17EC600506B6C /* Launch Screen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = "Launch Screen.storyboard"; sourceTree = "<group>"; };
-		BC51A3BC9A043EC31DEC5161 /* libPods-ChessAscend-ChessAscendTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ChessAscend-ChessAscendTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B521177DD8A3F65296E9B158 /* libPods-ChessAscend-ChessAscendTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ChessAscend-ChessAscendTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		BAB5034B2D1686F500D6AD7B /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		BAFC42CB2D16736600F408D3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C98ABBCC31000B7E64F24961 /* libPods-ChessAscend.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ChessAscend.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D4FF1DA4244A3F8B37C66CFE /* Pods-ChessAscend.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ChessAscend.debug.xcconfig"; path = "Target Support Files/Pods-ChessAscend/Pods-ChessAscend.debug.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -54,7 +54,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B10387B72C30290994393959 /* libPods-ChessAscend-ChessAscendTests.a in Frameworks */,
+				68CFAE29318560FA1B69D123 /* libPods-ChessAscend-ChessAscendTests.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -62,7 +62,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C294EEE71DE77193FA11350C /* libPods-ChessAscend.a in Frameworks */,
+				D2A13BA58BBEE697309FFADE /* libPods-ChessAscend.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -75,7 +75,7 @@
 				00E356F21AD99517003FC87E /* ChessAscendTests.m */,
 				00E356F01AD99517003FC87E /* Supporting Files */,
 			);
-			path = "ChessAscendTests";
+			path = ChessAscendTests;
 			sourceTree = "<group>";
 		};
 		00E356F01AD99517003FC87E /* Supporting Files */ = {
@@ -91,22 +91,22 @@
 			children = (
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
 				13B07FB01A68108700A75B9A /* AppDelegate.mm */,
-				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				13B07FB71A68108700A75B9A /* main.m */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
 				8A4C8C3F2D3682FCD6C42F42 /* PrivacyInfo.xcprivacy */,
-				BAFD695B2CD17EC600506B6C /* Launch Screen.storyboard */,
+				BAFC42CB2D16736600F408D3 /* Assets.xcassets */,
+				BAB5034B2D1686F500D6AD7B /* LaunchScreen.storyboard */,
 			);
-			name = "ChessAscend";
+			name = ChessAscend;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				89BAF1318505DB51A55A42CA /* libPods-ChessAscend.a */,
-				BC51A3BC9A043EC31DEC5161 /* libPods-ChessAscend-ChessAscendTests.a */,
+				C98ABBCC31000B7E64F24961 /* libPods-ChessAscend.a */,
+				B521177DD8A3F65296E9B158 /* libPods-ChessAscend-ChessAscendTests.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -145,10 +145,10 @@
 		BBD78D7AC51CEA395F1C20DB /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				315159CC180D31355FBFF733 /* Pods-ChessAscend.debug.xcconfig */,
-				9B6934D5A6336AD9F23AE82E /* Pods-ChessAscend.release.xcconfig */,
-				823ABCA1EBC7D3FA3332014A /* Pods-ChessAscend-ChessAscendTests.debug.xcconfig */,
-				03E54346911794114664D8C4 /* Pods-ChessAscend-ChessAscendTests.release.xcconfig */,
+				D4FF1DA4244A3F8B37C66CFE /* Pods-ChessAscend.debug.xcconfig */,
+				7B60A0236BD7C29B4E5E438E /* Pods-ChessAscend.release.xcconfig */,
+				4EAF2BCF7749E47C3890D156 /* Pods-ChessAscend-ChessAscendTests.debug.xcconfig */,
+				3F5F6E06862A3CA05F704DCA /* Pods-ChessAscend-ChessAscendTests.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -160,20 +160,20 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 00E357021AD99517003FC87E /* Build configuration list for PBXNativeTarget "ChessAscendTests" */;
 			buildPhases = (
-				AADE5A0DDD0EA4751D54E500 /* [CP] Check Pods Manifest.lock */,
+				DF506F1DB752509A0FD5C840 /* [CP] Check Pods Manifest.lock */,
 				00E356EA1AD99517003FC87E /* Sources */,
 				00E356EB1AD99517003FC87E /* Frameworks */,
 				00E356EC1AD99517003FC87E /* Resources */,
-				26D78A8EE209453A79705B91 /* [CP] Embed Pods Frameworks */,
-				5A0428D3F15CDD73D4EBFDF1 /* [CP] Copy Pods Resources */,
+				BF6FAA6FF60D82CD82BBAAC5 /* [CP] Embed Pods Frameworks */,
+				07D06F961FDFBEF82A26ECC6 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				00E356F51AD99517003FC87E /* PBXTargetDependency */,
 			);
-			name = "ChessAscendTests";
-			productname = "ChessAscendTests";
+			name = ChessAscendTests;
+			productName = ChessAscendTests;
 			productReference = 00E356EE1AD99517003FC87E /* ChessAscendTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
@@ -181,20 +181,20 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "ChessAscend" */;
 			buildPhases = (
-				65D05B3C3C5246874D57C3C3 /* [CP] Check Pods Manifest.lock */,
+				4D6E0EA696AA3D560E9A872B /* [CP] Check Pods Manifest.lock */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
-				016153496245A1425944D06D /* [CP] Embed Pods Frameworks */,
-				C7FD3A31823151A2B5A45EF2 /* [CP] Copy Pods Resources */,
+				923D60C75BA03D680E8952AB /* [CP] Embed Pods Frameworks */,
+				0B75B50330A5DE3534C5162A /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = "ChessAscend";
-			productName = "ChessAscend";
+			name = ChessAscend;
+			productName = ChessAscend;
 			productReference = 13B07F961A680F5B00A75B9A /* ChessAscend.app */;
 			productType = "com.apple.product-type.application";
 		};
@@ -246,8 +246,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BAFD695C2CD17EC600506B6C /* Launch Screen.storyboard in Resources */,
-				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
+				BAB5034C2D1686F500D6AD7B /* LaunchScreen.storyboard in Resources */,
+				BAFC42CC2D16736600F408D3 /* Assets.xcassets in Resources */,
 				CA7582EB42693D6BC65A7223 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -271,41 +271,7 @@
 			shellPath = /bin/sh;
 			shellScript = "set -e\n\nWITH_ENVIRONMENT=\"$REACT_NATIVE_PATH/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"$REACT_NATIVE_PATH/scripts/react-native-xcode.sh\"\n\n/bin/sh -c \"$WITH_ENVIRONMENT $REACT_NATIVE_XCODE\"\n";
 		};
-		016153496245A1425944D06D /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-ChessAscend/Pods-ChessAscend-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-ChessAscend/Pods-ChessAscend-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ChessAscend/Pods-ChessAscend-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		26D78A8EE209453A79705B91 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-ChessAscend-ChessAscendTests/Pods-ChessAscend-ChessAscendTests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-ChessAscend-ChessAscendTests/Pods-ChessAscend-ChessAscendTests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ChessAscend-ChessAscendTests/Pods-ChessAscend-ChessAscendTests-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		5A0428D3F15CDD73D4EBFDF1 /* [CP] Copy Pods Resources */ = {
+		07D06F961FDFBEF82A26ECC6 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -322,7 +288,24 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ChessAscend-ChessAscendTests/Pods-ChessAscend-ChessAscendTests-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		65D05B3C3C5246874D57C3C3 /* [CP] Check Pods Manifest.lock */ = {
+		0B75B50330A5DE3534C5162A /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-ChessAscend/Pods-ChessAscend-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Copy Pods Resources";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-ChessAscend/Pods-ChessAscend-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ChessAscend/Pods-ChessAscend-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		4D6E0EA696AA3D560E9A872B /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -344,7 +327,41 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		AADE5A0DDD0EA4751D54E500 /* [CP] Check Pods Manifest.lock */ = {
+		923D60C75BA03D680E8952AB /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-ChessAscend/Pods-ChessAscend-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-ChessAscend/Pods-ChessAscend-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ChessAscend/Pods-ChessAscend-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		BF6FAA6FF60D82CD82BBAAC5 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-ChessAscend-ChessAscendTests/Pods-ChessAscend-ChessAscendTests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-ChessAscend-ChessAscendTests/Pods-ChessAscend-ChessAscendTests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ChessAscend-ChessAscendTests/Pods-ChessAscend-ChessAscendTests-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		DF506F1DB752509A0FD5C840 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -364,23 +381,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		C7FD3A31823151A2B5A45EF2 /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-ChessAscend/Pods-ChessAscend-resources-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Copy Pods Resources";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-ChessAscend/Pods-ChessAscend-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ChessAscend/Pods-ChessAscend-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -416,14 +416,14 @@
 /* Begin XCBuildConfiguration section */
 		00E356F61AD99517003FC87E /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 823ABCA1EBC7D3FA3332014A /* Pods-ChessAscend-ChessAscendTests.debug.xcconfig */;
+			baseConfigurationReference = 4EAF2BCF7749E47C3890D156 /* Pods-ChessAscend-ChessAscendTests.debug.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
 				);
-				INFOPLIST_FILE = "ChessAscendTests/Info.plist";
+				INFOPLIST_FILE = ChessAscendTests/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -443,11 +443,11 @@
 		};
 		00E356F71AD99517003FC87E /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 03E54346911794114664D8C4 /* Pods-ChessAscend-ChessAscendTests.release.xcconfig */;
+			baseConfigurationReference = 3F5F6E06862A3CA05F704DCA /* Pods-ChessAscend-ChessAscendTests.release.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				COPY_PHASE_STRIP = NO;
-				INFOPLIST_FILE = "ChessAscendTests/Info.plist";
+				INFOPLIST_FILE = ChessAscendTests/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -467,9 +467,10 @@
 		};
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 315159CC180D31355FBFF733 /* Pods-ChessAscend.debug.xcconfig */;
+			baseConfigurationReference = D4FF1DA4244A3F8B37C66CFE /* Pods-ChessAscend.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5AYCPLT4LB;
@@ -478,9 +479,9 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/Pods/hermes-engine/destroot/Library/Frameworks/macosx",
 				);
-				INFOPLIST_FILE = "ChessAscend/Info.plist";
-             INFOPLIST_KEY_CFBundleDisplayName = "ChessAscend";
+				INFOPLIST_FILE = ChessAscend/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ChessAscend;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.board-games";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -493,7 +494,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
 				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = com.chrisbouy.ChessAscend;
-				PRODUCT_NAME = "ChessAscend";
+				PRODUCT_NAME = ChessAscend;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -502,9 +503,10 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 9B6934D5A6336AD9F23AE82E /* Pods-ChessAscend.release.xcconfig */;
+			baseConfigurationReference = 7B60A0236BD7C29B4E5E438E /* Pods-ChessAscend.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5AYCPLT4LB;
@@ -512,9 +514,9 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/Pods/hermes-engine/destroot/Library/Frameworks/macosx",
 				);
-				INFOPLIST_FILE = "ChessAscend/Info.plist";
-             INFOPLIST_KEY_CFBundleDisplayName = "ChessAscend";
+				INFOPLIST_FILE = ChessAscend/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ChessAscend;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.board-games";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -527,7 +529,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
 				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = com.chrisbouy.ChessAscend;
-				PRODUCT_NAME = "ChessAscend";
+				PRODUCT_NAME = ChessAscend;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};

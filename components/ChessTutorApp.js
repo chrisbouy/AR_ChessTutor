@@ -22,10 +22,19 @@ import SplashScreen from 'react-native-splash-screen';
 import { checkSubscriptionStatus, subscribeToAI } from '../services/Subscriptions';
 
 const ChessTutorApp = () => {
-  // useEffect(() => {
-  //   SplashScreen.hide();
-  // }, []);
+  useEffect(() => {
+    // Proper use of an async function in useEffect
+    const hideSplashScreen = async () => {
+      try {
+        // Any async initialization logic can go here
+        SplashScreen.hide();
+      } catch (error) {
+        console.error('Error hiding splash screen:', error);
+      }
+    };
 
+    hideSplashScreen(); // Call the function inside useEffect
+  }, []);
   const gameLogicRef = useRef(new GameLogic);
   const [boardState, setBoardState] = useState(gameLogicRef.current.getBoardState());
   const [selectedSquare, setSelectedSquare] = useState(null);
@@ -911,7 +920,7 @@ const ChessTutorApp = () => {
                 {hasAIFeature ? (
                   positionAnalysis ? (
                       <View>
-                        <Text style={styles.analysisTitle}>Game Analysis:</Text>
+                        <Text style={styles.analysisTitle}>Position Analysis:</Text>
                         <Text style={styles.analysisText}>{positionAnalysis}</Text>
                       </View>
                     ) : (

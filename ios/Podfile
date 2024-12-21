@@ -2,7 +2,7 @@ require_relative '../node_modules/react-native/scripts/react_native_pods'
 
 platform :ios, '14.0'
 
-target 'ChessTutorAR' do
+target 'ChessAscend' do
   config = use_native_modules!
 
   use_react_native!(
@@ -15,7 +15,7 @@ target 'ChessTutorAR' do
   permissions_path = '../node_modules/react-native-permissions/ios'
   # pod 'Permission-Camera', :path => "#{permissions_path}/Camera/Permission-Camera.podspec"
 
-  target 'ChessTutorARTests' do
+  target 'ChessAscendTests' do
     inherit! :complete
     # Pods for testing
   end

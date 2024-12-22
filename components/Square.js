@@ -72,7 +72,7 @@ const Square = ({ square,
       alignItems: 'center',
       shadowColor:'#FFFFFF', // Black for white pieces, white for black
       shadowOpacity: 1,
-      shadowRadius: 10,
+      shadowRadius: 5,
       shadowOffset: { width: 0, height: 0 },
       elevation: 5, // Android support
 

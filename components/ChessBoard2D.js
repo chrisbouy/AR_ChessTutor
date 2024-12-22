@@ -159,7 +159,11 @@ const ChessBoard2D = ({
               orient="auto"
               markerUnits="strokeWidth"
             >
-              <Path d="M0,0 L0,4 L4,2 z" fill="red" />
+              <Path 
+                d="M0,0 L0,4 L4,2 z" 
+                fill="red" 
+                opacity={.5}
+              />
             </Marker>
           </Defs>
 
@@ -182,6 +186,7 @@ const ChessBoard2D = ({
                 stroke="red"
                 strokeWidth={arrow.arrowSize}
                 markerEnd="url(#arrowhead)"
+                opacity={.5}
               />
             );
           })}

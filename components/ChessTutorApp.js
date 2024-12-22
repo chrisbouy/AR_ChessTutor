@@ -18,23 +18,9 @@ import ChessBoard2D from './ChessBoard2D';
 import NavigationArrows from './NavigationArrows.js';
 import GameLogic from '../GameLogic';
 import SANPopup from './SANPopup.js';
-import SplashScreen from 'react-native-splash-screen';
 import { checkSubscriptionStatus, subscribeToAI } from '../services/Subscriptions';
 
 const ChessTutorApp = () => {
-  useEffect(() => {
-    // Proper use of an async function in useEffect
-    const hideSplashScreen = async () => {
-      try {
-        // Any async initialization logic can go here
-        SplashScreen.hide();
-      } catch (error) {
-        console.error('Error hiding splash screen:', error);
-      }
-    };
-
-    hideSplashScreen(); // Call the function inside useEffect
-  }, []);
   const gameLogicRef = useRef(new GameLogic);
   const [boardState, setBoardState] = useState(gameLogicRef.current.getBoardState());
   const [selectedSquare, setSelectedSquare] = useState(null);
@@ -366,11 +352,11 @@ const ChessTutorApp = () => {
           marginHorizontal: 2,
         },
         glowEffect: {
-          // shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
-          // shadowOpacity: 1,
-          // shadowRadius: 5,
-          // shadowOffset: { width: 0, height: 0 },
-          // elevation: 5, // Android equivalent of shadow
+          shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
+          shadowOpacity: 1,
+          shadowRadius: 5,
+          shadowOffset: { width: 0, height: 0 },
+          elevation: 5, // Android equivalent of shadow
         },
         disabledText: {
           // color: 'gray', // Dim text color for disabled state

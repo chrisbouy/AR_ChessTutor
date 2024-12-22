@@ -193,7 +193,7 @@ class GameLogic {
       const maxAdvisedMoves = 5;
       const maxLikelyResponses = 2;
       const maxsearchforresponses = 10;
-      const depths = [4, 3, 2];
+      const depths = [5, 4, 3];
     
       for (const depth of depths) {
         if (advisedMoves.length >= maxAdvisedMoves) break;
@@ -250,7 +250,7 @@ class GameLogic {
         //this.engine.setBoard(this.chess.fen());
         const likelyResponses = [];
 
-        const responseresult = this.engine.search(3, this.chess.fen())
+        const responseresult = this.engine.search(4, this.chess.fen())
         const primaryVariant = responseresult.info.match(/pv (.+)/)[1].split(' ');
         // console.log(`pv afer ${advisedMove.move} : ${primaryVariant}`);
         // console.log('pushing pv[1] if unique', primaryVariant[0]);
@@ -322,8 +322,8 @@ class GameLogic {
     }
     async storeApiKey(key) {
       try {
-        //const obfuscatedKey = btoa(part1 + part2 + part3 + part4 + part5);
-        const obfuscatedKey = btoa(part6 + part7 + part8 + part9 + part0);
+        const obfuscatedKey = btoa(part1 + part2 + part3 + part4 + part5);
+        //const obfuscatedKey = btoa(part6 + part7 + part8 + part9 + part0);
         await EncryptedStorage.setItem('apiKey', obfuscatedKey);
         this.apiKey = obfuscatedKey; // Optionally update the instance variable
       } catch (error) {

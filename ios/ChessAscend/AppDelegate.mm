@@ -10,10 +10,10 @@
 {
   self.moduleName = @"ChessAscend";
   self.initialProps = @{};
-  // Show the splash screen after initialization
-  [RNSplashScreen show];
   // Call the super method first to initialize React Native
   BOOL result = [super application:application didFinishLaunchingWithOptions:launchOptions];
+  // Show the splash screen after React Native initialization
+  [RNSplashScreen show];
 
   return result;
 }

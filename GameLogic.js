@@ -39,6 +39,7 @@ class GameLogic {
       catch (error) {
         console.error('Failed to initialize the engine:', error);
       } 
+this.chess.load("8/5P2/8/8/8/8/8/4k2K w - - 0 1");
     }
 
     getBoardState() {
@@ -62,7 +63,16 @@ class GameLogic {
       if (!this.engine) {
         return null;
       }
+      // Check if this is a pawn promotion move
+      const isPawnPromotion =
+      this.chess.get(move.from).type === "p" && // The piece being moved is a pawn
+      (move.to.endsWith("8")); // The destination is the back rank
+
+      if (isPawnPromotion) {
+        move.promotion = "q"; // Automatically promote to a queen (you can modify this as needed)
+      }
       const result = this.chess.move(move); 
+
       if (result) {
         this.engine.makeMove(this.encodeMove(move));
         this.engine.setBoard(this.chess.fen());
@@ -139,9 +149,18 @@ class GameLogic {
         const originalFEN = this.chess.fen();
         const advisedMoves = this.latestAdvice?.advisedMoves || [];
         const advisedMove = advisedMoves.find(advice => advice.san === whiteMove);
+        const addPromotionIfNeeded = (move) => {
+          const isPawnPromotion =
+              this.chess.get(move.from).type === "p" && // The piece being moved is a pawn
+              move.to.endsWith("1"); // The destination is the back rank for Black
+          if (isPawnPromotion) {
+              move.promotion = "q"; // Automatically promote to a queen
+          }
+        };
         if (advisedMove) {
             const blackResponses = advisedMove.likelyResponses;
             const selectedMove = blackResponses[Math.floor(Math.random() * blackResponses.length)];
+            addPromotionIfNeeded(selectedMove.move);
             this.chess.move(selectedMove.move); // Make Black's response
             this.engine.makeMove(selectedMove.move);
              this.engine.setBoard(this.chess.fen());
@@ -154,6 +173,7 @@ class GameLogic {
              let searchResult = this.engine.search(1, this.chess.fen()); 
              this.engine.makeMove(searchResult.bestMove);
             const decodedbestmove = this.decodeMove(searchResult.bestMove);
+            addPromotionIfNeeded(decodedbestmove);
              this.chess.move(decodedbestmove);
             return {
                 move: decodedbestmove,
@@ -194,6 +214,7 @@ class GameLogic {
       const maxLikelyResponses = 2;
       const maxsearchforresponses = 10;
       const depths = [5, 4, 3];
+      let checkmateMove = null;
     
       for (const depth of depths) {
         if (advisedMoves.length >= maxAdvisedMoves) break;
@@ -214,82 +235,100 @@ class GameLogic {
 
           this.chess.move(advisedMove);
           const fenAfterMove = this.chess.fen();
+
+          if (this.chess.isCheckmate()) {
+            checkmateMove = {
+              san: this.convertFromSquareToSan(advisedMove, fenBeforeMove),
+              move: advisedMove,
+              score: score,
+              description: this.convertMoveToDescription(advisedMove, 'w') + ' (CHECKMATE)',
+              likelyResponses: [], // No responses for a checkmate move
+              fenAfterMove,
+            };
+          }
+
           this.chess.undo();
 
           // console.log('fen after making white advised move', this.chess.fen());
           // this.engine.printBoard();
           const sanMove = this.convertFromSquareToSan(advisedMove, fenBeforeMove);
-          advisedMoves.push({
-            san: sanMove,
-            move: advisedMove,
-            encoded: searchResult.bestMove,
-            score:score,
-            fenAfterMove,
-            likelyResponses: [primaryVariant[1]],
-          });
-          // this.engine.takeBack();
+
+          if (!checkmateMove) {
+            advisedMoves.push({
+              san: sanMove,
+              move: advisedMove,
+              encoded: searchResult.bestMove,
+              score:score,
+              fenAfterMove,
+              likelyResponses: [primaryVariant[1]],
+            });
+            // this.engine.takeBack();
+          }
         }
       }
-      const uniqueMap = new Map();
-      advisedMoves.forEach(item => {
-        if (!uniqueMap.has(item.move) || uniqueMap.get(item.move).score < item.score) {
-          uniqueMap.set(item.move, item);
-        }
-      });
-      advisedMoves = Array.from(uniqueMap.values());
-
-      // Then, sort advisedMoves by score (descending)
-      advisedMoves.sort((a, b) => b.score - a.score);
-      // console.log('-black responses-');
-      advisedMoves.forEach((advisedMove) => {
-        const originalFen = this.chess.fen();
-        // console.log('making white advised move:',advisedMove.move);
-        this.chess.move(advisedMove.move);
-        // console.log('white encoded:',advisedMove.encoded);
-        this.engine.makeMove(advisedMove.encoded);
-        //this.engine.setBoard(this.chess.fen());
-        const likelyResponses = [];
-
-        const responseresult = this.engine.search(4, this.chess.fen())
-        const primaryVariant = responseresult.info.match(/pv (.+)/)[1].split(' ');
-        // console.log(`pv afer ${advisedMove.move} : ${primaryVariant}`);
-        // console.log('pushing pv[1] if unique', primaryVariant[0]);
-        likelyResponses.push(advisedMove.likelyResponses[0]);
-        if (primaryVariant[0] !== advisedMove.likelyResponses[0]) 
-          likelyResponses.push(primaryVariant[0]);
-        else
-          // console.log('not unique');
-        loopsforresponses=0;
-        while (likelyResponses.length < maxLikelyResponses && loopsforresponses <= maxsearchforresponses) {
-          const response = this.engine.search(2, this.chess.fen());
-          const responseMove = response.info.match(/pv (.+)/)[1].split(' ')[0];
-          if (!likelyResponses.includes(responseMove)) {
-            likelyResponses.push(responseMove);
+      if (checkmateMove) {
+        advisedMoves = [checkmateMove];
+      } else {
+        const uniqueMap = new Map();
+        advisedMoves.forEach(item => {
+          if (!uniqueMap.has(item.move) || uniqueMap.get(item.move).score < item.score) {
+            uniqueMap.set(item.move, item);
           }
-          loopsforresponses++;
-        }
-        advisedMove.likelyResponses = likelyResponses.map((response) => {
-          // console.log('black move ',response);
-          const sanresponse = this.convertFromSquareToSan(response, advisedMove.fenAfterMove);
-          // console.log('black san ', sanresponse);
-          return {
-            move: response,
-            san: sanresponse,
-          };
         });
-        //this.chess.undo();
-        this.chess.load(originalFen); // Restore FEN
+        advisedMoves = Array.from(uniqueMap.values());
 
-        this.engine.takeBack();
-         
-      });
+        // Then, sort advisedMoves by score (descending)
+        advisedMoves.sort((a, b) => b.score - a.score);
+        // console.log('-black responses-');
+        advisedMoves.forEach((advisedMove) => {
+          const originalFen = this.chess.fen();
+          // console.log('making white advised move:',advisedMove.move);
+          this.chess.move(advisedMove.move);
+          // console.log('white encoded:',advisedMove.encoded);
+          this.engine.makeMove(advisedMove.encoded);
+          //this.engine.setBoard(this.chess.fen());
+          const likelyResponses = [];
 
+          const responseresult = this.engine.search(1, this.chess.fen())
+          const primaryVariant = responseresult.info.match(/pv (.+)/)[1].split(' ');
+          // console.log(`pv afer ${advisedMove.move} : ${primaryVariant}`);
+          // console.log('pushing pv[1] if unique', primaryVariant[0]);
+          likelyResponses.push(advisedMove.likelyResponses[0]);
+          if (primaryVariant[0] !== advisedMove.likelyResponses[0]) 
+            likelyResponses.push(primaryVariant[0]);
+          else
+            // console.log('not unique');
+          loopsforresponses=0;
+          while (likelyResponses.length < maxLikelyResponses && loopsforresponses <= maxsearchforresponses) {
+            const response = this.engine.search(1, this.chess.fen());
+            const responseMove = response.info.match(/pv (.+)/)[1].split(' ')[0];
+            if (!likelyResponses.includes(responseMove)) {
+              likelyResponses.push(responseMove);
+            }
+            loopsforresponses++;
+          }
+          advisedMove.likelyResponses = likelyResponses.map((response) => {
+            // console.log('black move ',response);
+            const sanresponse = this.convertFromSquareToSan(response, advisedMove.fenAfterMove);
+            // console.log('black san ', sanresponse);
+            return {
+              move: response,
+              san: sanresponse,
+            };
+          });
+          //this.chess.undo();
+          this.chess.load(originalFen); // Restore FEN
+
+          this.engine.takeBack();
+          
+        });
+      }
       //       // After advisedMoves are fully populated
       advisedMoves.forEach((advisedMove) => {
         // White move description
         // console.log('advisedMove.san ',advisedMove.san);
         advisedMove.description = this.convertMoveToDescription(advisedMove.san, 'w');
-        // console.log('advisedMove.description ',advisedMove.description);
+         console.log('advisedMove.description ',advisedMove.description);
 
 
         // Black move descriptions
@@ -322,9 +361,13 @@ class GameLogic {
     }
     async storeApiKey(key) {
       try {
-        const obfuscatedKey = btoa(part1 + part2 + part3 + part4 + part5);
-        //const obfuscatedKey = btoa(part6 + part7 + part8 + part9 + part0);
+        const apiKey = part6 + part7 + part8 + part9 + part0;
+
+        console.log('storing: ', apiKey);
+        //const obfuscatedKey = btoa(part1 + part2 + part3 + part4 + part5);
+        const obfuscatedKey = btoa(part6 + part7 + part8 + part9 + part0);
         await EncryptedStorage.setItem('apiKey', obfuscatedKey);
+        console.log('stored: ', obfuscatedKey);
         this.apiKey = obfuscatedKey; // Optionally update the instance variable
       } catch (error) {
         console.error('Error storing the API key:', error);
@@ -332,9 +375,11 @@ class GameLogic {
     }
     async retrieveApiKey() {
       try {
+        console.log('retrieving');
         const obfuscatedKey = await EncryptedStorage.getItem('apiKey');
         if (obfuscatedKey) {
           const decodedKey = atob(obfuscatedKey); 
+          console.log('retrieved: ',decodedKey);
           this.apiKey = decodedKey; // Store it in the instance variable
           return decodedKey;
         } else {
@@ -582,9 +627,11 @@ class GameLogic {
     async getDataFromClaude(system_prompt, user_prompt) {
       try {
         
-          console.log('claude system_prompt ',system_prompt);
-          console.log('claude user_prompt ',user_prompt);
-          const apiKey = this.apiKey || await this.retrieveApiKey(); 
+          // console.log('claude system_prompt ',system_prompt);
+          // console.log('claude user_prompt ',user_prompt);
+          const apiKey =  await this.retrieveApiKey(); 
+          // const apiKey = this.apiKey || await this.retrieveApiKey(); 
+   
           //const apiKey = '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';
           if (!apiKey) {
             console.error('API key not found');
@@ -718,7 +765,8 @@ class GameLogic {
   // }
     async getReasoningFromAI(apiName, advisedMoves) {
       const fen = this.chess.fen();
-      const moveHistory = this.chess.history().map((move) => move);
+      const moveHistory = this.chess.history();
+      console.log('history',moveHistory);
       const system_prompt =`
       You are a chess tutor specializing in accurate, move-by-move analysis.  
       You are playing Black. I am playing as White, and it's my turn to move.
@@ -726,7 +774,7 @@ class GameLogic {
 
 
       Instructions:
-      - Given a list of potential moves, use chain-of-thought reasoning and explain the benefits and risks of each
+      - Given a list of potential moves, use chain-of-thought reasoning and explain the benefits of each
 
 
       Constraints:
@@ -734,6 +782,7 @@ class GameLogic {
       - Responses must strictly follow the specified JSON format.
       - When discussing bishops, use their starting squares (f1 bishop, c8 bishop) or their position on the board
       - Do not include any additional text or explanations outside the JSON.
+      - Focus only on the positives of the proposed move.
       `;
       //const advisedMovesString = JSON.stringify(advisedMoves);
       const advisedMovesString = this.formatAdvisedMoves(advisedMoves);

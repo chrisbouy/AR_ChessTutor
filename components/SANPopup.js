@@ -10,24 +10,33 @@ import {
   ScrollView,
 } from 'react-native';
 
-const SANPopup = ({ visible, description, onClose, isLoading, hasAIFeature, openSystemSubscriptionPage }) => {
+const SANPopup = ({
+  visible,
+  description,
+  onClose,
+  isLoading,
+  hasAIFeature,
+  reasoningType,
+  openSystemSubscriptionPage,
+}) => {
   if (!visible) return null;
 
   return (
     <Modal transparent visible={visible} animationType="fade">
-      
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.overlay}>
           <TouchableWithoutFeedback onPress={() => {}}>
             <View style={[styles.popupContainer, { marginBottom: 20 }]}>
-              {/* <ScrollView contentContainerStyle={styles.scrollViewContent}> */}
-                {hasAIFeature ? (
-                  description.split('\n').map((text, index) => (
-                    <Text key={index} style={styles.descriptionText}>
-                      {text}
-                    </Text>
-                  ))
-                ) : (
+              <ScrollView contentContainerStyle={styles.scrollViewContent}>
+                {/* Always show the description */}
+                {description.split('\n').map((text, index) => (
+                  <Text key={index} style={styles.descriptionText}>
+                    {text}
+                  </Text>
+                ))}
+
+                {/* Show subscription prompt for advised moves if AI is locked */}
+                {reasoningType === 'advisedMove' && !hasAIFeature && (
                   <View>
                     <Text style={styles.descriptionText}>
                       Subscribe to unlock detailed move analysis!
@@ -37,6 +46,7 @@ const SANPopup = ({ visible, description, onClose, isLoading, hasAIFeature, open
                     </TouchableOpacity>
                   </View>
                 )}
+
                 {isLoading && (
                   <ActivityIndicator
                     size="large"
@@ -44,7 +54,7 @@ const SANPopup = ({ visible, description, onClose, isLoading, hasAIFeature, open
                     style={styles.popupSpinner}
                   />
                 )}
-              {/* </ScrollView> */}
+              </ScrollView>
             </View>
           </TouchableWithoutFeedback>
         </View>
@@ -52,6 +62,8 @@ const SANPopup = ({ visible, description, onClose, isLoading, hasAIFeature, open
     </Modal>
   );
 };
+
+
 
 const styles = StyleSheet.create({
   overlay: {

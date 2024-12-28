@@ -76,19 +76,19 @@ const ChessTutorApp = () => {
       // Initialize the chess engine
       gameLogicRef.current.initializeEngine();
   
-      //          console.log('Checking subscription status');
-      // let hasSubscription = await checkSubscriptionStatus();
-      //              console.log('Checked subscription status');
+               console.log('Checking subscription status');
+      let hasSubscription = await checkSubscriptionStatus();
+                   console.log('Checked subscription status');
   
-      // setHasAIFeature(hasSubscription);
+      setHasAIFeature(hasSubscription);
 
-      // if (hasSubscription) {         
-      //   console.log('AI feature is enabled. storing key');
-      //   gameLogicRef.current.storeApiKey();
+      if (hasSubscription) {         
+        console.log('AI feature is enabled. storing key');
+        gameLogicRef.current.storeApiKey();
 
-      // } else {
+      } else {
         console.log('AI feature is disabled');
-    //  }
+      }
     };
   
     initializeApp();
@@ -381,18 +381,18 @@ const ChessTutorApp = () => {
           width: 20, // Smaller size for captured pieces
           height: 20,
           marginHorizontal: 2,
-          // shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
-          // shadowOpacity: 1,
-          // shadowRadius: 5,
-          // shadowOffset: { width: 0, height: 0 },
-          // elevation: 5, // Android equivalent of shadow
+          shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
+          shadowOpacity: 1,
+          shadowRadius: 5,
+          shadowOffset: { width: 0, height: 0 },
+          elevation: 5, // Android equivalent of shadow
         },
         glowEffect: {
-          // shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
-          // shadowOpacity: 1,
-          // shadowRadius: 5,
-          // shadowOffset: { width: 0, height: 0 },
-          // elevation: 5, // Android equivalent of shadow
+          shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
+          shadowOpacity: 1,
+          shadowRadius: 5,
+          shadowOffset: { width: 0, height: 0 },
+          elevation: 5, // Android equivalent of shadow
         },
         disabledText: {
           // color: 'gray', // Dim text color for disabled state

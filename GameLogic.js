@@ -39,7 +39,10 @@ class GameLogic {
       catch (error) {
         console.error('Failed to initialize the engine:', error);
       } 
-this.chess.load("8/5P2/8/8/8/8/8/4k2K w - - 0 1");
+      //midgame
+      // this.chess.load("r1bq1rk1/pppn1ppp/4pn2/3P4/2P2B2/2N2N2/PP3PPP/R2QKB1R w KQ - 1 9");
+      //end game
+ //this.chess.load("8/5P2/8/8/8/8/8/4k2K w - - 0 1");
     }
 
     getBoardState() {
@@ -289,7 +292,7 @@ this.chess.load("8/5P2/8/8/8/8/8/4k2K w - - 0 1");
           //this.engine.setBoard(this.chess.fen());
           const likelyResponses = [];
 
-          const responseresult = this.engine.search(1, this.chess.fen())
+          const responseresult = this.engine.search(4, this.chess.fen())
           const primaryVariant = responseresult.info.match(/pv (.+)/)[1].split(' ');
           // console.log(`pv afer ${advisedMove.move} : ${primaryVariant}`);
           // console.log('pushing pv[1] if unique', primaryVariant[0]);
@@ -555,7 +558,7 @@ this.chess.load("8/5P2/8/8/8/8/8/4k2K w - - 0 1");
   //         },
   //       ]
   // });
-  //       const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
+  //       const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
   //         method: 'POST',
   //         headers: { 'Content-Type': 'application/json' },
   //         body: JSON.stringify({
@@ -572,7 +575,7 @@ this.chess.load("8/5P2/8/8/8/8/8/4k2K w - - 0 1");
   //       if (data && data.candidates && data.candidates[0] && data.candidates[0].content){      // Extract the content from the response
   //         let responseText = data.candidates[0].content.parts[0].text; ;
   //         // Extract the sections from the response
-  //         const advice = this.extractSectionsFromAdvice(responseText); 
+  //         const advice = this.extractReasoningFromResponse(responseText); 
   //         console.log(`gemini response ${responseText}`);
   //         return advice;
   //       } else {
@@ -584,6 +587,30 @@ this.chess.load("8/5P2/8/8/8/8/8/4k2K w - - 0 1");
   //       return null;
   //     }
   //   }
+  //   async getAdviceFromGemini2(system_prompt, user_prompt) {
+  //     const combinedPrompt = `${system_prompt}\n\n${user_prompt}`;
+  //     console.log(combinedPrompt);
+  //     const { GoogleGenerativeAI } = require("@google/generative-ai");
+  //     const genAI = new GoogleGenerativeAI("AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE");
+  //     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+  //     const prompt = combinedPrompt;
+  //     const result = await model.generateContent(prompt);
+  //     console.log(result.response.text());
+
+  //       // Use regex to extract the JSON part
+  //     //   const jsonMatch = result.response.text().match(/\{[\s\S]*\}/);
+  //     //   const extractedJSON = '';
+  //     //   if (jsonMatch) {
+  //     //      extractedJSON = JSON.parse(jsonMatch[0]); // Parse the JSON part
+  //     //     console.log('Extracted JSON:', extractedJSON);
+  //     //   } else {
+  //     //     console.error('No JSON found in the response');
+  //     //   }
+
+  //     // const advice = this.extractReasoningFromResponse(extractedJSON); 
+  //     const advice = this.extractReasoningFromResponse(result.response.text()); 
+  //     return advice;
+  // }
   //   async getAdviceFromPerplexity(system_prompt, user_prompt) {
   //     const response = await fetch(`https://api.perplexity.ai/chat/completions`,{
   //     method: 'POST',
@@ -765,44 +792,44 @@ this.chess.load("8/5P2/8/8/8/8/8/4k2K w - - 0 1");
   // }
     async getReasoningFromAI(apiName, advisedMoves) {
       const fen = this.chess.fen();
-      const moveHistory = this.chess.history();
+      const moveHistory =this.chess.history().map((move) => move);
       console.log('history',moveHistory);
       const system_prompt =`
       You are a chess tutor specializing in accurate, move-by-move analysis.  
       You are playing Black. I am playing as White, and it's my turn to move.
-
-
-
-      Instructions:
-      - Given a list of potential moves, use chain-of-thought reasoning and explain the benefits of each
-
+      I am learning chess strategies and you are my teacher.
 
       Constraints:
       - Do not include move numbers, opening names, or acronyms.
       - Responses must strictly follow the specified JSON format.
-      - When discussing bishops, use their starting squares (f1 bishop, c8 bishop) or their position on the board
-      - Do not include any additional text or explanations outside the JSON.
-      - Focus only on the positives of the proposed move.
+      - When discussing bishops, use their starting squares (f1 bishop, c8 bishop) or their position on the board.
+      - When discussing castling, do not specify kingside or queenside.  
+      - It is imperative that you do not include any additional text or explanations outside the required JSON.
+      - Focus moreso on the positives of the proposed move.
       `;
       //const advisedMovesString = JSON.stringify(advisedMoves);
       const advisedMovesString = this.formatAdvisedMoves(advisedMoves);
-      //  console.log('getreasoningfromai.advisedMovesString ', advisedMovesString);
+        console.log('getreasoningfromai.advisedMovesString ', advisedMovesString);
       const user_prompt = `
         - Current FEN: 
         ${fen}
+
         - Current game move history: 
-        ${moveHistory}
+        ${moveHistory.join(', ')}
+
         - Current board setup: 
-        ${this.chess.ascii()}        
+${this.chess.ascii()} 
+
         - Advised Moves:
         ${advisedMovesString}
+
         - Respond in the following JSON format:
         {
-          "positionAnalysis": "A 20 word analysis of the game.",
+          "positionAnalysis": "An insightful 30 word analysis of the game.",
           "reasoning": [
-            "Explanation for move 1.",
-            "Explanation for move 2.",
-            "Explanation for move 3."
+            "This is the strongest move produced by the chess engine.  Explain the benefits and risks",
+            "This is the 2nd strongest move produced by the chess engine.  Explain the benefits and risks",
+            "This is the 3rd strongest move produced by the chess engine.  Explain the benefits and risks"
               ]
         }
     `;
@@ -811,8 +838,11 @@ this.chess.load("8/5P2/8/8/8/8/8/4k2K w - - 0 1");
           return await this.getDataFromGPT(system_prompt, user_prompt);
         case 'GPTo1':
           return await this.getDataFromGPTo1(system_prompt, user_prompt);          
-      //   case 'Gemini':
-      //     return await this.getAdviceFromGemini(system_prompt, user_prompt);
+        case 'Gemini':
+          return await this.getAdviceFromGemini(system_prompt, user_prompt);
+          case 'Gemini2':
+            return await this.getAdviceFromGemini2(system_prompt, user_prompt);
+  
       //   case 'Perplexity':
       //     return await this.getAdviceFromPerplexity(system_prompt, user_prompt);   
         case 'Claude':
@@ -842,7 +872,7 @@ this.chess.load("8/5P2/8/8/8/8/8/4k2K w - - 0 1");
           const response = move.likelyResponses[j];
           movesDescription += `${response.san}`;
           if (j < Math.min(move.likelyResponses.length, 2) - 1) {
-            movesDescription += 'or '; // Add a comma between responses
+            movesDescription += ' or '; // Add a comma between responses
           }
         }
     

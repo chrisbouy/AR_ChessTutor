@@ -1,11 +1,13 @@
-import RNIap, {
-    purchaseUpdatedListener,
-    purchaseErrorListener,
-    getAvailablePurchases,
-    requestSubscription,
-    finishTransaction,
-  } from 'react-native-iap';
-  
+  import RNIap, {
+      purchaseUpdatedListener,
+      purchaseErrorListener,
+      getAvailablePurchases,
+      requestSubscription,
+      finishTransaction,
+    } from 'react-native-iap';
+
+   import Purchases from 'react-native-purchases';
+   
   const productIds = {
     baseApp: 'chess_tutor_base',
     monthlySub: 'chess_tutor_ai_monthly',
@@ -46,8 +48,9 @@ import RNIap, {
   
   // Example mock function to simulate backend/storage subscription fetching
   const fetchSubscriptionFromServerOrStorage = async () => {
-    // Replace with actual backend API or local storage call
-    return true; // Simulate an active subscription
+    const purchaserInfo = await Purchases.getPurchaserInfo();
+    const isSubscribed = purchaserInfo.entitlements.active["entl1720eb7216"] !== undefined;
+    return isSubscribed;
   };
   
   // Example mock function to simulate subscription initiation

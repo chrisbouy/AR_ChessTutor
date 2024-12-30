@@ -8,7 +8,10 @@ import {
   TouchableWithoutFeedback,
   ActivityIndicator, 
   ScrollView,
+  Alert,
 } from 'react-native';
+
+import Purchases from 'react-native-purchases';
 
 const SANPopup = ({
   visible,
@@ -17,8 +20,43 @@ const SANPopup = ({
   isLoading,
   hasAIFeature,
   reasoningType,
-  openSystemSubscriptionPage,
 }) => {
+
+  const handleSubscribe = async () => {
+    try {
+      const offerings = await Purchases.getOfferings();
+      if (!offerings.current) {
+        Alert.alert('Error', 'No subscription offerings available');
+        return;
+      }
+
+      const options = offerings.current.availablePackages.map(pkg => ({
+        text: `${pkg.product.title} - ${pkg.product.priceString}`,
+        onPress: async () => {
+          try {
+            const { customerInfo } = await Purchases.purchasePackage(pkg);
+            if (customerInfo.activeSubscriptions.length > 0) {
+              Alert.alert('Success', 'Thank you for subscribing! You now have access to AI-powered analysis.');
+              onClose();
+            }
+          } catch (e) {
+            if (!e.userCancelled) {
+              Alert.alert('Error', 'Unable to complete purchase. Please try again.');
+            }
+          }
+        }
+      }));
+
+      Alert.alert(
+        'Choose a Subscription Plan',
+        'Select a plan that works best for you:',
+        [...options, { text: 'Cancel', style: 'cancel' }]
+      );
+    } catch (error) {
+      console.error('Purchase error:', error);
+      Alert.alert('Error', 'Unable to load subscription options. Please try again.');
+    }
+  };
   if (!visible) return null;
 
   return (
@@ -41,8 +79,11 @@ const SANPopup = ({
                     <Text style={styles.descriptionText}>
                       Subscribe to unlock detailed move analysis!
                     </Text>
-                    <TouchableOpacity onPress={openSystemSubscriptionPage}>
-                      <Text style={styles.subscribeButton}>Subscribe Now</Text>
+                    <TouchableOpacity 
+                      style={styles.subscribeButton}
+                      onPress={handleSubscribe}
+                    >
+                      <Text style={styles.subscribeButtonText}>Choose Subscription Plan</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -66,6 +107,26 @@ const SANPopup = ({
 
 
 const styles = StyleSheet.create({
+  subscribeButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 25,
+    marginTop: 15,
+    marginBottom: 10,
+    alignSelf: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  subscribeButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
   overlay: {
     flex: 1,
     justifyContent: 'flex-end', 

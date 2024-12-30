@@ -1,62 +1,38 @@
-  import RNIap, {
-      purchaseUpdatedListener,
-      purchaseErrorListener,
-      getAvailablePurchases,
-      requestSubscription,
-      finishTransaction,
-    } from 'react-native-iap';
+import Purchases from 'react-native-purchases';
+import { Platform } from 'react-native';
 
-   import Purchases from 'react-native-purchases';
-   
-  const productIds = {
-    baseApp: 'chess_tutor_base',
-    monthlySub: 'chess_tutor_ai_monthly',
-    sixMonthSub: 'chess_tutor_ai_six_month',
-    yearlySub: 'chess_tutor_ai_yearly',
-  };
-  
-  let hasAIFeature = true;
+const REVENUECAT_API_KEY = {
+  ios: 'appl_ZYZlsZPIzNRKrAIugabnNamcJty',
+  android: 'YOUR_ANDROID_KEY'
+};
 
-  export const checkSubscriptionStatus = async () => {
-    try {
-      // Fetch the subscription status from your backend or storage
-      // Simulate with localStorage, AsyncStorage, or a backend call
-      const status = await fetchSubscriptionFromServerOrStorage();
-      hasAIFeature = status;
-      return status;
-    } catch (error) {
-      console.error('Error checking subscription status:', error);
-      hasAIFeature = false;
-      return false;
-    }
-  };
-  
-  export const subscribeToAI = async (plan) => {
-    try {
-      // Handle the subscription process (e.g., via Stripe, Apple Pay, etc.)
-      const result = await initiateSubscription(plan);
-      hasAIFeature = result.success;
-      return result.success;
-    } catch (error) {
-      console.error('Error during subscription:', error);
-      return false;
-    }
-  };
-  
-  // Export the subscription flag
-  export const getHasAIFeature = () => hasAIFeature;
-  
-  // Example mock function to simulate backend/storage subscription fetching
-  const fetchSubscriptionFromServerOrStorage = async () => {
-    const purchaserInfo = await Purchases.getPurchaserInfo();
-    const isSubscribed = purchaserInfo.entitlements.active["entl1720eb7216"] !== undefined;
-    return isSubscribed;
-  };
-  
-  // Example mock function to simulate subscription initiation
-  const initiateSubscription = async (plan) => {
-    // Replace with your payment gateway logic
-    console.log(`Subscribing to the ${plan} plan.`);
-    return { success: true }; // Simulate successful subscription
-  };
-  
+export const initializePurchases = async () => {
+  try {
+    const platform = Platform.OS;
+    await Purchases.configure({ apiKey: REVENUECAT_API_KEY[platform] });
+    console.log('RevenueCat initialized successfully');
+  } catch (error) {
+    console.error('Error initializing RevenueCat:', error);
+  }
+};
+
+export const checkSubscriptionStatus = async () => {
+  try {
+    const customerInfo = await Purchases.getCustomerInfo();
+    // Check if user has active subscription
+    return customerInfo.activeSubscriptions.length > 0;
+  } catch (error) {
+    console.error('Error checking subscription status:', error);
+    return false;
+  }
+};
+
+export const restorePurchases = async () => {
+  try {
+    const customerInfo = await Purchases.restorePurchases();
+    return customerInfo.activeSubscriptions.length > 0;
+  } catch (error) {
+    console.error('Error restoring purchases:', error);
+    throw error;
+  }
+};

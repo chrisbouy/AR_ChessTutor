@@ -5,7 +5,12 @@ platform :ios, '14.0'
 target 'ChessAscend' do
   config = use_native_modules!
 
-  use_react_native!(
+  # Ensure Hermes generates debug symbols
+use_react_native!(
+  :hermes_enabled => true,
+  :fabric_enabled => false,
+  # Ensures Hermes is built in Release mode and includes debugging symbols
+  :production => true,
     :path => config[:reactNativePath],
     # An absolute path to your application root.
     :app_path => "#{Pod::Config.instance.installation_root}/.."

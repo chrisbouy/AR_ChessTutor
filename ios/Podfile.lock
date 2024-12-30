@@ -8,6 +8,8 @@ PODS:
     - hermes-engine/Pre-built (= 0.75.2)
   - hermes-engine/Pre-built (0.75.2)
   - JitsiWebRTC (124.0.1)
+  - PurchasesHybridCommon (13.14.0):
+    - RevenueCat (= 5.14.0)
   - RCT-Folly (2024.01.01.00):
     - boost
     - DoubleConversion
@@ -1528,6 +1530,9 @@ PODS:
     - React-logger (= 0.75.2)
     - React-perflogger (= 0.75.2)
     - React-utils (= 0.75.2)
+  - RevenueCat (5.14.0)
+  - RNCAsyncStorage (1.24.0):
+    - React-Core
   - RNCMaskedView (0.1.11):
     - React
   - RNGestureHandler (2.20.1):
@@ -1554,6 +1559,9 @@ PODS:
   - RNIap (12.15.7):
     - React-Core
   - RNPermissions (4.1.5):
+    - React-Core
+  - RNPurchases (8.5.0):
+    - PurchasesHybridCommon (= 13.14.0)
     - React-Core
   - RNReanimated (3.16.1):
     - DoubleConversion
@@ -1759,10 +1767,12 @@ DEPENDENCIES:
   - React-utils (from `../node_modules/react-native/ReactCommon/react/utils`)
   - ReactCodegen (from `build/generated/ios`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
+  - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - "RNCMaskedView (from `../node_modules/@react-native-community/masked-view`)"
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - RNIap (from `../node_modules/react-native-iap`)
   - RNPermissions (from `../node_modules/react-native-permissions`)
+  - RNPurchases (from `../node_modules/react-native-purchases`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSVG (from `../node_modules/react-native-svg`)
@@ -1772,6 +1782,8 @@ DEPENDENCIES:
 SPEC REPOS:
   trunk:
     - JitsiWebRTC
+    - PurchasesHybridCommon
+    - RevenueCat
     - SocketRocket
 
 EXTERNAL SOURCES:
@@ -1908,6 +1920,8 @@ EXTERNAL SOURCES:
     :path: build/generated/ios
   ReactCommon:
     :path: "../node_modules/react-native/ReactCommon"
+  RNCAsyncStorage:
+    :path: "../node_modules/@react-native-async-storage/async-storage"
   RNCMaskedView:
     :path: "../node_modules/@react-native-community/masked-view"
   RNGestureHandler:
@@ -1916,6 +1930,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-iap"
   RNPermissions:
     :path: "../node_modules/react-native-permissions"
+  RNPurchases:
+    :path: "../node_modules/react-native-purchases"
   RNReanimated:
     :path: "../node_modules/react-native-reanimated"
   RNScreens:
@@ -1935,6 +1951,7 @@ SPEC CHECKSUMS:
   glog: 69ef571f3de08433d766d614c73a9838a06bf7eb
   hermes-engine: 3b6e0717ca847e2fc90a201e59db36caf04dee88
   JitsiWebRTC: d0ae5fd6a81e771bfd82c2ee6c6bb542ebd65ee8
+  PurchasesHybridCommon: ea662e5a551e6fc79c1eb17feb0478c01c59f3e6
   RCT-Folly: 4464f4d875961fce86008d45f4ecf6cef6de0740
   RCTDeprecation: 34cbf122b623037ea9facad2e92e53434c5c7422
   RCTRequired: 24c446d7bcd0f517d516b6265d8df04dc3eb1219
@@ -1995,10 +2012,13 @@ SPEC CHECKSUMS:
   React-utils: 81a715d9c0a2a49047e77a86f3a2247408540deb
   ReactCodegen: 60973d382704c793c605b9be0fc7f31cb279442f
   ReactCommon: 6ef348087d250257c44c0204461c03f036650e9b
+  RevenueCat: 34f4147c8d26d2f3c691be4e3c9f033698e557f2
+  RNCAsyncStorage: ec53e44dc3e75b44aa2a9f37618a49c3bc080a7a
   RNCMaskedView: 0e1bc4bfa8365eba5fbbb71e07fbdc0555249489
   RNGestureHandler: 1b7c5ed637e02f6898d08bffb701d378be5e091d
   RNIap: f3ca6e7597afccb2c1631de97d88f2e33b10dafd
   RNPermissions: 294531ede5a64d1528463e88fffef05675842042
+  RNPurchases: a99a9d9139c977811e5db73178ea21d8c12f11ac
   RNReanimated: f42a5044d121d68e91680caacb0293f4274228eb
   RNScreens: 19719a9c326e925498ac3b2d35c4e50fe87afc06
   RNSVG: 7ff26379b2d1871b8571e6f9bc9630de6baf9bdf
@@ -2006,6 +2026,6 @@ SPEC CHECKSUMS:
   SocketRocket: abac6f5de4d4d62d24e11868d7a2f427e0ef940d
   Yoga: a1d7895431387402a674fd0d1c04ec85e87909b8
 
-PODFILE CHECKSUM: b3b079e1fb40bebfb48f6dfcfe284c3813b51719
+PODFILE CHECKSUM: de19043b8447e4ba03afb15fbb0cd644de9d1875
 
 COCOAPODS: 1.16.2

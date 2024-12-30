@@ -18,7 +18,8 @@ import ChessBoard2D from './ChessBoard2D';
 import NavigationArrows from './NavigationArrows.js';
 import GameLogic from '../GameLogic';
 import SANPopup from './SANPopup.js';
-import { checkSubscriptionStatus, subscribeToAI } from '../services/Subscriptions';
+import { checkSubscriptionStatus, initializePurchases } from '../services/Subscriptions';
+import Purchases from 'react-native-purchases';
 
 const ChessTutorApp = () => {
   const gameLogicRef = useRef(new GameLogic);
@@ -72,26 +73,61 @@ const ChessTutorApp = () => {
   const [recentMoves, setRecentMoves] = useState([]);
  
   useEffect(() => {
+    let mounted = true;
     const initializeApp = async () => {
-      // Initialize the chess engine
-      gameLogicRef.current.initializeEngine();
-  
-               console.log('Checking subscription status');
-      let hasSubscription = await checkSubscriptionStatus();
-                   console.log('Checked subscription status');
-  
-      setHasAIFeature(hasSubscription);
+      try {
+        // Initialize chess engine first since it doesn't depend on native modules
+        gameLogicRef.current.initializeEngine();
+        
+        // Initialize purchases with retries
+        let cleanupPurchases;
+        let retries = 3;
+        while (retries > 0) {
+          try {
+            cleanupPurchases = await initializePurchases();
+            
+            // Only check subscription if purchases initialized successfully
+            if (mounted) {
+              const hasSubscription = await checkSubscriptionStatus();
+              setHasAIFeature(hasSubscription);
+              
+              if (hasSubscription) {
+                gameLogicRef.current.storeApiKey();
+              }
+            }
+            break; // Success - exit retry loop
+          } catch (purchaseError) {
+            retries--;
+            if (retries === 0) {
+              console.warn('Purchases initialization failed after retries:', purchaseError);
+              // Continue without purchase features
+              if (mounted) {
+                setHasAIFeature(false);
+              }
+            } else {
+              // Wait before retrying
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          }
+        }
 
-      if (hasSubscription) {         
-        console.log('AI feature is enabled. storing key');
-        gameLogicRef.current.storeApiKey();
-
-      } else {
-        console.log('AI feature is disabled');
+        return () => {
+          mounted = false;
+          cleanupPurchases?.();
+        };
+      } catch (error) {
+        console.error('Error during app initialization:', error);
+        if (mounted) {
+          setHasAIFeature(false);
+        }
       }
     };
-  
-    initializeApp();
+
+    const cleanup = initializeApp();
+    return () => {
+      mounted = false;
+      cleanup.then(cleanupFn => cleanupFn?.());
+    };
   }, []);
   
   useEffect(() => {
@@ -410,24 +446,6 @@ const ChessTutorApp = () => {
       }),
     [windowWidth]
   );
-
-  const openSystemSubscriptionPage = () => {
-    const url = Platform.OS === 'ios'
-      ? 'https://apps.apple.com/account/subscriptions'
-      : 'https://play.google.com/store/account/subscriptions';
-      Linking.openURL(url).catch((err) =>
-        console.error('Failed to open subscription management:', err)
-      );
-  };
-
-  const handleInAppSubscription = async (plan) => {
-    const subscribed = await subscribeToAI(plan); // 'monthly', 'yearly', etc.
-    if (subscribed) {
-      console.log('Subscription activated');
-    } else {
-      console.log('Subscription failed');
-    }
-  };
 
 
 
@@ -969,11 +987,8 @@ const ChessTutorApp = () => {
                       ) : (
                         <View>
                           <Text style={styles.noDataText}>
-                            Subscribe to unlock AI-powered analysis and reasoning!
+                            AI-powered analysis requires a subscription.
                           </Text>
-                          <TouchableOpacity onPress={openSystemSubscriptionPage}>
-                            <Text style={styles.subscribeButton}>Subscribe Now</Text>
-                          </TouchableOpacity>
                         </View>
                       )}
                   </Animated.View>
@@ -1003,8 +1018,68 @@ const ChessTutorApp = () => {
         }}
         isLoading={isPopupLoading}
         hasAIFeature={hasAIFeature}
-        openSystemSubscriptionPage={openSystemSubscriptionPage}
         />
+        {!hasAIFeature && (
+          <TouchableOpacity 
+            style={{
+              position: 'absolute',
+              bottom: 20,
+              alignSelf: 'center',
+              backgroundColor: '#4CAF50',
+              paddingHorizontal: 20,
+              paddingVertical: 10,
+              borderRadius: 25,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              elevation: 5,
+            }}
+            onPress={async () => {
+              try {
+                const offerings = await Purchases.getOfferings();
+                if (!offerings.current) {
+                  Alert.alert('Error', 'No subscription offerings available');
+                  return;
+                }
+
+                const options = offerings.current.availablePackages.map(pkg => ({
+                  text: `${pkg.product.title} - ${pkg.product.priceString}`,
+                  onPress: async () => {
+                    try {
+                      const { customerInfo } = await Purchases.purchasePackage(pkg);
+                      if (customerInfo.activeSubscriptions.length > 0) {
+                        setHasAIFeature(true);
+                        Alert.alert('Success', 'Thank you for subscribing! You now have access to AI-powered analysis.');
+                      }
+                    } catch (e) {
+                      if (!e.userCancelled) {
+                        Alert.alert('Error', 'Unable to complete purchase. Please try again.');
+                      }
+                    }
+                  }
+                }));
+
+                Alert.alert(
+                  'Choose a Subscription Plan',
+                  'Select a plan that works best for you:',
+                  [...options, { text: 'Cancel', style: 'cancel' }]
+                );
+              } catch (error) {
+                console.error('Purchase error:', error);
+                Alert.alert('Error', 'Unable to load subscription options. Please try again.');
+              }
+            }}
+          >
+            <Text style={{
+              color: 'white',
+              fontSize: 16,
+              fontWeight: 'bold',
+            }}>
+              Subscribe to Unlock AI Analysis
+            </Text>
+          </TouchableOpacity>
+        )}
     </SafeAreaView>
   );
   

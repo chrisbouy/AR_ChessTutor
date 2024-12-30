@@ -40,7 +40,7 @@ class GameLogic {
         console.error('Failed to initialize the engine:', error);
       } 
       //midgame
-      // this.chess.load("r1bq1rk1/pppn1ppp/4pn2/3P4/2P2B2/2N2N2/PP3PPP/R2QKB1R w KQ - 1 9");
+       this.chess.load("r1bq1rk1/pppn1ppp/4pn2/3P4/2P2B2/2N2N2/PP3PPP/R2QKB1R w KQ - 1 9");
       //end game
  //this.chess.load("8/5P2/8/8/8/8/8/4k2K w - - 0 1");
     }
@@ -173,7 +173,7 @@ class GameLogic {
                 status: this.getGameStatus(),
             };
         } else {
-             let searchResult = this.engine.search(1, this.chess.fen()); 
+             let searchResult = this.engine.search(4, this.chess.fen()); 
              this.engine.makeMove(searchResult.bestMove);
             const decodedbestmove = this.decodeMove(searchResult.bestMove);
             addPromotionIfNeeded(decodedbestmove);
@@ -417,7 +417,7 @@ class GameLogic {
             Authorization:`Bearer ${'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'}`
           },
           body: JSON.stringify({
-            model: 'gpt-4o',
+            model: 'o1-preview-2024-09-12',
             //model: 'ft:gpt-4o-mini-2024-07-18:personal:second:AThf4LoS',
             messages: [
               {
@@ -429,7 +429,7 @@ class GameLogic {
                 content: user_prompt,
               },
             ],
-            temperature: 0,
+            temperature: 1,
             max_tokens: 500,
             top_p: 1,
             frequency_penalty: 0,
@@ -443,7 +443,7 @@ class GameLogic {
         }      
         const responseText = jsonResponse.choices[0].message.content;
         const advice = this.extractReasoningFromResponse(responseText);
-        //  console.log(`getDataFromGpt.advice ${JSON.stringify(advice,null,2)}`)
+         console.log(`getDataFromGpt.advice ${JSON.stringify(advice,null,2)}`)
         return advice;
       } catch (error) {
         console.log('Error fetching analysis from AI:', error);
@@ -494,163 +494,163 @@ class GameLogic {
         return null;
       }
     }    
-  //   async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
+    async getAdviceFromGPTinstruct( user_prompt, system_prompt) {
 
-  //           // Combine system_prompt and user_prompt
-  //           const combinedPrompt = `${system_prompt}\n\n${user_prompt}`;
+            // Combine system_prompt and user_prompt
+            const combinedPrompt = `${system_prompt}\n\n${user_prompt}`;
 
-  //     const apiKey = this.apiKey || await this.retrieveApiKey(); 
-  //     if (!apiKey) {
-  //       console.error('API key not found');
-  //       return;
-  //     }
-  //     const url = "https://api.openai.com/v1/completions";
-  //     const headers = {
-  //       "Content-Type": "application/json",
-  //       "Authorization": `Bearer ${apiKey}`,
-  //     };
-  //     const data = {
-  //       model: 'gpt-3.5-turbo-instruct',
-  //       prompt: combinedPrompt,
-  //       temperature: 0.1,
-  //       max_tokens: 750,
-  //     };
+      const apiKey = this.apiKey || await this.retrieveApiKey(); 
+      if (!apiKey) {
+        console.error('API key not found');
+        return;
+      }
+      const url = "https://api.openai.com/v1/completions";
+      const headers = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      };
+      const data = {
+        model: 'go1-preview-2024-09-12',
+        prompt: combinedPrompt,
+        temperature: 0.1,
+        max_tokens: 750,
+      };
 
-  //     try {
-  //       const response = await fetch(url, {
-  //         method: 'POST',
-  //         headers: headers,
-  //         body: JSON.stringify(data),
-  //       });
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify(data),
+        });
 
-  //       const result = await response.json();
-  //       console.log(result);
-  //       if (response.ok) {
-  //         const gptResponseText = result.choices[0].text;
-  //         const gptResponse = JSON.parse(gptResponseText);
-  //         return gptResponse;
-  //       } else {
-  //         console.error("Error:", result);
-  //         Alert.alert("Error", "Failed to fetch data from OpenAI API");
-  //         return null;
-  //       }
-  //     } catch (error) {
-  //       console.error("Error fetching data from OpenAI API:", error);
-  //       Alert.alert("Error", "An error occurred while trying to fetch data from OpenAI API.");
-  //       return null;
-  //     }
+        const result = await response.json();
+        console.log(result);
+        if (response.ok) {
+          const gptResponseText = result.choices[0].text;
+          const gptResponse = JSON.parse(gptResponseText);
+          return gptResponse;
+        } else {
+          console.error("Error:", result);
+          Alert.alert("Error", "Failed to fetch data from OpenAI API");
+          return null;
+        }
+      } catch (error) {
+        console.error("Error fetching data from OpenAI API:", error);
+        Alert.alert("Error", "An error occurred while trying to fetch data from OpenAI API.");
+        return null;
+      }
       
-  //   }
-  //   async getAdviceFromGemini(system_prompt, user_prompt) {
-  //       // Combine system_prompt and user_prompt
-  //   const combinedPrompt = `${system_prompt}\n\n${user_prompt}`;
+    }
+    async getAdviceFromGemini(system_prompt, user_prompt) {
+        // Combine system_prompt and user_prompt
+    const combinedPrompt = `${system_prompt}\n\n${user_prompt}`;
 
-  //     try {
-  //       console.log('Request Headers:', {
-  //         'Content-Type': 'application/json',
-  //     });
-  //     // Log the request body
-  //     console.log('Request Body:', {
-  //       "contents": [
-  //         {
-  //           "role": "user",
-  //           "parts": [{"text": combinedPrompt}]
-  //         },
-  //       ]
-  // });
-  //       const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
-  //         method: 'POST',
-  //         headers: { 'Content-Type': 'application/json' },
-  //         body: JSON.stringify({
-  //           "contents": [
-  //             {
-  //               "role": "user",
-  //               "parts": [{"text": system_prompt + user_prompt}]
-  //             },
-  //           ]
-  //         }),
-  //       });
-  //       const data = await response.json();
+      try {
+        console.log('Request Headers:', {
+          'Content-Type': 'application/json',
+      });
+      // Log the request body
+      console.log('Request Body:', {
+        "contents": [
+          {
+            "role": "user",
+            "parts": [{"text": combinedPrompt}]
+          },
+        ]
+  });
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            "contents": [
+              {
+                "role": "user",
+                "parts": [{"text": system_prompt + user_prompt}]
+              },
+            ]
+          }),
+        });
+        const data = await response.json();
       
-  //       if (data && data.candidates && data.candidates[0] && data.candidates[0].content){      // Extract the content from the response
-  //         let responseText = data.candidates[0].content.parts[0].text; ;
-  //         // Extract the sections from the response
-  //         const advice = this.extractReasoningFromResponse(responseText); 
-  //         console.log(`gemini response ${responseText}`);
-  //         return advice;
-  //       } else {
-  //         console.log('No candidates found in Gemini API response.');
-  //         return null;
-  //       }
-  //     } catch (error) {
-  //       console.log('Error fetching analysis from Gemini:', error);
-  //       return null;
-  //     }
-  //   }
-  //   async getAdviceFromGemini2(system_prompt, user_prompt) {
-  //     const combinedPrompt = `${system_prompt}\n\n${user_prompt}`;
-  //     console.log(combinedPrompt);
-  //     const { GoogleGenerativeAI } = require("@google/generative-ai");
-  //     const genAI = new GoogleGenerativeAI("AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE");
-  //     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-  //     const prompt = combinedPrompt;
-  //     const result = await model.generateContent(prompt);
-  //     console.log(result.response.text());
+        if (data && data.candidates && data.candidates[0] && data.candidates[0].content){      // Extract the content from the response
+          let responseText = data.candidates[0].content.parts[0].text; ;
+          // Extract the sections from the response
+          const advice = this.extractReasoningFromResponse(responseText); 
+          console.log(`gemini response ${responseText}`);
+          return advice;
+        } else {
+          console.log('No candidates found in Gemini API response.');
+          return null;
+        }
+      } catch (error) {
+        console.log('Error fetching analysis from Gemini:', error);
+        return null;
+      }
+    }
+    async getAdviceFromGemini2(system_prompt, user_prompt) {
+      const combinedPrompt = `${system_prompt}\n\n${user_prompt}`;
+      console.log(combinedPrompt);
+      const { GoogleGenerativeAI } = require("@google/generative-ai");
+      const genAI = new GoogleGenerativeAI("AIzaSyAWX9g3uxs3A2FO7P894pahriu4LLSpcRE");
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+      const prompt = combinedPrompt;
+      const result = await model.generateContent(prompt);
+      console.log(result.response.text());
 
-  //       // Use regex to extract the JSON part
-  //     //   const jsonMatch = result.response.text().match(/\{[\s\S]*\}/);
-  //     //   const extractedJSON = '';
-  //     //   if (jsonMatch) {
-  //     //      extractedJSON = JSON.parse(jsonMatch[0]); // Parse the JSON part
-  //     //     console.log('Extracted JSON:', extractedJSON);
-  //     //   } else {
-  //     //     console.error('No JSON found in the response');
-  //     //   }
+        // Use regex to extract the JSON part
+      //   const jsonMatch = result.response.text().match(/\{[\s\S]*\}/);
+      //   const extractedJSON = '';
+      //   if (jsonMatch) {
+      //      extractedJSON = JSON.parse(jsonMatch[0]); // Parse the JSON part
+      //     console.log('Extracted JSON:', extractedJSON);
+      //   } else {
+      //     console.error('No JSON found in the response');
+      //   }
 
-  //     // const advice = this.extractReasoningFromResponse(extractedJSON); 
-  //     const advice = this.extractReasoningFromResponse(result.response.text()); 
-  //     return advice;
-  // }
-  //   async getAdviceFromPerplexity(system_prompt, user_prompt) {
-  //     const response = await fetch(`https://api.perplexity.ai/chat/completions`,{
-  //     method: 'POST',
-  //     headers: {Authorization: 'Bearer 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', 
-  //                               'Content-Type': 'application/json'},
-  //     body: JSON.stringify({
-  //       model:"llama-3.1-sonar-huge-128k-online",
-  //       messages:[
-  //             {role:"system",
-  //               content:system_prompt
-  //             },
-  //             { role:"user",
-  //               content: user_prompt
-  //             }
-  //       ],
-  //       max_tokens:"1000",
-  //       temperature:0,
-  //       top_p:0.8,
-  //       return_citations:false,
-  //       search_domain_filter:["https://www.chess.com"],
-  //       return_images:false,
-  //       return_related_questions:false,
-  //       //search_recency_filter:"month",
-  //       top_k:0,
-  //       stream:false,
-  //       presence_penalty:0,
-  //       frequency_penalty:0.5
-  //     })
-  //     })
-  //     data = await response.json();
-  //     console.log(`perplexity response ${data}`);
-  //     // Extract the content from the response
-  //     if (data && data.choices && data.choices[0] && data.choices[0].message) {
-  //       let explanation = data.choices[0].message.content; // Adjust this depending on the exact content structure
-  //       // const responseText = jsonResponse.choices[0].message.content;
-  //       //  console.log(`explanation: ${explanation}`)
-  //       const advice= this.extractSectionsFromAdvice(explanation);
-  //       return advice;
-  //     }
-  //   }
+      // const advice = this.extractReasoningFromResponse(extractedJSON); 
+      const advice = this.extractReasoningFromResponse(result.response.text()); 
+      return advice;
+  }
+    async getAdviceFromPerplexity(system_prompt, user_prompt) {
+      const response = await fetch(`https://api.perplexity.ai/chat/completions`,{
+      method: 'POST',
+      headers: {Authorization: 'Bearer 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', 
+                                'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        model:"llama-3.1-sonar-large-128k-online",
+        messages:[
+              {role:"system",
+                content:system_prompt
+              },
+              { role:"user",
+                content: user_prompt
+              }
+        ],
+        max_tokens:"200",
+        temperature:1,
+        top_p:1,
+        return_citations:false,
+        search_domain_filter:["https://www.chess.com"],
+        return_images:false,
+        return_related_questions:false,
+        //search_recency_filter:"month",
+        top_k:0,
+        stream:false,
+        presence_penalty:0,
+        frequency_penalty:0.5
+      })
+      })
+      data = await response.json();
+      console.log(`perplexity response ${JSON.stringify(data)}`);
+      // Extract the content from the response
+      if (data && data.choices && data.choices[0] && data.choices[0].message) {
+        let explanation = data.choices[0].message.content; // Adjust this depending on the exact content structure
+        // const responseText = jsonResponse.choices[0].message.content;
+          console.log(`explanation: ${explanation}`)
+        const advice= this.extractReasoningFromResponse(explanation);
+        return advice;
+      }
+    }
     async getDataFromClaude(system_prompt, user_prompt) {
       try {
         
@@ -702,94 +702,84 @@ class GameLogic {
           return null;
       }
     }
-  //   async getAdviceFromClaude_stream(system_prompt, user_prompt, options = {}) {
-  //     try {
-  //       const apiKey = this.apiKey || await this.retrieveApiKey();
-  //       if (!apiKey) {
-  //         console.error('API key not found');
-  //         return;
-  //       }
+    async getAdviceFromClaude_stream(system_prompt, user_prompt) {
+      console.log('claude stream starting');
+      try {
+        const apiKey = await this.retrieveApiKey();
+        if (!apiKey) {
+          console.error('API key not found');
+          return;
+        }
 
-  //       console.log('Making request to Claude API...');
-  //       const response = await fetch('https://api.anthropic.com/v1/messages', {
-  //         method: 'POST',
-  //         headers: 
-  //         {
-  //           'Content-Type': 'application/json',
-  //           'anthropic-version': '2023-06-01',
-  //           'x-api-key': apiKey,
-  //           'Accept': 'text/event-stream',
-  //           'anthropic-beta': 'prompt-caching-2024-07-31',
-  //           // 'Connection': 'keep-alive'
-  //         },
+        console.log('Making request to Claude API...');
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'anthropic-version': '2023-06-01',
+            'x-api-key': apiKey,
+            'Accept': 'text/event-stream'
+          },
+          body: JSON.stringify({
+            model: "claude-3-sonnet-20240229",
+            max_tokens: 500,
+            temperature: 0.7,
+            system: system_prompt,
+            messages: [{
+              role: "user",
+              content: user_prompt
+            }],
+            stream: true
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        let accumulatedText = '';
+        let buffer = '';
+
+        while (true) {
+          const {value, done} = await reader.read();
+          if (done) break;
           
-  //         body: JSON.stringify({
-  //           model: "claude-3-5-sonnet-20241022",
-  //           max_tokens: 1000,
-  //           system:  [
-  //             {
-  //               "type": "text",
-  //               "text": system_prompt,
-  //               "cache_control": {"type": "ephemeral"}
-  //             }
-  //           ],
-  //           stream: true,
-  //           messages: [{
-  //             role: "user",
-  //             content: user_prompt
-  //           }]
-  //         })
-  //       });
-  //       console.log('Response status:', response.status);
-    
-  //      const textStream = await response.text();
-        
-  //      // Split the stream into lines and process each event
-  //      const lines = textStream.split('\n');
-  //      let accumulatedText = '';
-  //      let positionAnalysisExtracted = false;
+          buffer += new TextDecoder().decode(value);
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || ''; // Keep incomplete line in buffer
 
-  //      for (const line of lines) {
-  //        if (!line.trim() || line === 'event: message_stop') continue;
-        
-  //        if (line.startsWith('data: ')) {
-  //          try {
-  //            const jsonData = JSON.parse(line.slice(6));
-  //            //console.log('Parsed JSON:', jsonData);
+          for (const line of lines) {
+            if (!line.trim() || line.trim() === 'data: [DONE]') continue;
             
-  //            // Handle content block deltas
-  //            if (jsonData.type === 'content_block_delta' && 
-  //                jsonData.delta && 
-  //                jsonData.delta.type === 'text_delta') {
-  //              accumulatedText += jsonData.delta.text;
-  //              //console.log('Updated text:', accumulatedText);
-              
-  //              if (!positionAnalysisExtracted && options.onPositionAnalysis) {
-  //                if (accumulatedText.includes('"positionAnalysis"')) {
-  //                  const positionAnalysis = this.extractPositionAnalysis(accumulatedText);
-  //                  if (positionAnalysis) {
-  //                    console.log('position analysis extracted. Updated text:', accumulatedText);
-  //                    options.onPositionAnalysis(positionAnalysis);
-  //                    positionAnalysisExtracted = true;
-  //                  }
-  //                }
-  //              }
-  //            }
-  //          } catch (e) {
-  //            console.error('Error parsing stream data:', e, 'Line:', line);
-  //            continue;
-  //          }
-  //        }
-  //      }
+            if (line.startsWith('data: ')) {
+              try {
+                const jsonData = JSON.parse(line.slice(6));
+                if (jsonData.type === 'message_start') continue;
+                if (jsonData.type === 'content_block_start') continue;
+                if (jsonData.type === 'content_block_stop') continue;
+                if (jsonData.type === 'message_stop') break;
 
-  //      console.log('Final accumulated text:', accumulatedText);
-  //      const advice = this.extractSectionsFromAdvice(accumulatedText);
-  //      return advice;
-  //    } catch (error) {
-  //      console.error('Error in streaming from Claude:', error);
-  //      return null;
-  //    }
-  // }
+                if (jsonData.type === 'content_block_delta' && 
+                    jsonData.delta?.type === 'text_delta') {
+                  accumulatedText += jsonData.delta.text;
+                  console.log('New text chunk:', jsonData.delta.text);
+                }
+              } catch (e) {
+                console.error('Error parsing stream chunk:', e);
+                continue;
+              }
+            }
+          }
+        }
+
+        console.log('Stream complete. Final text:', accumulatedText);
+        return this.extractReasoningFromResponse(accumulatedText);
+      } catch (error) {
+        console.error('Error in streaming from Claude:', error);
+        return null;
+      }
+    }
     async getReasoningFromAI(apiName, advisedMoves) {
       const fen = this.chess.fen();
       const moveHistory =this.chess.history().map((move) => move);
@@ -843,14 +833,15 @@ ${this.chess.ascii()}
           case 'Gemini2':
             return await this.getAdviceFromGemini2(system_prompt, user_prompt);
   
-      //   case 'Perplexity':
-      //     return await this.getAdviceFromPerplexity(system_prompt, user_prompt);   
+        case 'Perplexity':
+          return await this.getAdviceFromPerplexity(system_prompt, user_prompt);   
         case 'Claude':
           return await this.getDataFromClaude(system_prompt, user_prompt);
-      //     case 'Claude_stream':
-      //       return await this.getAdviceFromClaude_stream(system_prompt, user_prompt, options); 
-      //   case 'GPTinstruct':
-      //     return await this.getAdviceFromGPTinstruct(system_prompt, user_prompt);               
+          case 'Claude_stream':
+            console.log('entering claude stream');
+            return await this.getAdviceFromClaude_stream(system_prompt, user_prompt, options); 
+        case 'GPTinstruct':
+          return await this.getAdviceFromGPTinstruct(system_prompt, user_prompt);               
         default:
           throw new Error(`Unknown API name: ${apiName}`);
       }

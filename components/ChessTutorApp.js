@@ -88,7 +88,9 @@ const ChessTutorApp = () => {
             
             // Only check subscription if purchases initialized successfully
             if (mounted) {
-              const hasSubscription = await checkSubscriptionStatus();
+              //const hasSubscription = true;
+                  const hasSubscription = await checkSubscriptionStatus();
+           
               setHasAIFeature(hasSubscription);
               
               if (hasSubscription) {
@@ -417,18 +419,18 @@ const ChessTutorApp = () => {
           width: 20, // Smaller size for captured pieces
           height: 20,
           marginHorizontal: 2,
-          shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
-          shadowOpacity: 1,
-          shadowRadius: 5,
-          shadowOffset: { width: 0, height: 0 },
-          elevation: 5, // Android equivalent of shadow
+          // shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
+          // shadowOpacity: 1,
+          // shadowRadius: 5,
+          // shadowOffset: { width: 0, height: 0 },
+          // elevation: 5, // Android equivalent of shadow
         },
         glowEffect: {
-          shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
-          shadowOpacity: 1,
-          shadowRadius: 5,
-          shadowOffset: { width: 0, height: 0 },
-          elevation: 5, // Android equivalent of shadow
+          // shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
+          // shadowOpacity: 1,
+          // shadowRadius: 5,
+          // shadowOffset: { width: 0, height: 0 },
+          // elevation: 5, // Android equivalent of shadow
         },
         disabledText: {
           // color: 'gray', // Dim text color for disabled state
@@ -728,6 +730,7 @@ const ChessTutorApp = () => {
       while (attempt < MAX_RETRIES) {
         try {
           reasoningData =  await gameLogicRef.current.getReasoningFromAI(apiName, advisedMoves);
+          console.log('reasoningData ', reasoningData);
               // Check if response is valid
               if (
                 reasoningData &&
@@ -984,13 +987,7 @@ const ChessTutorApp = () => {
                           ) : (
                             <Text style={styles.noDataText}></Text>
                           )
-                      ) : (
-                        <View>
-                          <Text style={styles.noDataText}>
-                            AI-powered analysis requires a subscription.
-                          </Text>
-                        </View>
-                      )}
+                      ) : null}
                   </Animated.View>
                 </ScrollView>
                 {isThinkingAnalysis && (
@@ -1033,7 +1030,7 @@ const ChessTutorApp = () => {
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.25,
               shadowRadius: 3.84,
-              elevation: 5,
+              // elevation: 5,
             }}
             onPress={async () => {
               try {

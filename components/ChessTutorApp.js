@@ -20,6 +20,10 @@ import GameLogic from '../GameLogic';
 import SANPopup from './SANPopup.js';
 import { checkSubscriptionStatus, initializePurchases } from '../services/Subscriptions';
 import Purchases from 'react-native-purchases';
+// import { showPaywall } from '../services/PayWall';
+import { MyPaywall } from '../services/MyPaywall.js';
+// import { Paywall } from 'react-native-purchases-ui';
+Purchases.setLogLevel(Purchases.LOG_LEVEL.VERBOSE);
 
 const ChessTutorApp = () => {
   const gameLogicRef = useRef(new GameLogic);
@@ -54,6 +58,7 @@ const ChessTutorApp = () => {
   const [isWhiteTurn, setIsWhiteTurn] = useState(true); // Start with White's turn
   const [hasAIFeature, setHasAIFeature] = useState(false);
   const [popupColor, setPopupColor] = useState(null);
+  const [showPaywall, setShowPaywall] = React.useState(false);
   const pieceAssets = {
     P: require('../assets/images/2d_chess_pieces/white-pawn.png'),
     N: require('../assets/images/2d_chess_pieces/white-knight.png'),
@@ -71,7 +76,9 @@ const ChessTutorApp = () => {
     black: {}, // Initialize with an empty object for black pieces
   });
   const [recentMoves, setRecentMoves] = useState([]);
- 
+  const [showDebug, setshowDebug] = useState(false);
+
+
   useEffect(() => {
     let mounted = true;
     const initializeApp = async () => {
@@ -79,35 +86,42 @@ const ChessTutorApp = () => {
         // Initialize chess engine first since it doesn't depend on native modules
         gameLogicRef.current.initializeEngine();
         
-        // Initialize purchases with retries
+        // Initialize purchases with better error handling
         let cleanupPurchases;
         let retries = 3;
         while (retries > 0) {
           try {
+            // Add debug logging
+            console.log('Attempting to initialize purchases...');
             cleanupPurchases = await initializePurchases();
+            console.log('Purchases initialized successfully');
             
-            // Only check subscription if purchases initialized successfully
             if (mounted) {
-              //const hasSubscription = true;
-                  const hasSubscription = await checkSubscriptionStatus();
-           
-              setHasAIFeature(hasSubscription);
-              
-              if (hasSubscription) {
-                gameLogicRef.current.storeApiKey();
+              try {
+                console.log('Checking subscription status...');
+                const hasSubscription = await checkSubscriptionStatus();
+                console.log('Subscription status:', hasSubscription);
+                
+                setHasAIFeature(hasSubscription);
+                
+                if (hasSubscription) {
+                  gameLogicRef.current.storeApiKey();
+                }
+              } catch (subscriptionError) {
+                console.error('Error checking subscription:', subscriptionError);
+                setHasAIFeature(false);
               }
             }
-            break; // Success - exit retry loop
+            break;
           } catch (purchaseError) {
+            console.warn(`Purchase initialization attempt ${4-retries} failed:`, purchaseError);
             retries--;
             if (retries === 0) {
-              console.warn('Purchases initialization failed after retries:', purchaseError);
-              // Continue without purchase features
+              console.error('Purchases initialization failed after all retries:', purchaseError);
               if (mounted) {
                 setHasAIFeature(false);
               }
             } else {
-              // Wait before retrying
               await new Promise(resolve => setTimeout(resolve, 1000));
             }
           }
@@ -143,7 +157,7 @@ const ChessTutorApp = () => {
     if (!isBlackTurn) {
       const moves = gameLogicRef.current.getRecentMoves();
       setRecentMoves(moves);
-    }
+    } 
   }, [boardState]);
  
   useEffect(() => {
@@ -419,18 +433,18 @@ const ChessTutorApp = () => {
           width: 20, // Smaller size for captured pieces
           height: 20,
           marginHorizontal: 2,
-          // shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
-          // shadowOpacity: 1,
-          // shadowRadius: 5,
-          // shadowOffset: { width: 0, height: 0 },
-          // elevation: 5, // Android equivalent of shadow
+          shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
+          shadowOpacity: 1,
+          shadowRadius: 5,
+          shadowOffset: { width: 0, height: 0 },
+          elevation: 5, // Android equivalent of shadow
         },
         glowEffect: {
-          // shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
-          // shadowOpacity: 1,
-          // shadowRadius: 5,
-          // shadowOffset: { width: 0, height: 0 },
-          // elevation: 5, // Android equivalent of shadow
+          shadowColor: '#FFFFFF', // Black glow for white pieces, white glow for black pieces
+          shadowOpacity: 1,
+          shadowRadius: 5,
+          shadowOffset: { width: 0, height: 0 },
+          elevation: 5, // Android equivalent of shadow
         },
         disabledText: {
           // color: 'gray', // Dim text color for disabled state
@@ -1016,6 +1030,12 @@ const ChessTutorApp = () => {
         isLoading={isPopupLoading}
         hasAIFeature={hasAIFeature}
         />
+         <Text style={{
+              color: 'white',
+              fontSize: 16,
+              fontWeight: 'bold',
+            }}>
+         </Text>
         {!hasAIFeature && (
           <TouchableOpacity 
             style={{
@@ -1032,52 +1052,36 @@ const ChessTutorApp = () => {
               shadowRadius: 3.84,
               // elevation: 5,
             }}
-            onPress={async () => {
-              try {
-                const offerings = await Purchases.getOfferings();
-                if (!offerings.current) {
-                  Alert.alert('Error', 'No subscription offerings available');
-                  return;
-                }
-
-                const options = offerings.current.availablePackages.map(pkg => ({
-                  text: `${pkg.product.title} - ${pkg.product.priceString}`,
-                  onPress: async () => {
-                    try {
-                      const { customerInfo } = await Purchases.purchasePackage(pkg);
-                      if (customerInfo.activeSubscriptions.length > 0) {
-                        setHasAIFeature(true);
-                        Alert.alert('Success', 'Thank you for subscribing! You now have access to AI-powered analysis.');
-                      }
-                    } catch (e) {
-                      if (!e.userCancelled) {
-                        Alert.alert('Error', 'Unable to complete purchase. Please try again.');
-                      }
-                    }
-                  }
-                }));
-
-                Alert.alert(
-                  'Choose a Subscription Plan',
-                  'Select a plan that works best for you:',
-                  [...options, { text: 'Cancel', style: 'cancel' }]
-                );
-              } catch (error) {
-                console.error('Purchase error:', error);
-                Alert.alert('Error', 'Unable to load subscription options. Please try again.');
-              }
-            }}
+            
+            onPress={() => setShowPaywall(true)}
           >
             <Text style={{
               color: 'white',
               fontSize: 16,
               fontWeight: 'bold',
             }}>
-              Subscribe to Unlock AI Analysis
+              Subscribe to Unlock
             </Text>
           </TouchableOpacity>
+
+               
         )}
-    </SafeAreaView>
+
+        {showPaywall && (
+          <MyPaywall
+            onClose={() => setShowPaywall(false)}
+            onPurchaseSuccess={() => {
+              setHasAIFeature(true);
+              setShowPaywall(false);
+              alert('Thank you for subscribing! AI feature unlocked.');
+            }}
+            onPurchaseFailure={(error) => {
+              console.error('Purchase failed:', error);
+              alert('Purchase failed. Please try again.');
+            }}
+          />
+        )}      
+           </SafeAreaView>
   );
   
   

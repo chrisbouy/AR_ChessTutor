@@ -40,7 +40,7 @@ class GameLogic {
         console.error('Failed to initialize the engine:', error);
       } 
       //midgame
-       this.chess.load("r1bq1rk1/pppn1ppp/4pn2/3P4/2P2B2/2N2N2/PP3PPP/R2QKB1R w KQ - 1 9");
+      //  this.chess.load("r1bq1rk1/pppn1ppp/4pn2/3P4/2P2B2/2N2N2/PP3PPP/R2QKB1R w KQ - 1 9");
       //end game
  //this.chess.load("8/5P2/8/8/8/8/8/4k2K w - - 0 1");
     }

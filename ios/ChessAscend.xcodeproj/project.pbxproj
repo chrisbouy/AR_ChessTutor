@@ -11,6 +11,7 @@
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		68CFAE29318560FA1B69D123 /* libPods-ChessAscend-ChessAscendTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B521177DD8A3F65296E9B158 /* libPods-ChessAscend-ChessAscendTests.a */; };
+		BA6EA0FB2D25BFB20019DE26 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BA6EA0FA2D25BFB20019DE26 /* StoreKit.framework */; };
 		BAB5034C2D1686F500D6AD7B /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = BAB5034B2D1686F500D6AD7B /* LaunchScreen.storyboard */; };
 		BAFC42CC2D16736600F408D3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BAFC42CB2D16736600F408D3 /* Assets.xcassets */; };
 		CA7582EB42693D6BC65A7223 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8A4C8C3F2D3682FCD6C42F42 /* PrivacyInfo.xcprivacy */; };
@@ -42,6 +43,7 @@
 		7B60A0236BD7C29B4E5E438E /* Pods-ChessAscend.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ChessAscend.release.xcconfig"; path = "Target Support Files/Pods-ChessAscend/Pods-ChessAscend.release.xcconfig"; sourceTree = "<group>"; };
 		8A4C8C3F2D3682FCD6C42F42 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = ChessAscend/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		B521177DD8A3F65296E9B158 /* libPods-ChessAscend-ChessAscendTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ChessAscend-ChessAscendTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		BA6EA0FA2D25BFB20019DE26 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		BAB5034B2D1686F500D6AD7B /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		BAFC42CB2D16736600F408D3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C98ABBCC31000B7E64F24961 /* libPods-ChessAscend.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ChessAscend.a"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -63,6 +65,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D2A13BA58BBEE697309FFADE /* libPods-ChessAscend.a in Frameworks */,
+				BA6EA0FB2D25BFB20019DE26 /* StoreKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -104,6 +107,7 @@
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				BA6EA0FA2D25BFB20019DE26 /* StoreKit.framework */,
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
 				C98ABBCC31000B7E64F24961 /* libPods-ChessAscend.a */,
 				B521177DD8A3F65296E9B158 /* libPods-ChessAscend-ChessAscendTests.a */,

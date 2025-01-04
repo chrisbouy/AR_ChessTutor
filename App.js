@@ -1,6 +1,16 @@
 import React, { useEffect } from 'react';
 import ChessTutorApp from './components/ChessTutorApp';
 import SplashScreen from 'react-native-splash-screen';
+import { LogBox } from 'react-native';
+
+// Disable yellow box warnings
+LogBox.ignoreAllLogs();
+// OR if you specifically want to disable shadow warnings
+LogBox.ignoreLogs([
+  'shadow',
+  'Shadow props are not supported',
+  // Add any other specific warnings you want to ignore
+]);
 
 export default function App() {
   useEffect(() => {

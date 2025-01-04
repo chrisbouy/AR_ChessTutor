@@ -1,5 +1,6 @@
 import Purchases from 'react-native-purchases';
 import { Platform } from 'react-native';
+Purchases.setLogLevel(Purchases.LOG_LEVEL.VERBOSE);
 
 const REVENUECAT_API_KEY = {
   ios: 'appl_ZYZlsZPIzNRKrAIugabnNamcJty',
@@ -9,11 +10,22 @@ const REVENUECAT_API_KEY = {
 export const initializePurchases = async () => {
   try {
     const platform = Platform.OS;
-    await Purchases.configure({ apiKey: REVENUECAT_API_KEY[platform] });
+    
+     Purchases.configure({ apiKey: REVENUECAT_API_KEY[platform] });
     console.log('RevenueCat initialized successfully');
   } catch (error) {
     console.error('Error initializing RevenueCat:', error);
   }
+  Purchases.getOfferings()
+  .then(offerings => {
+    console.log('RevenueCat Offerings:', offerings);
+    if (offerings.current === null) {
+      console.log('No current offering found');
+    }
+  })
+  .catch(error => {
+    console.error('RevenueCat Error:', error);
+  });
 };
 
 export const checkSubscriptionStatus = async () => {

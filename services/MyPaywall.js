@@ -1,36 +1,25 @@
-import React from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import React, { useEffect } from 'react';
 import RevenueCatUI from 'react-native-purchases-ui';
 
 export const MyPaywall = ({ onClose, onPurchaseSuccess, onPurchaseFailure }) => {
-  return (
-    <View style={styles.container}>
-      <RevenueCatUI.Paywall
-        style={styles.paywall}
-        offering="default"
-        displayCloseButton={true}
-        onClose={onClose}
-        onPurchaseCompleted={onPurchaseSuccess}
-        onPurchaseError={onPurchaseFailure}
-      />
-    </View>
-  );
-};
+  useEffect(() => {
+    RevenueCatUI.presentPaywall({
+      offering: 'default',
+      displayCloseButton: true
+    })
+    .then(() => {
+      // Paywall presented successfully
+    })
+    .catch((error) => {
+      console.error('Error presenting paywall:', error);
+      onPurchaseFailure?.(error);
+    });
 
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#191d24',
-  },
-  paywall: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-  }
-});
+    // Return cleanup function
+    return () => {
+      // Handle cleanup if needed
+    };
+  }, []); // Empty dependency array means this runs once when component mounts
+
+  return null; // No need to render anything since we're using presentPaywall
+};

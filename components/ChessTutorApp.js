@@ -1037,34 +1037,43 @@ const ChessTutorApp = () => {
             }}>
          </Text>
         {!hasAIFeature && (
-          <TouchableOpacity 
-            style={{
-              position: 'absolute',
-              bottom: 20,
-              alignSelf: 'center',
-              backgroundColor: '#4CAF50',
-              paddingHorizontal: 20,
-              paddingVertical: 10,
-              borderRadius: 25,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.25,
-              shadowRadius: 3.84,
-              // elevation: 5,
-            }}
-            
-            onPress={() => setShowPaywall(true)}
-          >
+          <>
             <Text style={{
-              color: 'white',
+              position: 'absolute',
+              bottom: 70, // Position above the button
+              alignSelf: 'center',
+              color: '#ffffff',
               fontSize: 16,
-              fontWeight: 'bold',
+              textAlign: 'center',
+              paddingHorizontal: 20,
             }}>
-              Subscribe to Unlock
+              Get current game analysis and reasoning for all advised moves
             </Text>
-          </TouchableOpacity>
-
-               
+            <TouchableOpacity 
+              style={{
+                position: 'absolute',
+                bottom: 20,
+                alignSelf: 'center',
+                backgroundColor: '#4CAF50',
+                paddingHorizontal: 20,
+                paddingVertical: 10,
+                borderRadius: 25,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.25,
+                shadowRadius: 3.84,
+              }}
+              onPress={() => setShowPaywall(true)}
+            >
+              <Text style={{
+                color: 'white',
+                fontSize: 16,
+                fontWeight: 'bold',
+              }}>
+                Subscribe to Unlock
+              </Text>
+            </TouchableOpacity>
+          </>
         )}
 
         {showPaywall && (

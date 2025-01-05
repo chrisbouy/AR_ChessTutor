@@ -11,7 +11,17 @@ export const initializePurchases = async () => {
   try {
     const platform = Platform.OS;
     
-     Purchases.configure({ apiKey: REVENUECAT_API_KEY[platform] });
+    if (__DEV__) {
+      Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
+      // Optional: Set sandbox environment explicitly
+      Purchases.configure({ 
+        apiKey: REVENUECAT_API_KEY[platform],
+        usesStoreKit2IfAvailable: true,
+        observerMode: false
+      });
+    }
+    
+    Purchases.configure({ apiKey: REVENUECAT_API_KEY[platform] });
     console.log('RevenueCat initialized successfully');
   } catch (error) {
     console.error('Error initializing RevenueCat:', error);

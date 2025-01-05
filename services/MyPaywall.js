@@ -5,21 +5,27 @@ export const MyPaywall = ({ onClose, onPurchaseSuccess, onPurchaseFailure }) => 
   useEffect(() => {
     RevenueCatUI.presentPaywall({
       offering: 'default',
-      displayCloseButton: true
-    })
-    .then(() => {
-      // Paywall presented successfully
+      displayCloseButton: true,
+      onDismiss: () => {
+        onClose?.(); // Call the onClose callback when paywall is dismissed
+      },
+      onPurchaseCompleted: (customerInfo) => {
+        onPurchaseSuccess?.(customerInfo);
+      },
+      onPurchaseError: (error) => {
+        onPurchaseFailure?.(error);
+      }
     })
     .catch((error) => {
       console.error('Error presenting paywall:', error);
       onPurchaseFailure?.(error);
     });
 
-    // Return cleanup function
     return () => {
-      // Handle cleanup if needed
+      // Cleanup by dismissing the paywall when component unmounts
+      RevenueCatUI.dismissPaywall();
     };
-  }, []); // Empty dependency array means this runs once when component mounts
+  }, [onClose, onPurchaseSuccess, onPurchaseFailure]); // Add callbacks to dependency array
 
-  return null; // No need to render anything since we're using presentPaywall
+  return null;
 };

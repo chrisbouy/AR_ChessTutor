@@ -1014,21 +1014,20 @@ const ChessTutorApp = () => {
         <SANPopup
         visible={popupVisible}
         description={popupDescription||''}
-        reasoningType ={popupColor === 'w' ? 'advisedMove' : 'likelyResponse'}
+        reasoningType={popupColor === 'w' ? 'advisedMove' : 'likelyResponse'}
         onClose={() => {
-        setPopupVisible(false); // Close the popup
-
-        // Reset displayed arrows based on processedAdvice
+        setPopupVisible(false);
         setDisplayedArrows(
-        recommendedNextMoves.map((move) => ({
-          from: move.from,
-          to: move.to,
-          arrowSize: move.arrowSize || 0.6, // Default arrow size if not provided
-        }))
+          recommendedNextMoves.map((move) => ({
+            from: move.from,
+            to: move.to,
+            arrowSize: move.arrowSize || 0.6,
+          }))
         );
         }}
         isLoading={isPopupLoading}
         hasAIFeature={hasAIFeature}
+        setShowPaywall={setShowPaywall}
         />
          <Text style={{
               color: 'white',
@@ -1038,17 +1037,7 @@ const ChessTutorApp = () => {
          </Text>
         {!hasAIFeature && (
           <>
-            <Text style={{
-              position: 'absolute',
-              bottom: 70, // Position above the button
-              alignSelf: 'center',
-              color: '#ffffff',
-              fontSize: 16,
-              textAlign: 'center',
-              paddingHorizontal: 20,
-            }}>
-              Get current game analysis and reasoning for all advised moves
-            </Text>
+
             <TouchableOpacity 
               style={{
                 position: 'absolute',
@@ -1070,7 +1059,7 @@ const ChessTutorApp = () => {
                 fontSize: 16,
                 fontWeight: 'bold',
               }}>
-                Subscribe to Unlock
+                Unlock In-depth Analysis and Reasoning
               </Text>
             </TouchableOpacity>
           </>

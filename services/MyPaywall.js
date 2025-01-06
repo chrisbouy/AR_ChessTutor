@@ -1,31 +1,35 @@
 import React, { useEffect } from 'react';
-import RevenueCatUI from 'react-native-purchases-ui';
+import { Paywall } from 'react-native-purchases-ui';
 
 export const MyPaywall = ({ onClose, onPurchaseSuccess, onPurchaseFailure }) => {
   useEffect(() => {
-    RevenueCatUI.presentPaywall({
-      offering: 'default',
-      displayCloseButton: true,
-      onDismiss: () => {
-        onClose?.(); // Call the onClose callback when paywall is dismissed
-      },
-      onPurchaseCompleted: (customerInfo) => {
-        onPurchaseSuccess?.(customerInfo);
-      },
-      onPurchaseError: (error) => {
+    const showPaywall = async () => {
+      try {
+        await Paywall.presentPaywall({
+          offering: 'default',
+          displayCloseButton: true,
+          onDismiss: () => {
+            onClose?.();
+          },
+          onPurchaseCompleted: (customerInfo) => {
+            onPurchaseSuccess?.(customerInfo);
+          },
+          onPurchaseError: (error) => {
+            onPurchaseFailure?.(error);
+          }
+        });
+      } catch (error) {
+        console.error('Error presenting paywall:', error);
         onPurchaseFailure?.(error);
       }
-    })
-    .catch((error) => {
-      console.error('Error presenting paywall:', error);
-      onPurchaseFailure?.(error);
-    });
+    };
+
+    showPaywall();
 
     return () => {
-      // Cleanup by dismissing the paywall when component unmounts
-      RevenueCatUI.dismissPaywall();
+      // No need for dismissPaywall in cleanup
     };
-  }, [onClose, onPurchaseSuccess, onPurchaseFailure]); // Add callbacks to dependency array
+  }, [onClose, onPurchaseSuccess, onPurchaseFailure]);
 
   return null;
 };

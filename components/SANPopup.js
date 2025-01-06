@@ -1,4 +1,5 @@
 import React from 'react';
+import Purchases from 'react-native-purchases';
 import {
   Modal,
   View,
@@ -8,10 +9,7 @@ import {
   TouchableWithoutFeedback,
   ActivityIndicator, 
   ScrollView,
-  Alert,
 } from 'react-native';
-
-import Purchases from 'react-native-purchases';
 
 const SANPopup = ({
   visible,
@@ -20,43 +18,18 @@ const SANPopup = ({
   isLoading,
   hasAIFeature,
   reasoningType,
+  setShowPaywall
 }) => {
 
-  const handleSubscribe = async () => {
-    try {
-      const offerings = await Purchases.getOfferings();
-      if (!offerings.current) {
-        Alert.alert('Error', 'No subscription offerings available');
-        return;
-      }
-
-      const options = offerings.current.availablePackages.map(pkg => ({
-        text: `${pkg.product.title} - ${pkg.product.priceString}`,
-        onPress: async () => {
-          try {
-            const { customerInfo } = await Purchases.purchasePackage(pkg);
-            if (customerInfo.activeSubscriptions.length > 0) {
-              Alert.alert('Success', 'Thank you for subscribing! You now have access to AI-powered analysis.');
-              onClose();
-            }
-          } catch (e) {
-            if (!e.userCancelled) {
-              Alert.alert('Error', 'Unable to complete purchase. Please try again.');
-            }
-          }
-        }
-      }));
-
-      Alert.alert(
-        'Choose a Subscription Plan',
-        'Select a plan that works best for you:',
-        [...options, { text: 'Cancel', style: 'cancel' }]
-      );
-    } catch (error) {
-      console.error('Purchase error:', error);
-      Alert.alert('Error', 'Unable to load subscription options. Please try again.');
+  const handleSubscribeClick = () => {
+    if (typeof setShowPaywall !== 'function') {
+      console.error('setShowPaywall is not a function:', setShowPaywall);
+      return;
     }
+    onClose();
+    setShowPaywall(true);
   };
+
   if (!visible) return null;
 
   return (
@@ -66,14 +39,12 @@ const SANPopup = ({
           <TouchableWithoutFeedback onPress={() => {}}>
             <View style={[styles.popupContainer, { marginBottom: 20 }]}>
               <ScrollView contentContainerStyle={styles.scrollViewContent}>
-                {/* Always show the description */}
                 {description.split('\n').map((text, index) => (
                   <Text key={index} style={styles.descriptionText}>
                     {text}
                   </Text>
                 ))}
 
-                {/* Show subscription prompt for advised moves if AI is locked */}
                 {reasoningType === 'advisedMove' && !hasAIFeature && (
                   <View>
                     <Text style={styles.descriptionText}>
@@ -81,9 +52,9 @@ const SANPopup = ({
                     </Text>
                     <TouchableOpacity 
                       style={styles.subscribeButton}
-                      onPress={handleSubscribe}
+                      onPress={handleSubscribeClick}
                     >
-                      <Text style={styles.subscribeButtonText}>Choose Subscription Plan</Text>
+                      <Text style={styles.subscribeButtonText}>Subscribe to Unlock</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -103,8 +74,6 @@ const SANPopup = ({
     </Modal>
   );
 };
-
-
 
 const styles = StyleSheet.create({
   subscribeButton: {
